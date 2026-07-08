@@ -6,6 +6,14 @@ actual UAV control, real-time flight control, mission success guarantees, or ver
 communication quality outputs.
 """
 
+from .classification import (
+    ClassificationError,
+    ColorClassificationThresholds,
+    LaunchAreaCellEvaluation,
+    classification_reason,
+    classify_candidate_score,
+    evaluate_launch_area_cell,
+)
 from .config import (
     DEFAULT_SCORE_WEIGHTS,
     DISTANCE_WEIGHT,
@@ -82,7 +90,9 @@ __all__ = [
     "CandidateCell",
     "CandidateGridConfig",
     "CandidateScore",
+    "ClassificationError",
     "ColorClass",
+    "ColorClassificationThresholds",
     "CoordinateReference",
     "DEFAULT_SCORE_WEIGHTS",
     "DISTANCE_WEIGHT",
@@ -91,6 +101,7 @@ __all__ = [
     "FresnelAnalysis",
     "FresnelAnalysisError",
     "FresnelSample",
+    "LaunchAreaCellEvaluation",
     "LaunchAreaCellScore",
     "LineOfSightAnalysis",
     "LineOfSightError",
@@ -113,6 +124,8 @@ __all__ = [
     "analyze_dsm_fresnel",
     "analyze_dsm_los",
     "available_synthetic_scenarios",
+    "classification_reason",
+    "classify_candidate_score",
     "clamp_score",
     "compute_candidate_score",
     "compute_distance_score",
@@ -129,6 +142,7 @@ __all__ = [
     "create_synthetic_terrain",
     "distance_2d_m",
     "distance_3d_m",
+    "evaluate_launch_area_cell",
     "extract_terrain_profile",
     "filter_within_operation_radius",
     "first_fresnel_radius_m",
