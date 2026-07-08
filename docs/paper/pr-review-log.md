@@ -96,48 +96,50 @@ Cloud Execution Agent
 
 ## 변경 요약
 
-Task 001 범위에서 Python 패키지 구조, 최신 DSM-primary scoring config, schema scaffold, smoke tests, sample config, synthetic terrain metadata scaffold, README 및 논문 기록 로그를 추가했다.
+Task 001 범위에서 Python 패키지 구조, 최신 DSM-primary scoring config, schema scaffold, smoke tests, sample config, synthetic terrain metadata scaffold, README 및 논문 기록 로그를 추가했다. GPT Master minor review 결과에 따라 synthetic scenario placeholder 목록을 최종 로드맵 기준으로 보강하고 PR/CI 로그 상태를 최신화했다.
 
 ## 테스트 상태
 
-- Cloud 확인: 파일 생성 및 PR 생성 완료
-- CI: 확인 필요
-- Local: 로컬 미실행
-- 미실행: `python -m pip install -e '.[dev]'`, `python -m pytest`, `python -m compileall src tests examples`
+- Cloud 확인: 파일 생성, PR 생성, minor review fix commit 추가 완료
+- CI: GitHub Actions CI success observed before the minor log update; follow-up CI after minor fix commits must be rechecked before merge.
+- Local: 로컬 미실행, CI에서 install/syntax/pytest/ruff/mypy 성공 확인
+- 미실행: 로컬 직접 실행은 미실행. 실제 DEM/DSM, Streamlit/Folium, rasterio/GDAL 검증은 후속 local-required task로 유지.
 
 ## 검토 결과
 
-- Task 범위 준수: GPT Master 검토 필요
-- 금지범위 침범 없음: Cloud Agent 기준 위반사항 없음
-- Top 5 기본 출력 금지 준수: schema 기본 출력은 `color_launch_area_map`
-- 색상 기반 지도화 기준 준수: README/config/schema에 반영
-- 논문 기록 업데이트 여부: research/experiment/decision/pr-review log 초안 반영
+- Task 범위 준수: 승인 가능
+- 금지범위 침범 없음: 승인 가능
+- Top 5 기본 출력 금지 준수: 승인 가능
+- 색상 기반 지도화 기준 준수: 승인 가능
+- 논문 기록 업데이트 여부: minor fix 반영 후 승인 가능
 
 ## 논문 반영 가능 항목
 
 - 구현 환경 및 재현성
 - baseline score configuration
 - 실제 드론운용 없는 오프라인 proxy 분석 범위
+- synthetic scenario placeholder 목록
+- PR #8 CI 성공 이력
 
 ## 논문 반영 불가 또는 보류 항목
 
-- 실험 결과
-- 실제 DEM/DSM 검증 결과
+- 실제 DEM/DSM 실험 결과
 - 실제 링크품질 검증 결과
 - 지도 시각화 결과
+- LOS/Fresnel 알고리즘 성능 결과
 
 ## 사용자 승인 필요사항
 
-- Task 001 범위가 충분한지
-- 최신 점수 기준이 정확히 반영되었는지
-- PR merge 전 CI/로컬 검증을 별도로 수행할지
+- minor review fix 반영 내용 확인
+- follow-up CI 최종 결과 확인
+- merge 승인 여부 결정
 
 ## 최종 판단
 
-- 승인 가능: CI/로컬 검증 및 GPT Master 검토 후 판단
-- 수정 필요: 확인 필요
-- 보류: 실제 테스트 결과 확인 전까지 보류
+- 승인 가능: 예, minor review fix 반영 및 CI 재확인 후 merge 가능
+- 수정 필요: 없음
+- 보류: 없음
 
 ## GPT Master 메모
 
-Cloud Execution Agent는 로컬 테스트를 실행하지 않았다. CI 결과와 필요 시 Codex/Claude Code 로컬 검증 기록을 확인한 뒤 merge 여부를 판단한다.
+GPT Master 검토 결과, Task 001 핵심 acceptance criteria는 충족했다. merge 전 minor non-blocking fixes로 synthetic scenario placeholder 목록과 log 상태를 최신화했다. 실제 DEM/DSM, LOS/Fresnel 알고리즘, 지도 UI, 로컬 GIS 검증은 후속 Task 범위다.
