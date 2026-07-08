@@ -156,7 +156,7 @@ Task 006에서는 LOS analysis 결과를 기반으로 DSM Fresnel radius/clearan
 
 - Task: 007 - Shielding stability and overall scoring integration
 - Issue: #19
-- PR: 생성 예정
+- PR: #20
 
 ## 결정 일자
 
