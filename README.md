@@ -50,6 +50,14 @@ if dsm_los_score == 0:
 
 이 점수는 실제 통신 성공률, 실제 링크품질, RSSI, SINR, packet loss 검증값이 아니다. 본 프로젝트의 MVP 점수는 **offline terrain/surface-obstacle risk proxy**로만 사용한다.
 
+## Task 002 좌표 및 후보 격자 scaffold
+
+Task 002는 local coordinate and candidate-grid scaffolding을 추가한다. `coordinates.py`는 `WGS84Point`, `LocalPoint`, `CoordinateReference`와 2D/3D 거리 helper를 제공하고, `grid.py`는 목표 주변 후보 발진지 candidate cell 격자를 생성한다.
+
+MGRS/pyproj 기반 변환은 optional GIS dependencies와 로컬 검증이 필요하다. 기본 dev 환경과 CI가 무거운 GIS 의존성 때문에 깨지지 않도록 MGRS 변환은 optional runtime import 구조로 둔다.
+
+Candidate grid는 색상 기반 발진 가능구역 지도 생성을 위한 grid/cell 구조이며, Top 5 발진지 기본 출력 구조가 아니다. 실제 DEM/DSM loading, DSM-based LOS/Fresnel computation, final scoring, and map rendering remain future tasks.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM

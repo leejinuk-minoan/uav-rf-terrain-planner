@@ -143,3 +143,87 @@ Task 001 범위에서 Python 패키지 구조, 최신 DSM-primary scoring config
 ## GPT Master 메모
 
 GPT Master 검토 결과, Task 001 핵심 acceptance criteria는 충족했다. merge 전 minor non-blocking fixes로 synthetic scenario placeholder 목록과 log 상태를 최신화했다. 실제 DEM/DSM, LOS/Fresnel 알고리즘, 지도 UI, 로컬 GIS 검증은 후속 Task 범위다.
+
+---
+
+# PR Review - PR #10
+
+## PR 제목
+
+task-002: add coordinate and candidate grid modules
+
+## 관련 Task
+
+Task 002 - Coordinate and candidate grid module
+
+## 브랜치
+
+`agent/task-002-coordinate-grid`
+
+## 담당 에이전트
+
+Cloud Execution Agent
+
+## 변경 파일
+
+- `src/uav_rf_terrain/coordinates.py`
+- `src/uav_rf_terrain/grid.py`
+- `tests/test_coordinates.py`
+- `tests/test_grid.py`
+- `src/uav_rf_terrain/__init__.py`
+- `README.md`
+- `docs/paper/experiment-log.md`
+- `docs/paper/decision-log.md`
+- `docs/paper/pr-review-log.md`
+
+## 변경 요약
+
+Task 002 범위에서 좌표 dataclass, local metric distance helper, optional MGRS conversion helper, candidate grid config/cell 구조, 운용반경 이내/초과 후보 구분, 순수 Python 테스트를 추가했다. 실제 DEM/DSM, LOS/Fresnel, scoring, 지도 UI는 구현하지 않았다.
+
+## 테스트 상태
+
+- Cloud 확인: 파일 생성 및 PR 생성 완료
+- CI: GitHub Actions CI success observed for PR #10 head commit before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
+- Local: 로컬 미실행, CI에서 install/syntax/pytest/ruff/mypy 성공 확인
+- 미실행: 로컬 직접 실행은 미실행. optional GIS dependency 기반 MGRS 변환 정확도, 실제 DEM/DSM, Streamlit/Folium, rasterio/GDAL 검증은 후속 local-required task로 유지.
+
+## 검토 결과
+
+- Task 범위 준수: 승인 가능
+- 금지범위 침범 없음: 승인 가능
+- Top 5 기본 출력 금지 준수: 승인 가능
+- 색상 기반 지도화 기준 준수: 승인 가능
+- 논문 기록 업데이트 여부: PR review log 반영 후 승인 가능
+
+## 논문 반영 가능 항목
+
+- 좌표/격자 scaffold 방법론
+- 2D/3D 거리 계산 helper
+- 운용반경 이내/초과 후보 구분 구조
+- optional GIS dependency 분리 원칙
+- PR #10 CI 성공 이력
+
+## 논문 반영 불가 또는 보류 항목
+
+- 실제 MGRS 운용 정확도 검증 결과
+- 실제 DEM/DSM 검증 결과
+- 실제 링크품질 검증 결과
+- 지도 시각화 결과
+- LOS/Fresnel 또는 scoring 성능 결과
+
+## 사용자 승인 필요사항
+
+- Task 002 범위가 충분한지
+- optional dependency 처리 방식이 적절한지
+- follow-up CI 최종 결과 확인
+- merge 승인 여부 결정
+
+## 최종 판단
+
+- 승인 가능: 예, CI 재확인 및 GPT Master 검토 후 merge 가능
+- 수정 필요: 없음
+- 보류: 없음
+
+## GPT Master 메모
+
+Cloud Execution Agent는 로컬 테스트를 실행하지 않았다. Task 002는 순수 Python 좌표/격자 scaffold로 제한되며, 실제 DEM/DSM, LOS/Fresnel 알고리즘, 지도 UI, 로컬 GIS 검증은 후속 Task 범위다.
