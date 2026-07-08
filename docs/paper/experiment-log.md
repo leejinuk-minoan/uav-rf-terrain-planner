@@ -228,7 +228,7 @@ Task 004의 TerrainProfile을 입력으로 받아 발진기지 안테나 MSL과 
 
 - Task: 006 - DSM-based Fresnel radius and clearance analysis
 - Issue: #17
-- PR: 생성 예정
+- PR: #18
 
 ## 목적
 
@@ -268,29 +268,29 @@ Task 004 TerrainProfile과 Task 005 LineOfSightAnalysis를 입력으로 받아 s
 
 - Cloud: GitHub connector file operations
 - Local: Not run in this cloud/GitHub-only context.
-- CI: PR 생성 후 확인 필요
+- CI: GitHub Actions CI success observed for PR #18 head commit before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
 
 ## 실행 명령
 
 - Local commands: Not run in this cloud/GitHub-only context.
-- CI commands: PR 생성 후 GitHub Actions가 install, syntax check, pytest, ruff, mypy를 실행할 것으로 예상
+- CI commands: GitHub Actions executed install, syntax check, pytest, ruff, and mypy successfully on the checked PR #18 run.
 
 ## 결과
 
-- Fresnel radius/clearance analysis 가능 여부: PR/CI 확인 전
-- Task 006 scaffold CI status: PR 생성 후 확인 필요
-- package install in CI: PR 생성 후 확인 필요
-- syntax check in CI: PR 생성 후 확인 필요
-- pytest in CI: PR 생성 후 확인 필요
-- ruff in CI: PR 생성 후 확인 필요
-- mypy in CI: PR 생성 후 확인 필요
+- Fresnel radius/clearance analysis 가능 여부: success on the checked PR #18 CI run
+- Task 006 scaffold CI status: success on the checked PR #18 CI run
+- package install in CI: success
+- syntax check in CI: success
+- pytest in CI: success
+- ruff in CI: success
+- mypy in CI: success
 - 색상 등급별 셀 수: 미산출
 - 경로 후보별 실 비행거리: 미산출
 - 500m 경유점 수: 미산출
 
 ## 해석
 
-Task 006은 실제 실험 결과가 아니라 DSM Fresnel component analysis 준비 단계다. 논문 결과 장에는 아직 반영하지 않는다.
+Task 006은 실제 실험 결과가 아니라 DSM Fresnel component analysis 준비 단계다. CI success는 Fresnel analysis 코드와 테스트 코드의 동작 확인에 한정하며, 실제 DEM/DSM 또는 링크품질 검증 결과가 아니다.
 
 ## 한계
 
@@ -309,4 +309,4 @@ Task 006은 실제 실험 결과가 아니라 DSM Fresnel component analysis 준
 
 ## GPT Master 검토 메모
 
-PR 생성 후 wavelength, Fresnel radius, clearance ratio, intrusion ratio, sample score, dsm_fresnel_score, 2.4GHz/5.8GHz 및 midpoint radius 테스트, CI 결과를 기준으로 편입 여부를 판단한다.
+PR #18 생성 후 wavelength, Fresnel radius, clearance ratio, intrusion ratio, sample score, dsm_fresnel_score, 2.4GHz/5.8GHz 및 midpoint radius 테스트, CI 결과를 기준으로 편입 여부를 판단한다. 이 로그 업데이트 이후 follow-up CI 결과도 merge 전 확인해야 한다.
