@@ -12,10 +12,13 @@
 정찰목표지점 MGRS + 드론 운용반경 + 허가 운용고도 AGL + 통신 주파수 대역
 → DEM/DSM 기반 지형 단면 분석
 → LOS/Fresnel 기반 주파수·지형 차폐 위험 점수화
-→ 발진기지 후보 Top 5 추천
-→ 차폐 위험이 낮은 경로 후보 3개 제시
+→ 드론 최대 운용거리를 고려한 발진 가능구역을 지도 평면에 색상 레이어로 표시
+→ 사용자가 지도상에서 발진기지 선택
+→ 선택 발진기지 기준 차폐 위험이 낮은 경로 후보 3개 제시
 → 약 500m 단위 경유점과 실 비행거리 출력
 ```
+
+중요: 발진기지는 기본 출력에서 단순 Top 5 점 목록으로 제시하지 않는다. 기본 출력은 첨부 예시 이미지처럼 **색상 기반 발진 가능구역 지도**다. 점수 상위 후보점 목록은 디버깅·검증용 보조 출력으로만 둘 수 있다.
 
 ## 2. 반드시 읽어야 할 기준 문서
 
@@ -98,7 +101,7 @@ Task 004: 지형 단면 추출 모듈
 Task 005: LOS 분석 및 테스트
 Task 006: Fresnel Zone 반경/침범률 계산
 Task 007: 차폐안정성 점수 모델
-Task 008: 발진기지 후보 생성 및 Top 5 추천
+Task 008: 발진 가능구역 격자 평가 및 색상 지도화
 Task 009: 경로탐색 기반 경로 후보 3개 생성
 Task 010: 500m 단위 경유점 및 실 비행거리 계산
 Task 011: Streamlit/Folium 기반 MVP UI
@@ -140,7 +143,7 @@ agent/task-002-coordinate-core
 agent/task-003-terrain-loader
 agent/task-004-los-analysis
 agent/task-005-fresnel-analysis
-agent/task-006-launch-recommendation
+agent/task-006-launch-area-map
 agent/task-007-route-planner
 agent/task-008-waypoints
 agent/task-009-streamlit-ui
@@ -234,7 +237,7 @@ main
 ├── agent/task-003-terrain-loader
 ├── agent/task-004-los-analysis
 ├── agent/task-005-fresnel-analysis
-├── agent/task-006-launch-recommendation
+├── agent/task-006-launch-area-map
 ├── agent/task-007-route-planner
 ├── agent/task-008-waypoints
 └── agent/task-009-streamlit-ui
@@ -249,7 +252,7 @@ PR 제목 형식:
 예시:
 
 ```text
-[Task 004] Implement LOS terrain profile analysis
+[Task 006] Implement launch feasible area map layer
 ```
 
 ## 8. 코드 품질 기준
@@ -272,19 +275,28 @@ PR 제목 형식:
 
 ## 10. 알고리즘 기준
 
-### 10.1 발진기지 점수
+### 10.1 발진 가능구역 점수
 
-기본 점수식은 `docs/master-plan.md`를 따른다.
+기본 점수식은 `docs/master-plan.md`를 따른다. 이 점수는 사용자에게 점 목록을 우선 제시하기 위한 것이 아니라, 지도 평면의 격자/셀을 색상 등급으로 분류하기 위한 내부 점수다.
 
 ```text
-발진기지 종합점수 = 차폐안정성 점수 × 0.80 + 거리점수 × 0.20
+발진 가능구역 종합점수 = 차폐안정성 점수 × 0.80 + 거리점수 × 0.20
 차폐안정성 점수 = LOS 점수 × 0.50 + Fresnel 여유 점수 × 0.35 + DSM 장애물 점수 × 0.15
 거리점수 = 100 × (1 - 목표까지 3D 거리 / 드론 운용반경)
 ```
 
+색상 등급 기본안:
+
+```text
+녹색: 추천 가능구역
+노란색: 제한적 가능구역
+주황색/적색: 비추천 또는 차폐위험구역
+회색/투명: 운용반경 초과 또는 계산 제외구역
+```
+
 ### 10.2 경로 후보
 
-반드시 3개 후보를 생성한다.
+사용자가 지도상에서 발진기지를 선택한 뒤 반드시 3개 경로 후보를 생성한다.
 
 1. 차폐 최소 경로
 2. 거리-차폐 균형 경로
