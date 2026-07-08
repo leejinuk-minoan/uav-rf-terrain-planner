@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uav-rf-terrain-planner"
+version = "0.1.0"
+description = "Research and education oriented offline terrain/surface-obstacle RF shielding proxy toolkit for UAV launch-area mapping."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "UAV RF Terrain Planner contributors" }
+]
+keywords = [
+  "uav",
+  "rf",
+  "terrain",
+  "dsm",
+  "fresnel",
+  "line-of-sight",
+  "simulation"
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5",
+  "mypy>=1.10"
+]
+gis = [
+  # Keep GIS libraries optional because rasterio/GDAL/geopandas require local environment validation.
+  "pyproj>=3.6",
+  "mgrs>=1.5"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "src"

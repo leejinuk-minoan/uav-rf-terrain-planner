@@ -70,4 +70,87 @@
 
 ## Experiment Records
 
-아직 누적된 실험 기록 없음.
+# Experiment EXP-20260708-001
+
+## 관련 Task / Issue / PR
+
+- Task: 001 - Project scaffold and scoring schema preparation
+- Issue: #7
+- PR: #8
+
+## 목적
+
+실험 실행이 아니라, 향후 synthetic 및 공개/샘플 DEM·DSM 실험을 위한 package/config/schema/test scaffold 준비 상태를 기록한다.
+
+## 데이터 종류
+
+- synthetic DEM: 없음, metadata placeholder only
+- synthetic DSM: 없음, metadata placeholder only
+- 공개/샘플 DEM: 없음
+- 공개/샘플 DSM: 없음
+- 실제 링크상태 데이터: 없음
+- actual_drone_operation: false
+- actual_link_measurement: false
+
+## 좌표계 및 범위
+
+Task 002 이후 정의 예정.
+
+## 입력 파라미터
+
+- 목표 MGRS: placeholder only
+- 운용반경: `5000.0 m` sample config placeholder
+- 허가 AGL: `120.0 m` sample config placeholder
+- 주파수 대역: `2.4 GHz` sample config placeholder
+- 격자 해상도: `100.0 m` synthetic metadata placeholder
+- 색상 등급 임계값: Task 006 이후 정의 예정
+- 점수식 가중치: DSM LOS 0.40, DSM Fresnel 0.60, shielding 0.80, distance 0.20
+
+## 방법
+
+Cloud/GitHub 기반 파일 생성 및 schema/test scaffold 작성. 실제 실험은 수행하지 않음.
+
+## 실행 환경
+
+- Cloud: GitHub connector file operations
+- Local: Not run in this cloud/GitHub-only context.
+- CI: GitHub Actions CI success observed for PR #8 before this minor log update; follow-up CI is expected after the minor review-fix commits.
+
+## 실행 명령
+
+- Local commands: Not run in this cloud/GitHub-only context.
+- CI commands: GitHub Actions executed install, syntax check, pytest, ruff, and mypy successfully on the checked PR #8 run.
+
+## 결과
+
+- Task 001 scaffold CI status: success on the checked PR #8 run
+- package install in CI: success
+- syntax check in CI: success
+- pytest in CI: success
+- ruff in CI: success
+- mypy in CI: success
+- 색상 등급별 셀 수: 미산출
+- 제외구역 비율: 미산출
+- 경로 후보별 실 비행거리: 미산출
+- 경로 후보별 평균 차폐점수: 미산출
+- 500m 경유점 수: 미산출
+
+## 해석
+
+Task 001은 실험 결과가 아니라 재현 가능한 구현·검증 환경 준비 단계로 해석한다. CI success는 scaffold/test 품질 확인에 한정하며, 실제 DEM/DSM 실험 결과를 의미하지 않는다.
+
+## 한계
+
+- 로컬 직접 테스트 실행 없음
+- 실제 DEM/DSM 없음
+- 실제 링크상태 검증 없음
+- 실제 드론운용 없음
+- 지도 렌더링 확인 없음
+
+## 논문 반영 가능 여부
+
+구현 환경 및 재현성 장에는 반영 가능. 결과 장에는 반영 불가.
+
+## GPT Master 검토 메모
+
+PR #8의 Task 001 scaffold CI success가 확인되었다. 이 로그 업데이트 이후 추가 minor fix commit에 대한 follow-up CI 결과도 merge 전 확인해야 한다.

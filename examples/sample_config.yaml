@@ -1,0 +1,27 @@
+# UAV RF Terrain Planner sample configuration
+# Research / education / simulation use only.
+# This file does not include real drone operation logs or real communication measurements.
+
+mission:
+  target_mgrs: "52S DG 00000 00000"  # Placeholder. Task 002 will implement coordinate handling.
+  operating_radius_m: 5000.0
+  operating_agl_m: 120.0
+  frequency_hz: 2400000000.0
+  terrain_mode: dsm_primary
+  output_mode: color_launch_area_map
+
+scoring:
+  dsm_los_weight: 0.40
+  dsm_fresnel_weight: 0.60
+  shielding_weight: 0.80
+  distance_weight: 0.20
+  los_cap_mode: strict_zero
+
+safety_limits:
+  actual_drone_operation: false
+  actual_link_measurement: false
+  require_rssi: false
+  require_sinr: false
+  require_packet_loss: false
+  default_output_is_top_five: false
+  default_output_is_color_map: true
