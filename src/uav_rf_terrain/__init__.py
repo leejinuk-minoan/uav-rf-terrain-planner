@@ -53,6 +53,16 @@ from .profile import (
     local_point_to_grid_index,
 )
 from .schemas import ColorClass, LaunchAreaCellScore, MissionInput, OutputMode, TerrainMode
+from .scoring import (
+    CandidateScore,
+    ScoreComponentWeights,
+    ScoringError,
+    clamp_score,
+    compute_candidate_score,
+    compute_distance_score,
+    compute_overall_score,
+    compute_shielding_stability_score,
+)
 from .synthetic import (
     SyntheticTerrainError,
     SyntheticTerrainGrid,
@@ -71,6 +81,7 @@ from .synthetic import (
 __all__ = [
     "CandidateCell",
     "CandidateGridConfig",
+    "CandidateScore",
     "ColorClass",
     "CoordinateReference",
     "DEFAULT_SCORE_WEIGHTS",
@@ -89,7 +100,9 @@ __all__ = [
     "MissionInput",
     "OutputMode",
     "SHIELDING_WEIGHT",
+    "ScoreComponentWeights",
     "ScoreWeights",
+    "ScoringError",
     "SyntheticTerrainError",
     "SyntheticTerrainGrid",
     "TerrainMode",
@@ -100,6 +113,11 @@ __all__ = [
     "analyze_dsm_fresnel",
     "analyze_dsm_los",
     "available_synthetic_scenarios",
+    "clamp_score",
+    "compute_candidate_score",
+    "compute_distance_score",
+    "compute_overall_score",
+    "compute_shielding_stability_score",
     "create_flat_terrain",
     "create_flat_with_building_terrain",
     "create_flat_with_trees_terrain",
