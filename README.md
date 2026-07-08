@@ -66,6 +66,14 @@ The generator creates small in-memory DEM/DSM grids for scenarios such as flat t
 
 No real DEM/DSM files are loaded. No GeoTIFF, rasterio, GDAL, geopandas, QGIS, or map-rendering integration is included. LOS/Fresnel/scoring/map rendering remain future tasks.
 
+## Task 004 terrain profile extraction
+
+Task 004 adds pure Python terrain profile extraction over synthetic DEM/DSM grids.
+
+The profile records DEM MSL, DSM MSL, DSM-DEM surface delta, distance from start, and distance to end. This prepares inputs for later DSM-based LOS and Fresnel modules.
+
+No real DEM/DSM files are loaded. No LOS/Fresnel/scoring/map rendering is implemented in this task.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
