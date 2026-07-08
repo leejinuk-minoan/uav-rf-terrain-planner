@@ -7,6 +7,7 @@ LOS/Fresnel algorithms, or claim real communication-quality validation.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from .coordinates import LocalPoint
@@ -69,7 +70,9 @@ class SyntheticTerrainGrid:
             for ix, dsm_value in enumerate(row):
                 dem_value = self.dem_msl[iy][ix]
                 if dsm_value < dem_value:
-                    raise SyntheticTerrainError("Every DSM value must be greater than or equal to DEM.")
+                    raise SyntheticTerrainError(
+                        "Every DSM value must be greater than or equal to DEM."
+                    )
 
     @property
     def width_cells(self) -> int:
@@ -117,7 +120,7 @@ def create_synthetic_terrain(
 ) -> SyntheticTerrainGrid:
     """Create a synthetic terrain grid by scenario name."""
 
-    factories = {
+    factories: dict[str, Callable[..., SyntheticTerrainGrid]] = {
         SCENARIO_FLAT: create_flat_terrain,
         SCENARIO_SINGLE_RIDGE: create_single_ridge_terrain,
         SCENARIO_FLAT_WITH_BUILDING: create_flat_with_building_terrain,
