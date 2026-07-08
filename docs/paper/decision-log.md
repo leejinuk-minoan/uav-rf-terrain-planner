@@ -214,3 +214,68 @@ Task 002에서는 좌표·격자 구조만 구현한다. 실제 DEM/DSM, LOS/Fre
 ## GPT Master 검토 메모
 
 PR 생성 후 Top 5 기본 출력 구조가 없는지, 실제 DEM/DSM·LOS/Fresnel·지도 UI가 포함되지 않았는지, candidate cell 구조가 색상지도 생성에 적합한지 검토해야 한다.
+
+### DEC-20260708-05
+
+## 관련 Task / Issue / PR
+
+- Task: 003 - Synthetic DEM/DSM terrain module
+- Issue: #11
+- PR: 생성 예정
+
+## 결정 일자
+
+2026-07-08
+
+## 결정 주체
+
+사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토 필요
+
+## 결정 내용
+
+Task 003에서는 실제 DEM/DSM을 사용하지 않고 pure Python synthetic DEM/DSM grid만 생성한다. Synthetic terrain은 LOS/Fresnel/Scoring 알고리즘의 경계조건 검증용이다. 실제 GeoTIFF, rasterio/GDAL/geopandas, 지도 렌더링은 후속 local-required Task로 분리한다.
+
+## 배경
+
+후속 LOS/Fresnel/scoring 모듈을 안정적으로 테스트하려면 실제 GIS 데이터 이전에 작고 재현 가능한 synthetic boundary-condition terrain이 필요하다.
+
+## 대안
+
+1. 순수 Python in-memory DEM/DSM matrix만 구현
+2. numpy 기반 배열 generator 구현
+3. GeoTIFF/rasterio 기반 synthetic raster 생성
+
+## 선택 이유
+
+1안을 선택한다. 순수 Python 구조는 base dependency를 늘리지 않고 GitHub Actions CI에서 검증하기 쉽다. 실제 raster/GIS integration은 환경 의존성이 크므로 후속 local-required task로 분리한다.
+
+## 영향받는 모듈
+
+- `src/uav_rf_terrain/synthetic.py`
+- `tests/test_synthetic.py`
+- `examples/synthetic_terrain.py`
+- `src/uav_rf_terrain/__init__.py`
+
+## 논문 반영 위치
+
+- 방법론: synthetic test data design
+- 재현성: scenario별 grid 조건
+- 한계: 실제 지형자료 검증 전 단계
+
+## 검증 필요사항
+
+- 8개 scenario 생성 여부
+- DEM/DSM shape 일치
+- DSM >= DEM 보장
+- 실제 DEM/DSM 연결은 후속 Task에서 별도 검증
+- LOS/Fresnel/scoring 연결은 후속 Task에서 별도 검증
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 Task 003 범위에 반영
+- 보류: CI/로컬 테스트 결과
+- 반려: 없음
+
+## GPT Master 검토 메모
+
+PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, LOS/Fresnel, scoring, 지도 UI가 포함되지 않았는지 확인해야 한다.
