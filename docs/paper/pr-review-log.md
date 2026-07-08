@@ -227,3 +227,86 @@ Task 002 범위에서 좌표 dataclass, local metric distance helper, optional M
 ## GPT Master 메모
 
 Cloud Execution Agent는 로컬 테스트를 실행하지 않았다. Task 002는 순수 Python 좌표/격자 scaffold로 제한되며, 실제 DEM/DSM, LOS/Fresnel 알고리즘, 지도 UI, 로컬 GIS 검증은 후속 Task 범위다.
+
+---
+
+# PR Review - PR #12
+
+## PR 제목
+
+task-003: add synthetic terrain generators
+
+## 관련 Task
+
+Task 003 - Synthetic DEM/DSM terrain module
+
+## 브랜치
+
+`agent/task-003-synthetic-terrain`
+
+## 담당 에이전트
+
+Cloud Execution Agent
+
+## 변경 파일
+
+- `src/uav_rf_terrain/synthetic.py`
+- `tests/test_synthetic.py`
+- `src/uav_rf_terrain/__init__.py`
+- `examples/synthetic_terrain.py`
+- `README.md`
+- `docs/paper/experiment-log.md`
+- `docs/paper/decision-log.md`
+- `docs/paper/pr-review-log.md`
+
+## 변경 요약
+
+Task 003 범위에서 순수 Python in-memory DEM/DSM matrix generator, 8개 synthetic scenario, scenario별 테스트, generator 호출 example, README 및 논문 기록 로그를 추가했다. 실제 DEM/DSM loading, GeoTIFF, rasterio/GDAL/geopandas, LOS/Fresnel, scoring, 지도 UI는 구현하지 않았다.
+
+## 테스트 상태
+
+- Cloud 확인: 파일 생성 및 PR 생성 완료
+- CI: PR 생성 후 확인 필요
+- Local: 로컬 미실행
+- 미실행: `python -m pip install -e '.[dev]'`, `python -m pytest`, `python -m compileall src tests examples`, 실제 DEM/DSM, rasterio/GDAL/geopandas, Streamlit/Folium 검증
+
+## 검토 결과
+
+- Task 범위 준수: GPT Master 검토 필요
+- 금지범위 침범 없음: Cloud Agent 기준 위반사항 없음
+- Top 5 기본 출력 금지 준수: synthetic terrain generator만 추가
+- 색상 기반 지도화 기준 준수: 후속 색상지도/LOS/Fresnel/scoring 테스트용 boundary condition data
+- 논문 기록 업데이트 여부: experiment/decision/pr-review log 초안 반영
+
+## 논문 반영 가능 항목
+
+- synthetic DEM/DSM test data design
+- 8개 scenario 목록
+- DEM/DSM matrix validation rule
+- DSM >= DEM validation principle
+- 실제 GIS dependency 없이 재현 가능한 boundary-condition 테스트 구조
+
+## 논문 반영 불가 또는 보류 항목
+
+- 실제 DEM/DSM 실험 결과
+- 실제 링크품질 검증 결과
+- GeoTIFF/raster/GIS 처리 결과
+- 지도 시각화 결과
+- LOS/Fresnel 또는 scoring 성능 결과
+
+## 사용자 승인 필요사항
+
+- 8개 scenario 설계가 Task 003 요구와 일치하는지
+- pure Python matrix 구조가 적절한지
+- CI 결과 확인
+- merge 승인 여부 결정
+
+## 최종 판단
+
+- 승인 가능: CI 및 GPT Master 검토 후 판단
+- 수정 필요: 확인 필요
+- 보류: 실제 CI 결과 확인 전까지 보류
+
+## GPT Master 메모
+
+Cloud Execution Agent는 로컬 테스트를 실행하지 않았다. CI 결과와 필요 시 Codex/Claude Code 로컬 검증 기록을 확인한 뒤 merge 여부를 판단한다.
