@@ -7,9 +7,11 @@
 ```text
 저장소: leejinuk-minoan/uav-rf-terrain-planner
 
-먼저 AGENTS.md와 CLAUDE.md를 읽어라. 그 다음 README.md, docs/master-plan.md, docs/research/research-index.md, docs/agent-build-feasibility.md를 읽고 작업하라.
+먼저 AGENTS.md와 CLAUDE.md를 읽어라. 그 다음 README.md, docs/master-plan.md, docs/research/research-index.md, docs/agent-build-feasibility.md, docs/agent-operations-plan.md를 읽고 작업하라.
 
 본 프로젝트는 연구·교육·시뮬레이션용 지형·전파 차폐 분석 도구다. 실제 드론 자동조종, 실시간 비행제어, 탐지 회피, 공격 지원 기능은 구현하지 말라. 대형 GIS 원천 데이터는 커밋하지 말고, 테스트에는 synthetic 데이터를 사용하라.
+
+중요: 발진기지 기본 출력은 Top 5 점 목록이 아니다. 지도 평면에 드론 최대 운용거리와 차폐위험을 고려한 발진 가능구역을 색상 레이어로 표시하는 것이 기본 출력이다. 점수 상위 후보점 목록은 디버깅·검증용 보조 출력으로만 허용된다.
 
 작업은 현재 이슈 또는 지정된 Task 범위에 한정하라. 작업 전 git status를 확인하고, 작업 후 테스트를 실행하라. PR 설명에는 목적, 구현 내용, 테스트 결과, 한계 및 다음 작업을 정리하라.
 ```
@@ -27,6 +29,7 @@
 3. 현재 저장소 구조를 요약한다.
 4. 아직 구현되지 않은 핵심 모듈을 식별한다.
 5. Task 001부터 순차적으로 구현 가능한 계획을 제안한다.
+6. 발진기지 출력이 Top 5가 아니라 색상 기반 발진 가능구역 지도인지 확인한다.
 
 하지 말 것:
 - 코드를 수정하지 말 것.
@@ -37,6 +40,7 @@
 ## 저장소 상태
 ## 기준 문서 요약
 ## 구현 공백
+## 발진 가능구역 지도화 기준 확인
 ## 권장 작업 순서
 ## 사용자 승인 필요사항
 ```
@@ -143,7 +147,7 @@ python -m pytest tests/test_terrain.py
 agent/task-004-los-analysis
 
 목표:
-발진기지와 목표/경로점 사이의 직접 가시선 차폐 여부를 분석한다.
+발진 가능구역의 각 후보 셀과 목표/경로점 사이의 직접 가시선 차폐 여부를 분석한다.
 
 구현:
 1. src/uav_rf_terrain/profile.py 작성
@@ -196,31 +200,40 @@ python -m pytest tests/test_fresnel.py
 
 ---
 
-## Task 006 - 발진기지 추천
+## Task 006 - 발진 가능구역 색상 지도화
 
 ```text
 공통 Claude Code 지시문을 따른다.
 
 브랜치:
-agent/task-006-launch-recommendation
+agent/task-006-launch-area-map
 
 목표:
-목표 주변 후보 격자를 생성하고 발진기지 후보 Top 5를 추천한다.
+목표 주변 후보 격자를 생성하고, 드론 최대 운용거리와 차폐위험 기준으로 각 셀을 평가하여 발진 가능구역 색상 레이어를 만든다. 발진기지 Top 5 표가 아니라 지도에 표시할 색상 기반 가능구역을 만드는 것이 핵심이다.
 
 구현:
 1. src/uav_rf_terrain/launch_sites.py 작성
 2. src/uav_rf_terrain/schemas.py 작성
-3. 후보 격자 생성
-4. 운용반경 기반 3D 거리 필터링
-5. LOS/Fresnel/DSM 점수 결합
-6. 거리점수 계산
-7. 종합점수 계산
-8. Top 5 반환
-9. tests/test_launch_sites.py 작성
+3. 목표 주변 분석범위 생성
+4. 분석범위 격자 생성
+5. 후보 셀 중심점 좌표 계산
+6. 운용반경 기반 3D 거리 필터링
+7. LOS/Fresnel/DSM 점수 결합
+8. 거리점수 계산
+9. 종합점수 계산
+10. color_class 부여
+11. 지도 시각화에 사용할 launch area layer 반환
+12. tests/test_launch_sites.py 작성
 
 점수식:
-발진기지 종합점수 = 차폐안정성 점수 × 0.80 + 거리점수 × 0.20
+발진 가능구역 종합점수 = 차폐안정성 점수 × 0.80 + 거리점수 × 0.20
 차폐안정성 점수 = LOS 점수 × 0.50 + Fresnel 여유 점수 × 0.35 + DSM 장애물 점수 × 0.15
+
+색상 등급 기본안:
+- green: 추천 가능구역
+- yellow: 제한적 가능구역
+- orange/red: 비추천 또는 차폐위험구역
+- excluded: 운용반경 초과 또는 계산 제외구역
 
 검증:
 python -m pytest tests/test_launch_sites.py
@@ -237,7 +250,7 @@ python -m pytest tests/test_launch_sites.py
 agent/task-007-route-planner
 
 목표:
-발진기지에서 목표지점까지 차폐 위험을 고려한 경로 후보 3개를 생성한다.
+사용자가 지도상 발진 가능구역에서 선택한 발진기지에서 목표지점까지 차폐 위험을 고려한 경로 후보 3개를 생성한다.
 
 구현:
 1. src/uav_rf_terrain/route_planner.py 작성
@@ -306,18 +319,21 @@ Streamlit/Folium 기반 MVP UI를 구현한다.
 1. app/streamlit_app.py 작성
 2. 입력 폼 구현
 3. synthetic terrain 선택 기능
-4. 발진기지 Top 5 표 출력
-5. 경로 후보 3개 표 출력
-6. 500m 경유점 표 출력
-7. 지도 시각화 레이어 기본 구현
+4. 발진 가능구역 색상 지도 레이어 출력
+5. 사용자가 지도상에서 발진기지 선택 또는 선택값 입력
+6. 경로 후보 3개 표 출력
+7. 500m 경유점 표 출력
 8. README에 실행 방법 추가
 
 UI 문구:
+- “추천 가능구역”
+- “제한적 가능구역”
 - “예상 차폐위험”
-- “분석 기준 추천 후보”
+- “분석 기준”
 - “시뮬레이션 결과”
 
 금지 문구:
+- “발진기지 Top 5 추천”을 기본 UI로 표시
 - “실제 운용 최적 경로 확정”
 - “통신 보장”
 - “작전 성공 보장”
