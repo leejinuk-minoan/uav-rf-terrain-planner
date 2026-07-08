@@ -31,6 +31,20 @@ from .grid import (
     generate_candidate_grid,
 )
 from .schemas import ColorClass, LaunchAreaCellScore, MissionInput, OutputMode, TerrainMode
+from .synthetic import (
+    SyntheticTerrainError,
+    SyntheticTerrainGrid,
+    available_synthetic_scenarios,
+    create_flat_terrain,
+    create_flat_with_building_terrain,
+    create_flat_with_trees_terrain,
+    create_fixed_agl_case_terrain,
+    create_fresnel_radius_position_variation_terrain,
+    create_obstacle_position_variation_terrain,
+    create_operating_radius_boundary_terrain,
+    create_single_ridge_terrain,
+    create_synthetic_terrain,
+)
 
 __all__ = [
     "CandidateCell",
@@ -48,8 +62,20 @@ __all__ = [
     "OutputMode",
     "SHIELDING_WEIGHT",
     "ScoreWeights",
+    "SyntheticTerrainError",
+    "SyntheticTerrainGrid",
     "TerrainMode",
     "WGS84Point",
+    "available_synthetic_scenarios",
+    "create_flat_terrain",
+    "create_flat_with_building_terrain",
+    "create_flat_with_trees_terrain",
+    "create_fixed_agl_case_terrain",
+    "create_fresnel_radius_position_variation_terrain",
+    "create_obstacle_position_variation_terrain",
+    "create_operating_radius_boundary_terrain",
+    "create_single_ridge_terrain",
+    "create_synthetic_terrain",
     "distance_2d_m",
     "distance_3d_m",
     "filter_within_operation_radius",
