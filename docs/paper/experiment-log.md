@@ -332,3 +332,97 @@ Task 003은 실제 실험 결과가 아니라 synthetic terrain generator 준비
 ## GPT Master 검토 메모
 
 PR #12 생성 후 8개 scenario, DEM/DSM shape, DSM >= DEM, CI 결과를 기준으로 편입 여부를 판단한다. 이 로그 업데이트 이후 follow-up CI 결과도 merge 전 확인해야 한다.
+
+---
+
+# Experiment EXP-20260708-004
+
+## 관련 Task / Issue / PR
+
+- Task: 004 - Terrain profile extraction module
+- Issue: #13
+- PR: #14
+
+## 목적
+
+synthetic DEM/DSM grid에서 발진점과 드론 위치 사이의 지형 profile sample을 추출하여 이후 DSM-based LOS 및 DSM-based Fresnel 알고리즘의 입력 구조를 준비한다.
+
+## 데이터 종류
+
+- synthetic DEM: profile sampling source only
+- synthetic DSM: profile sampling source only
+- 공개/샘플 DEM: 없음
+- 공개/샘플 DSM: 없음
+- 실제 링크상태 데이터: 없음
+- actual_drone_operation: false
+- actual_link_measurement: false
+
+## 좌표계 및 범위
+
+- LocalPoint and SyntheticTerrainGrid.origin 기준
+- grid index 변환과 local coordinate 변환만 수행
+- 실제 좌표계 변환 또는 실제 GIS file loading 없음
+
+## 입력 파라미터
+
+- 목표 MGRS: 사용하지 않음
+- 운용반경: 사용하지 않음
+- 허가 AGL: 사용하지 않음
+- 주파수 대역: 사용하지 않음
+- 격자 해상도: `terrain.grid_size_m` 또는 `sample_spacing_m`
+- 색상 등급 임계값: 사용하지 않음
+- 점수식 가중치: 사용하지 않음
+
+## 방법
+
+Cloud/GitHub 기반으로 순수 Python terrain profile extraction module과 테스트를 작성한다. profile sample에는 DEM MSL, DSM MSL, DSM-DEM surface delta, start 기준 누적 거리, end까지 남은 거리를 기록한다.
+
+## 실행 환경
+
+- Cloud: GitHub connector file operations
+- Local: Not run in this cloud/GitHub-only context.
+- CI: GitHub Actions CI success observed for PR #14 head commit before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
+
+## 실행 명령
+
+- Local commands: Not run in this cloud/GitHub-only context.
+- CI commands: GitHub Actions executed install, syntax check, pytest, ruff, and mypy successfully on the checked PR #14 run.
+
+## 결과
+
+- profile extraction 가능 여부: success on the checked PR #14 CI run
+- Task 004 scaffold CI status: success on the checked PR #14 CI run
+- package install in CI: success
+- syntax check in CI: success
+- pytest in CI: success
+- ruff in CI: success
+- mypy in CI: success
+- 색상 등급별 셀 수: 미산출
+- 제외구역 비율: 미산출
+- 경로 후보별 실 비행거리: 미산출
+- 경로 후보별 평균 차폐점수: 미산출
+- 500m 경유점 수: 미산출
+
+## 해석
+
+Task 004는 실제 실험 결과가 아니라 synthetic terrain profile extraction 준비 단계다. CI success는 profile extraction 코드와 테스트 코드의 동작 확인에 한정하며, 실제 DEM/DSM 또는 링크품질 검증 결과가 아니다.
+
+## 한계
+
+- 실제 DEM/DSM 없음
+- GeoTIFF 생성 없음
+- 실제 링크상태 검증 없음
+- 실제 드론운용 없음
+- LOS 직선고도 계산 없음
+- DSM LOS 차단 판정 없음
+- Fresnel 반경 또는 clearance 계산 없음
+- scoring 없음
+- 지도 렌더링 확인 없음
+
+## 논문 반영 가능 여부
+
+방법론의 terrain profile sampling design과 재현성 설명에는 반영 가능. 결과 장에는 아직 반영 불가.
+
+## GPT Master 검토 메모
+
+PR #14 생성 후 profile sample 구조, start/end 포함, 거리 필드, DEM/DSM/DSM-DEM delta, out-of-bounds error, CI 결과를 기준으로 편입 여부를 판단한다. 이 로그 업데이트 이후 follow-up CI 결과도 merge 전 확인해야 한다.

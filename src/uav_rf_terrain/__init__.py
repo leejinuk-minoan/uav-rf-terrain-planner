@@ -30,6 +30,14 @@ from .grid import (
     filter_within_operation_radius,
     generate_candidate_grid,
 )
+from .profile import (
+    TerrainProfile,
+    TerrainProfileError,
+    TerrainProfileSample,
+    extract_terrain_profile,
+    grid_index_to_local_point,
+    local_point_to_grid_index,
+)
 from .schemas import ColorClass, LaunchAreaCellScore, MissionInput, OutputMode, TerrainMode
 from .synthetic import (
     SyntheticTerrainError,
@@ -65,6 +73,9 @@ __all__ = [
     "SyntheticTerrainError",
     "SyntheticTerrainGrid",
     "TerrainMode",
+    "TerrainProfile",
+    "TerrainProfileError",
+    "TerrainProfileSample",
     "WGS84Point",
     "available_synthetic_scenarios",
     "create_flat_terrain",
@@ -78,9 +89,12 @@ __all__ = [
     "create_synthetic_terrain",
     "distance_2d_m",
     "distance_3d_m",
+    "extract_terrain_profile",
     "filter_within_operation_radius",
     "generate_candidate_grid",
+    "grid_index_to_local_point",
     "local_offset_point",
+    "local_point_to_grid_index",
     "mgrs_to_wgs84",
 ]
 

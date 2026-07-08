@@ -279,3 +279,68 @@ Task 003에서는 실제 DEM/DSM을 사용하지 않고 pure Python synthetic DE
 ## GPT Master 검토 메모
 
 PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, LOS/Fresnel, scoring, 지도 UI가 포함되지 않았는지 확인해야 한다.
+
+### DEC-20260708-06
+
+## 관련 Task / Issue / PR
+
+- Task: 004 - Terrain profile extraction module
+- Issue: #13
+- PR: 생성 예정
+
+## 결정 일자
+
+2026-07-08
+
+## 결정 주체
+
+사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토 필요
+
+## 결정 내용
+
+Task 004에서는 synthetic DEM/DSM grid에서 terrain profile sample만 추출한다. LOS 직선고도 계산, DSM LOS 차단 판정, Fresnel 반경 계산, Fresnel clearance, scoring은 후속 Task로 분리한다. 실제 GeoTIFF, rasterio/GDAL/geopandas, 지도 렌더링은 후속 local-required Task로 분리한다.
+
+## 배경
+
+후속 DSM-based LOS와 DSM-based Fresnel 알고리즘은 start/end 사이의 DEM/DSM profile sample을 입력으로 필요로 한다. 따라서 실제 지형자료 연결 이전에 synthetic grid 기반 profile extraction 구조를 먼저 고정한다.
+
+## 대안
+
+1. 순수 Python synthetic DEM/DSM profile sample 추출만 구현
+2. Task 004에서 LOS/Fresnel 일부 계산까지 함께 구현
+3. 실제 rasterio/GDAL sampling API까지 함께 구현
+
+## 선택 이유
+
+1안을 선택한다. 이번 Task는 후속 LOS/Fresnel 알고리즘의 입력 구조를 준비하는 단계이며, 계산 책임을 분리해야 테스트와 검토가 명확하다. 실제 raster/GIS integration은 환경 의존성이 크므로 후속 local-required task로 유지한다.
+
+## 영향받는 모듈
+
+- `src/uav_rf_terrain/profile.py`
+- `tests/test_profile.py`
+- `src/uav_rf_terrain/__init__.py`
+
+## 논문 반영 위치
+
+- 방법론: terrain profile sampling
+- 재현성: start/end, sample spacing, DEM/DSM sample schema
+- 한계: 실제 지형자료 및 LOS/Fresnel 검증 전 단계
+
+## 검증 필요사항
+
+- start/end sample 포함 여부
+- DEM MSL, DSM MSL, DSM-DEM delta 기록 여부
+- distance_from_start_m, distance_to_end_m 기록 여부
+- out-of-bounds point error 처리
+- sample_spacing_m error 처리
+- LOS/Fresnel/scoring 연결은 후속 Task에서 별도 검증
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 Task 004 범위에 반영
+- 보류: CI/로컬 테스트 결과
+- 반려: 없음
+
+## GPT Master 검토 메모
+
+PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, LOS/Fresnel, scoring, 지도 UI가 포함되지 않았는지 확인해야 한다.
