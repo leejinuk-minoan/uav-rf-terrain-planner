@@ -1,8 +1,8 @@
 """Pure Python color classification for launch-area candidate cells.
 
-This module converts Task 007 ``CandidateScore`` values into color classes for a
-future launch-area map. It does not render maps, create Folium/Streamlit UI, load
-real DEM/DSM files, generate GeoTIFFs, plan routes, create Top-N launch-site output,
+This module converts Task 007 ``CandidateScore`` values into color classes for future
+launch-area map data. It does not render maps, create map UI objects, load real
+DEM/DSM files, generate raster outputs, plan routes, create Top-N launch-site output,
 or validate real communication quality.
 """
 
