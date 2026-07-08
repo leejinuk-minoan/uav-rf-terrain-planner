@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'agent/**'
+
+jobs:
+  test:
+    name: Python checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Show repository state
+        run: |
+          pwd
+          find . -maxdepth 3 -type f | sort
+
+      - name: Install project if pyproject exists
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f pyproject.toml ]; then
+            python -m pip install -e '.[dev]' || python -m pip install -e .
+          else
+            echo 'pyproject.toml not found. Documentation-only repository state; skipping package install.'
+          fi
+
+      - name: Syntax check
+        run: |
+          if [ -d src ] || [ -d tests ] || [ -d app ]; then
+            python -m compileall src tests app 2>/dev/null || python -m compileall .
+          else
+            echo 'No Python source directories yet; skipping syntax check.'
+          fi
+
+      - name: Run pytest if tests exist
+        run: |
+          if [ -d tests ]; then
+            python -m pytest
+          else
+            echo 'No tests directory yet; skipping pytest.'
+          fi
+
+      - name: Run ruff if available
+        run: |
+          if python -c 'import ruff' 2>/dev/null; then
+            python -m ruff check .
+          else
+            echo 'ruff is not installed; skipping lint.'
+          fi
+
+      - name: Run mypy if available and src exists
+        run: |
+          if [ -d src ] && python -c 'import mypy' 2>/dev/null; then
+            python -m mypy src
+          else
+            echo 'mypy is unavailable or src does not exist; skipping type check.'
+          fi
