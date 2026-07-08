@@ -74,6 +74,14 @@ The profile records DEM MSL, DSM MSL, DSM-DEM surface delta, distance from start
 
 No real DEM/DSM files are loaded. No LOS/Fresnel/scoring/map rendering is implemented in this task.
 
+## Task 005 DSM-based LOS analysis
+
+Task 005 adds pure Python DSM-based LOS analysis over synthetic terrain profiles.
+
+The LOS line is calculated between `launch_antenna_msl` and `drone_flight_msl`. Each profile sample records LOS line MSL, DSM clearance, and blocked/clear status. The default `dsm_los_score` follows the strict LOS cap policy: any blocked DSM sample yields `0.0`; all clear samples yield `100.0`.
+
+This task does not implement Fresnel, final scoring, real DEM/DSM loading, color-map classification, or map rendering.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
