@@ -26,6 +26,7 @@
 3. `docs/research/research-index.md`
 4. `docs/agent-build-feasibility.md`
 5. `docs/github-app-limit-report.md`
+6. `docs/agent-operations-plan.md`
 
 ## 3. 개발 범위와 안전 경계
 
@@ -104,7 +105,125 @@ Task 011: Streamlit/Folium 기반 MVP UI
 Task 012: 통합 테스트, 문서화, 샘플 실행 시나리오
 ```
 
-## 6. 브랜치 전략
+## 6. Codex/Claude Code 교대 및 인계 원칙
+
+### 6.1 기본 원칙: Task 경계에서만 교대한다
+
+Codex와 Claude Code는 기본적으로 **Task 경계**에서만 교대한다.
+
+```text
+정상 교대 예시:
+Codex가 Task 001 완료 → PR 생성 → GPT 검토 → 사용자 승인/merge
+→ Claude Code가 Task 002 시작
+```
+
+다음 방식은 기본적으로 금지한다.
+
+```text
+비권장 방식:
+Codex가 Task 004를 절반 구현 → 토큰 소모 → Claude Code가 같은 브랜치에서 즉시 이어쓰기
+```
+
+Task 중간 교대는 맥락 손실, 중복 수정, 테스트 누락, 브랜치 충돌 가능성이 높다. 따라서 에이전트 교대는 **완료된 Task, 완료된 PR, 또는 명시적 handoff checkpoint**를 기준으로 한다.
+
+### 6.2 하나의 Task는 하나의 브랜치와 하나의 PR로 관리한다
+
+```text
+하나의 Task = 하나의 브랜치 = 하나의 PR
+```
+
+예시:
+
+```text
+agent/task-001-project-scaffold
+agent/task-002-coordinate-core
+agent/task-003-terrain-loader
+agent/task-004-los-analysis
+agent/task-005-fresnel-analysis
+agent/task-006-launch-recommendation
+agent/task-007-route-planner
+agent/task-008-waypoints
+agent/task-009-streamlit-ui
+```
+
+### 6.3 예외: 같은 Task를 다른 에이전트가 이어받아야 하는 경우
+
+다음 상황에서는 같은 Task를 다른 에이전트가 이어받을 수 있다.
+
+1. Codex 또는 Claude Code의 사용량/토큰이 Task 중간에 소진된 경우
+2. 로컬 실행 또는 CI 실패가 한 에이전트의 환경에서 해결되지 않는 경우
+3. 사용자가 명시적으로 다른 에이전트에게 이어받기를 지시한 경우
+4. 기존 에이전트가 draft PR 또는 handoff note를 남긴 경우
+
+단, 같은 Task를 이어받기 전에는 반드시 아래 handoff checkpoint를 남긴다.
+
+### 6.4 Handoff checkpoint 필수 항목
+
+handoff는 GitHub Issue comment, PR comment, 또는 `docs/handoff/` 문서로 남긴다.
+
+```markdown
+# Task Handoff
+
+## 현재 Task
+Task 00X - 작업명
+
+## 현재 브랜치
+agent/task-00X-...
+
+## 작업한 내용
+- 변경 파일 1
+- 변경 파일 2
+- 구현 완료 기능
+
+## 아직 미완성
+- 남은 구현
+- 실패한 테스트
+- 불확실한 설계 판단
+
+## 실행한 명령
+- python -m pytest ...
+- python -m compileall ...
+
+## 현재 테스트 상태
+- 통과:
+- 실패:
+- 미실행:
+
+## 다음 에이전트가 해야 할 일
+1. ...
+2. ...
+3. ...
+
+## 주의사항
+- AGL/MSL 혼동 금지
+- 대형 GIS 데이터 커밋 금지
+- 실제 드론 제어 기능 구현 금지
+```
+
+### 6.5 이어받는 에이전트의 의무
+
+이어받는 Codex 또는 Claude Code는 다음을 먼저 수행한다.
+
+1. `git status` 확인
+2. 현재 브랜치 확인
+3. 기존 PR 또는 handoff checkpoint 확인
+4. 변경된 파일 diff 확인
+5. 실패한 테스트 재현
+6. 기존 구현 의도를 보존하면서 최소 수정
+
+이어받는 에이전트는 기존 작업을 전면 재작성하지 않는다. 재작성이 필요하면 먼저 이유를 PR 또는 Issue에 기록한다.
+
+### 6.6 GPT Master 검토 의무
+
+에이전트 교대가 발생할 때 GPT Master는 다음을 확인한다.
+
+1. Task 범위가 유지되었는가?
+2. 같은 파일을 서로 다른 에이전트가 충돌되게 수정하지 않았는가?
+3. handoff checkpoint가 충분한가?
+4. 테스트 실패 원인이 기록되었는가?
+5. 다음 에이전트가 수행할 작업이 명확한가?
+
+## 7. 브랜치 전략
 
 각 기능은 별도 브랜치에서 작업한다.
 
@@ -113,10 +232,12 @@ main
 ├── agent/task-001-project-scaffold
 ├── agent/task-002-coordinate-core
 ├── agent/task-003-terrain-loader
-├── agent/task-004-los-fresnel
-├── agent/task-005-launch-recommendation
-├── agent/task-006-route-planner
-└── agent/task-007-streamlit-ui
+├── agent/task-004-los-analysis
+├── agent/task-005-fresnel-analysis
+├── agent/task-006-launch-recommendation
+├── agent/task-007-route-planner
+├── agent/task-008-waypoints
+└── agent/task-009-streamlit-ui
 ```
 
 PR 제목 형식:
@@ -131,7 +252,7 @@ PR 제목 형식:
 [Task 004] Implement LOS terrain profile analysis
 ```
 
-## 7. 코드 품질 기준
+## 8. 코드 품질 기준
 
 - Python 3.11 이상을 기준으로 한다.
 - 타입 힌트를 적극 사용한다.
@@ -141,7 +262,7 @@ PR 제목 형식:
 - 모든 계산 함수는 입력 단위와 출력 단위를 docstring에 기록한다.
 - 테스트 없이 핵심 알고리즘을 추가하지 않는다.
 
-## 8. 데이터 처리 원칙
+## 9. 데이터 처리 원칙
 
 - 대형 DEM/DSM 원천 파일은 저장소에 커밋하지 않는다.
 - 테스트에는 synthetic raster 또는 작은 샘플 파일을 사용한다.
@@ -149,9 +270,9 @@ PR 제목 형식:
 - 좌표계는 반드시 명시한다.
 - MGRS → WGS84 → 투영좌표계 변환 흐름을 문서화한다.
 
-## 9. 알고리즘 기준
+## 10. 알고리즘 기준
 
-### 9.1 발진기지 점수
+### 10.1 발진기지 점수
 
 기본 점수식은 `docs/master-plan.md`를 따른다.
 
@@ -161,7 +282,7 @@ PR 제목 형식:
 거리점수 = 100 × (1 - 목표까지 3D 거리 / 드론 운용반경)
 ```
 
-### 9.2 경로 후보
+### 10.2 경로 후보
 
 반드시 3개 후보를 생성한다.
 
@@ -171,7 +292,7 @@ PR 제목 형식:
 
 각 경로에는 실 비행거리, 평균 차폐점수, 최저 차폐점수, 약 500m 단위 경유점이 포함되어야 한다.
 
-## 10. PR 완료 조건
+## 11. PR 완료 조건
 
 PR에는 다음을 포함한다.
 
@@ -180,10 +301,11 @@ PR에는 다음을 포함한다.
 - 테스트 결과
 - 남은 한계
 - 사용자가 검토해야 할 사항
+- 에이전트 교대 여부 및 handoff 여부
 
 PR은 테스트가 통과해야 하며, `main` 병합은 사용자가 승인할 때만 수행한다.
 
-## 11. 에이전트 응답 형식
+## 12. 에이전트 응답 형식
 
 작업 완료 보고는 아래 형식을 사용한다.
 
@@ -195,6 +317,8 @@ PR은 테스트가 통과해야 하며, `main` 병합은 사용자가 승인할 
 ## 테스트 결과
 
 ## 구현 한계
+
+## 에이전트 교대 여부
 
 ## 다음 권장 작업
 ```
