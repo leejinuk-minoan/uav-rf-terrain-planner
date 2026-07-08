@@ -30,6 +30,12 @@ from .grid import (
     filter_within_operation_radius,
     generate_candidate_grid,
 )
+from .los import (
+    LineOfSightAnalysis,
+    LineOfSightError,
+    LineOfSightSample,
+    analyze_dsm_los,
+)
 from .profile import (
     TerrainProfile,
     TerrainProfileError,
@@ -64,6 +70,9 @@ __all__ = [
     "DSM_FRESNEL_WEIGHT",
     "DSM_LOS_WEIGHT",
     "LaunchAreaCellScore",
+    "LineOfSightAnalysis",
+    "LineOfSightError",
+    "LineOfSightSample",
     "LocalPoint",
     "MissingOptionalDependencyError",
     "MissionInput",
@@ -77,6 +86,7 @@ __all__ = [
     "TerrainProfileError",
     "TerrainProfileSample",
     "WGS84Point",
+    "analyze_dsm_los",
     "available_synthetic_scenarios",
     "create_flat_terrain",
     "create_flat_with_building_terrain",
