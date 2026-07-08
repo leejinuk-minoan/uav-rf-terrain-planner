@@ -79,14 +79,15 @@ def test_generate_candidate_grid_can_drop_excluded_candidates() -> None:
 
 
 def test_cell_ids_are_stable() -> None:
-    cells = generate_candidate_grid(
-        center=LocalPoint(x_m=0.0, y_m=0.0),
-        config=CandidateGridConfig(radius_m=100.0, spacing_m=100.0),
-    )
-    cell_ids = [cell.cell_id for cell in cells]
+    config = CandidateGridConfig(radius_m=100.0, spacing_m=100.0)
+    first = generate_candidate_grid(center=LocalPoint(x_m=0.0, y_m=0.0), config=config)
+    second = generate_candidate_grid(center=LocalPoint(x_m=0.0, y_m=0.0), config=config)
 
-    assert cell_ids == sorted(cell_ids)
-    assert len(cell_ids) == len(set(cell_ids))
+    first_ids = [cell.cell_id for cell in first]
+    second_ids = [cell.cell_id for cell in second]
+
+    assert first_ids == second_ids
+    assert len(first_ids) == len(set(first_ids))
 
 
 def test_candidate_cell_has_no_top_five_or_ranked_output_fields() -> None:
