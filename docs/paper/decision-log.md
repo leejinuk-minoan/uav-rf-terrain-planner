@@ -223,7 +223,7 @@ PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, color-map classi
 
 - Task: 008 - Color map classification and launch-area cell evaluation
 - Issue: #21
-- PR: 생성 예정
+- PR: #22
 
 ## 결정 일자
 
