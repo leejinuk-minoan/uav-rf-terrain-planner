@@ -82,6 +82,14 @@ The LOS line is calculated between `launch_antenna_msl` and `drone_flight_msl`. 
 
 This task does not implement Fresnel, final scoring, real DEM/DSM loading, color-map classification, or map rendering.
 
+## Task 006 DSM-based Fresnel analysis
+
+Task 006 adds pure Python DSM-based Fresnel radius and clearance analysis over LOS results.
+
+The module calculates wavelength, first Fresnel radius, clearance ratio, intrusion ratio, and DSM Fresnel sample score. Fresnel radius depends on both frequency and obstacle/sample position along the path. The task produces `dsm_fresnel_score` as a component score only.
+
+This task does not implement final scoring, real DEM/DSM loading, color-map classification, or map rendering.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
