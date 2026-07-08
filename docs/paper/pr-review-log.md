@@ -208,10 +208,45 @@ Task 006 - DSM-based Fresnel radius and clearance analysis
 
 Cloud Execution Agent
 
+## 변경 요약
+
+Task 006 범위에서 LineOfSightAnalysis 기반 DSM Fresnel radius/clearance analysis, wavelength helper, first Fresnel radius helper, sample별 clearance ratio, intrusion ratio, DSM Fresnel sample score, 평균 dsm_fresnel_score, 순수 Python 테스트를 추가했다. final scoring, shielding/overall score 통합, 색상지도 classification, 실제 DEM/DSM loading, 지도 UI는 구현하지 않았다.
+
+## 테스트 상태
+
+- CI: success
+- Local: 로컬 미실행
+
+## 최종 판단
+
+- 승인 가능: 예
+- 수정 필요: 없음
+- 보류: 없음
+
+---
+
+# PR Review - PR #20
+
+## PR 제목
+
+task-007: add scoring integration
+
+## 관련 Task
+
+Task 007 - Shielding stability and overall scoring integration
+
+## 브랜치
+
+`agent/task-007-scoring-integration`
+
+## 담당 에이전트
+
+Cloud Execution Agent
+
 ## 변경 파일
 
-- `src/uav_rf_terrain/fresnel.py`
-- `tests/test_fresnel.py`
+- `src/uav_rf_terrain/scoring.py`
+- `tests/test_scoring.py`
 - `src/uav_rf_terrain/__init__.py`
 - `README.md`
 - `docs/paper/experiment-log.md`
@@ -220,12 +255,12 @@ Cloud Execution Agent
 
 ## 변경 요약
 
-Task 006 범위에서 LineOfSightAnalysis 기반 DSM Fresnel radius/clearance analysis, wavelength helper, first Fresnel radius helper, sample별 clearance ratio, intrusion ratio, DSM Fresnel sample score, 평균 dsm_fresnel_score, 순수 Python 테스트를 추가했다. final scoring, shielding/overall score 통합, 색상지도 classification, 실제 DEM/DSM loading, 지도 UI는 구현하지 않았다.
+Task 007 범위에서 DSM LOS component, DSM Fresnel component, operating-radius distance component를 candidate score로 통합했다. distance_score, shielding_stability_score, overall_score, strict DSM LOS cap, score/weight validation, CandidateScore dataclass, 순수 Python 테스트를 추가했다. 색상지도 classification, 실제 DEM/DSM loading, 지도 UI, Top 5 기본 출력은 구현하지 않았다.
 
 ## 테스트 상태
 
 - Cloud 확인: 파일 생성 및 PR 생성 완료
-- CI: GitHub Actions CI success observed for PR #18 before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
+- CI: GitHub Actions CI success observed for PR #20 before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
 - Local: 로컬 미실행, CI에서 install/syntax/pytest/ruff/mypy 성공 확인
 - 미실행: 로컬 직접 실행은 미실행. 실제 DEM/DSM, rasterio/GDAL/geopandas, Streamlit/Folium 검증은 후속 local-required task로 유지.
 
@@ -233,17 +268,17 @@ Task 006 범위에서 LineOfSightAnalysis 기반 DSM Fresnel radius/clearance an
 
 - Task 범위 준수: CI 재확인 및 GPT Master 검토 필요
 - 금지범위 침범 없음: Cloud Agent 기준 위반사항 없음
-- Top 5 기본 출력 금지 준수: Fresnel component analysis만 추가
-- 색상 기반 지도화 기준 준수: 후속 색상지도/scoring 입력용 DSM Fresnel component
+- Top 5 기본 출력 금지 준수: score-only CandidateScore만 추가
+- 색상 기반 지도화 기준 준수: 후속 색상지도 classification 입력용 score component
 - 논문 기록 업데이트 여부: experiment/decision/pr-review log 반영
 
 ## 논문 반영 가능 항목
 
-- DSM-based Fresnel radius and clearance analysis design
-- sample별 d1/d2, wavelength, radius, clearance ratio, intrusion ratio, score schema
-- frequency-dependent Fresnel radius test design
-- sample-position-dependent Fresnel radius test design
-- 실제 GIS dependency 없이 재현 가능한 Fresnel 테스트 구조
+- scoring integration design
+- strict DSM LOS cap policy
+- distance reserve proxy
+- score/weight validation design
+- 실제 GIS dependency 없이 재현 가능한 scoring tests
 
 ## 논문 반영 불가 또는 보류 항목
 
@@ -251,12 +286,13 @@ Task 006 범위에서 LineOfSightAnalysis 기반 DSM Fresnel radius/clearance an
 - 실제 링크품질 검증 결과
 - GeoTIFF/raster/GIS 처리 결과
 - 지도 시각화 결과
-- final scoring 성능 결과
+- color-map classification 결과
 
 ## 사용자 승인 필요사항
 
-- Fresnel sample 구조가 Task 006 요구와 일치하는지
-- dsm_fresnel_sample_score와 dsm_fresnel_score 정책이 적절한지
+- CandidateScore 구조가 Task 007 요구와 일치하는지
+- strict LOS cap을 shielding_stability_score에만 적용하는 해석이 적절한지
+- distance component가 LOS blocked 시에도 overall score에 남는 해석이 적절한지
 - follow-up CI 결과 확인
 - merge 승인 여부 결정
 

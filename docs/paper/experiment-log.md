@@ -246,39 +246,10 @@ Task 004 TerrainProfile과 Task 005 LineOfSightAnalysis를 입력으로 받아 s
 - actual_drone_operation: false
 - actual_link_measurement: false
 
-## 좌표계 및 범위
-
-- LineOfSightAnalysis sample distance fields 기준 d1/d2 계산
-- DSM clearance는 Task 005 LOS sample의 dsm_clearance_m 사용
-- 실제 좌표계 변환 또는 실제 GIS file loading 없음
-
-## 입력 파라미터
-
-- frequency_hz
-- LineOfSightAnalysis
-- TerrainProfile은 LOS sample 내부 참조로만 사용
-- 색상 등급 임계값: 사용하지 않음
-- 점수식 가중치: final scoring 통합 없음
-
-## 방법
-
-`lambda_m = 299792458.0 / frequency_hz`로 파장을 계산하고, 각 sample에서 `sqrt(lambda_m × d1_m × d2_m / (d1_m + d2_m))`로 제1 Fresnel radius를 계산한다. DSM clearance ratio는 `dsm_clearance_m / fresnel_radius_m`, Fresnel intrusion ratio는 `max(0.0, 1.0 - clearance_ratio)`의 clamp 형태로 계산한다. Endpoint sample은 radius 0 조건에서 division by zero를 피하고 score 100으로 처리한다.
-
-## 실행 환경
-
-- Cloud: GitHub connector file operations
-- Local: Not run in this cloud/GitHub-only context.
-- CI: GitHub Actions CI success observed for PR #18 head commit before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
-
-## 실행 명령
-
-- Local commands: Not run in this cloud/GitHub-only context.
-- CI commands: GitHub Actions executed install, syntax check, pytest, ruff, and mypy successfully on the checked PR #18 run.
-
 ## 결과
 
-- Fresnel radius/clearance analysis 가능 여부: success on the checked PR #18 CI run
-- Task 006 scaffold CI status: success on the checked PR #18 CI run
+- Fresnel radius/clearance analysis 가능 여부: success
+- Task 006 scaffold CI status: success
 - package install in CI: success
 - syntax check in CI: success
 - pytest in CI: success
@@ -287,10 +258,6 @@ Task 004 TerrainProfile과 Task 005 LineOfSightAnalysis를 입력으로 받아 s
 - 색상 등급별 셀 수: 미산출
 - 경로 후보별 실 비행거리: 미산출
 - 500m 경유점 수: 미산출
-
-## 해석
-
-Task 006은 실제 실험 결과가 아니라 DSM Fresnel component analysis 준비 단계다. CI success는 Fresnel analysis 코드와 테스트 코드의 동작 확인에 한정하며, 실제 DEM/DSM 또는 링크품질 검증 결과가 아니다.
 
 ## 한계
 
@@ -303,10 +270,91 @@ Task 006은 실제 실험 결과가 아니라 DSM Fresnel component analysis 준
 - 색상지도 classification 없음
 - 지도 렌더링 확인 없음
 
+---
+
+# Experiment EXP-20260708-007
+
+## 관련 Task / Issue / PR
+
+- Task: 007 - Shielding stability and overall scoring integration
+- Issue: #19
+- PR: #20
+
+## 목적
+
+Task 005의 DSM LOS component, Task 006의 DSM Fresnel component, 운용반경 대비 3D 거리 기반 distance component를 통합해 candidate launch cell 단위의 shielding_stability_score와 overall_score를 산출하는 순수 Python scoring 구조를 준비한다.
+
+## 데이터 종류
+
+- synthetic score components only
+- synthetic DEM: 없음
+- synthetic DSM: 없음
+- 실제 DEM/DSM: 없음
+- 실제 링크상태 데이터: 없음
+- actual_drone_operation: false
+- actual_link_measurement: false
+
+## 좌표계 및 범위
+
+- distance_3d_m와 operating_radius_m 기반 distance score 계산
+- dsm_los_score와 dsm_fresnel_score 기반 shielding_stability_score 계산
+- candidate score 산출 구조만 구현
+- 색상지도 classification과 지도 렌더링 없음
+
+## 입력 파라미터
+
+- distance_3d_m
+- operating_radius_m
+- dsm_los_score
+- dsm_fresnel_score
+- ScoreComponentWeights
+
+## 방법
+
+`distance_score = clamp(100 × (1 - distance_3d_m / operating_radius_m), 0, 100)`로 계산한다. `dsm_los_score == 0`이면 strict LOS cap에 따라 shielding_stability_score를 0으로 둔다. 그 외에는 `dsm_los_score × 0.40 + dsm_fresnel_score × 0.60`으로 shielding_stability_score를 계산한다. overall_score는 `shielding_stability_score × 0.80 + distance_score × 0.20`으로 계산한다.
+
+## 실행 환경
+
+- Cloud: GitHub connector file operations
+- Local: Not run in this cloud/GitHub-only context.
+- CI: GitHub Actions CI success observed for PR #20 head commit before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
+
+## 실행 명령
+
+- Local commands: Not run in this cloud/GitHub-only context.
+- CI commands: GitHub Actions executed install, syntax check, pytest, ruff, and mypy successfully on the checked PR #20 run.
+
+## 결과
+
+- scoring integration 가능 여부: success on the checked PR #20 CI run
+- Task 007 scaffold CI status: success on the checked PR #20 CI run
+- package install in CI: success
+- syntax check in CI: success
+- pytest in CI: success
+- ruff in CI: success
+- mypy in CI: success
+- 색상 등급별 셀 수: 미산출
+- 경로 후보별 실 비행거리: 미산출
+- 500m 경유점 수: 미산출
+
+## 해석
+
+Task 007은 실제 실험 결과가 아니라 candidate scoring integration 준비 단계다. CI success는 scoring integration 코드와 테스트 코드의 동작 확인에 한정하며, 실제 DEM/DSM 또는 링크품질 검증 결과가 아니다.
+
+## 한계
+
+- 실제 DEM/DSM 없음
+- 실제 링크상태 검증 없음
+- 실제 드론운용 없음
+- 색상지도 classification 없음
+- 지도 렌더링 확인 없음
+- Streamlit/Folium UI 없음
+- Top 5 기본 출력 없음
+
 ## 논문 반영 가능 여부
 
-방법론의 DSM Fresnel radius/clearance analysis, frequency 및 sample position sensitivity test design에는 반영 가능. 실제 결과 장에는 아직 반영 불가.
+방법론의 score integration, strict LOS cap, distance reserve proxy 설계에는 반영 가능. 실제 결과 장에는 아직 반영 불가.
 
 ## GPT Master 검토 메모
 
-PR #18 생성 후 wavelength, Fresnel radius, clearance ratio, intrusion ratio, sample score, dsm_fresnel_score, 2.4GHz/5.8GHz 및 midpoint radius 테스트, CI 결과를 기준으로 편입 여부를 판단한다. 이 로그 업데이트 이후 follow-up CI 결과도 merge 전 확인해야 한다.
+PR #20 생성 후 distance_score, shielding_stability_score, overall_score, strict LOS cap, weight validation, score validation, CI 결과를 기준으로 편입 여부를 판단한다. 이 로그 업데이트 이후 follow-up CI 결과도 merge 전 확인해야 한다.
