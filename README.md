@@ -90,6 +90,14 @@ The module calculates wavelength, first Fresnel radius, clearance ratio, intrusi
 
 This task does not implement final scoring, real DEM/DSM loading, color-map classification, or map rendering.
 
+## Task 007 scoring integration
+
+Task 007 adds pure Python scoring integration. The score combines DSM LOS, DSM Fresnel, and operating-radius distance components.
+
+`shielding_stability_score` uses DSM LOS 40% and DSM Fresnel 60%, with a strict LOS cap. `overall_score` uses shielding stability 80% and distance reserve 20%. The distance reserve is an operating-radius proxy, not a real RF link-quality measurement.
+
+This task does not implement color-map classification, real DEM/DSM loading, Streamlit/Folium UI, or map rendering.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
