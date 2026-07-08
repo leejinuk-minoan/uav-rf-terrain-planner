@@ -241,3 +241,94 @@ Task 002는 색상 기반 발진 가능구역 지도를 만들기 위한 candida
 ## GPT Master 검토 메모
 
 Task 002 PR 생성 후 diff와 CI 결과를 기준으로 편입 여부를 판단한다.
+
+---
+
+# Experiment EXP-20260708-003
+
+## 관련 Task / Issue / PR
+
+- Task: 003 - Synthetic DEM/DSM terrain module
+- Issue: #11
+- PR: 생성 예정
+
+## 목적
+
+실제 DEM/DSM 파일 없이도 이후 LOS/Fresnel/Scoring 알고리즘의 경계조건을 테스트할 수 있도록 순수 Python synthetic DEM/DSM grid generator를 준비한다.
+
+## 데이터 종류
+
+- synthetic DEM: pure Python in-memory grid only
+- synthetic DSM: pure Python in-memory grid only
+- 공개/샘플 DEM: 없음
+- 공개/샘플 DSM: 없음
+- 실제 링크상태 데이터: 없음
+- actual_drone_operation: false
+- actual_link_measurement: false
+
+## 좌표계 및 범위
+
+- Local grid index and grid_size_m only
+- 실제 좌표계 변환 또는 실제 GIS file loading 없음
+
+## 입력 파라미터
+
+- 목표 MGRS: 사용하지 않음
+- 운용반경: operating_radius_boundary scenario의 후속 Task 연결용
+- 허가 AGL: fixed_agl_case scenario의 후속 Task 설명용
+- 주파수 대역: fresnel_radius_position_variation scenario의 후속 Task 연결용
+- 격자 해상도: `grid_size_m`, 기본 100.0 m
+- 색상 등급 임계값: 사용하지 않음
+- 점수식 가중치: 사용하지 않음
+
+## 방법
+
+Cloud/GitHub 기반으로 순수 Python DEM/DSM matrix generator와 테스트를 작성한다. 실제 DEM/DSM loading, GeoTIFF, rasterio/GDAL/geopandas, LOS/Fresnel, scoring, map rendering은 수행하지 않는다.
+
+## 실행 환경
+
+- Cloud: GitHub connector file operations
+- Local: Not run in this cloud/GitHub-only context.
+- CI: PR 생성 후 확인 필요
+
+## 실행 명령
+
+- Local commands: Not run in this cloud/GitHub-only context.
+- CI commands: PR 생성 후 GitHub Actions가 install, syntax check, pytest, ruff, mypy를 실행할 것으로 예상
+
+## 결과
+
+- scenario 생성 가능 여부: PR/CI 확인 전
+- Task 003 scaffold CI status: PR 생성 후 확인 필요
+- package install in CI: PR 생성 후 확인 필요
+- syntax check in CI: PR 생성 후 확인 필요
+- pytest in CI: PR 생성 후 확인 필요
+- ruff in CI: PR 생성 후 확인 필요
+- mypy in CI: PR 생성 후 확인 필요
+- 색상 등급별 셀 수: 미산출
+- 제외구역 비율: 미산출
+- 경로 후보별 실 비행거리: 미산출
+- 경로 후보별 평균 차폐점수: 미산출
+- 500m 경유점 수: 미산출
+
+## 해석
+
+Task 003은 실제 실험 결과가 아니라 synthetic terrain generator 준비 단계다. 논문 결과 장에는 아직 반영하지 않는다.
+
+## 한계
+
+- 실제 DEM/DSM 없음
+- GeoTIFF 생성 없음
+- 실제 링크상태 검증 없음
+- 실제 드론운용 없음
+- LOS/Fresnel 알고리즘 없음
+- scoring 없음
+- 지도 렌더링 확인 없음
+
+## 논문 반영 가능 여부
+
+방법론의 synthetic test data design과 재현성 설명에는 반영 가능. 결과 장에는 아직 반영 불가.
+
+## GPT Master 검토 메모
+
+PR 생성 후 8개 scenario, DEM/DSM shape, DSM >= DEM, CI 결과를 기준으로 편입 여부를 판단한다.
