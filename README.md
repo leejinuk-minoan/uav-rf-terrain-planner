@@ -28,13 +28,66 @@
 
 점수 상위 지점 목록은 디버깅·검증용 보조 출력으로 둘 수 있지만, 사용자 기본 출력은 **색상 기반 발진 가능구역 지도**다.
 
+## Task 001 기준 점수식
+
+Task 001에서는 실제 LOS/Fresnel 알고리즘을 완성하지 않고, 이후 구현을 위한 config와 schema 기준만 고정한다.
+
+```text
+overall_score = shielding_stability_score × 0.80 + distance_score × 0.20
+
+shielding_stability_score = dsm_los_score × 0.40
+                          + dsm_fresnel_score × 0.60
+
+distance_score = 100 × (1 - distance_3d_m / operating_radius_m)
+```
+
+운용반경을 초과하는 후보는 제외한다. 기본 LOS cap 규칙은 다음과 같다.
+
+```text
+if dsm_los_score == 0:
+    shielding_stability_score = 0
+```
+
+이 점수는 실제 통신 성공률, 실제 링크품질, RSSI, SINR, packet loss 검증값이 아니다. 본 프로젝트의 MVP 점수는 **offline terrain/surface-obstacle risk proxy**로만 사용한다.
+
+## DSM/DEM 기준
+
+- LOS 판정 기본 기준면: DSM
+- Fresnel 침범률 기본 기준면: DSM
+- DEM 역할: DSM fallback, AGL 기준 지형고도, DSM-DEM 차이 참고, DEM-only vs DSM-primary 비교
+- 사용자 입력 AGL은 단일 고정 운용고도로 해석한다.
+
+표면장애물 복잡도 보정점수는 기본 점수식에서 제외한다. DSM 기반 LOS와 DSM 기반 Fresnel이 표면장애물 영향을 이미 반영하므로, 별도 복잡도 점수는 중복 감점 위험이 있다.
+
+## 설치 및 테스트 초안
+
+Task 001은 프로젝트 스캐폴딩 단계다. 로컬 또는 CI에서 다음 명령으로 확인한다.
+
+```bash
+python -m pip install -e '.[dev]'
+python -m pytest
+python -m compileall src tests examples
+```
+
+Cloud Execution Agent는 로컬 명령을 직접 실행하지 않는다. 실제 실행 결과는 GitHub Actions, Codex, 또는 Claude Code의 로컬 검증 결과로 분리해 기록한다.
+
 ## 문서 구조
 
 - `docs/master-plan.md`: 전체 마스터 플랜
 - `docs/research/research-index.md`: 선행연구 자료집 및 모델 반영안
 - `docs/agent-operations-plan.md`: Codex/Claude Code 교대 운영 플랜
 - `docs/github-app-limit-report.md`: GitHub 앱 작업 가능 범위 점검 보고
+- `docs/paper/score-model-validation-plan.md`: 실제 드론운용 없는 오프라인 점수식 검증 계획
 
 ## 개발 원칙
 
 본 프로젝트는 실제 현장 운용 지시서가 아니라 연구·교육·시뮬레이션 및 의사결정 보조 목적의 정량 분석 도구로 개발합니다.
+
+금지 범위:
+
+- 실제 드론 제어
+- 실시간 조종 또는 자동 비행 제어
+- 침투·회피·공격 경로 제공
+- 실제 통신 성공률 또는 링크품질 보장 표현
+- RSSI/SINR/packet loss를 필수 입력으로 요구하는 MVP schema
+- 대형 GIS 원천 데이터 저장소 커밋
