@@ -1,6 +1,8 @@
 # AGENTS.md
 
-본 문서는 Codex, Claude Code, 기타 GitHub 연동 AI 에이전트가 `uav-rf-terrain-planner` 저장소에서 작업할 때 따라야 할 공통 작업 규칙이다.
+본 문서는 Cloud Execution Agent, Codex, Claude Code, 기타 GitHub 연동 AI 에이전트가 `uav-rf-terrain-planner` 저장소에서 작업할 때 따라야 할 공통 작업 규칙이다.
+
+---
 
 ## 1. 프로젝트 목적
 
@@ -18,18 +20,30 @@
 → 약 500m 단위 경유점과 실 비행거리 출력
 ```
 
-중요: 발진기지는 기본 출력에서 단순 Top 5 점 목록으로 제시하지 않는다. 기본 출력은 첨부 예시 이미지처럼 **색상 기반 발진 가능구역 지도**다. 점수 상위 후보점 목록은 디버깅·검증용 보조 출력으로만 둘 수 있다.
+중요: 발진기지는 기본 출력에서 단순 Top 5 점 목록으로 제시하지 않는다. 기본 출력은 **색상 기반 발진 가능구역 지도**다. 점수 상위 후보점 목록은 디버깅·검증용 보조 출력으로만 둘 수 있다.
+
+---
 
 ## 2. 반드시 읽어야 할 기준 문서
 
 작업 전 아래 문서를 먼저 읽고, 구현 내용이 문서와 충돌하지 않도록 한다.
 
 1. `README.md`
-2. `docs/master-plan.md`
-3. `docs/research/research-index.md`
-4. `docs/agent-build-feasibility.md`
-5. `docs/github-app-limit-report.md`
-6. `docs/agent-operations-plan.md`
+2. `AGENTS.md`
+3. `CLAUDE.md`
+4. `docs/master-plan.md`
+5. `docs/research/research-index.md`
+6. `docs/agent-build-feasibility.md`
+7. `docs/agent-operations-plan.md`
+8. `docs/github-app-limit-report.md`
+9. `docs/prompts/codex-task-prompts.md`
+10. `docs/prompts/claude-code-task-prompts.md`
+11. `.github/ISSUE_TEMPLATE/feature_task.md`
+12. `.github/workflows/ci.yml`
+
+문서를 읽지 못하면 추측하지 말고, 어떤 파일을 읽지 못했는지 보고한다.
+
+---
 
 ## 3. 개발 범위와 안전 경계
 
@@ -43,6 +57,8 @@
 - 문서화, 리팩터링, CI 구성
 - GitHub Issue 단위의 기능 구현
 - PR 생성 및 테스트 결과 보고
+- Task별 연구 로그, 실험 로그, 의사결정 로그, PR 검토 로그 작성
+- 학회 풀 페이퍼 초안 작성을 위한 근거 기록 정리
 
 ### 3.2 금지 범위
 
@@ -54,8 +70,11 @@
 - 무단 데이터 다운로드, 비공개 데이터 추출, 비인가 API 호출
 - API 키, 토큰, 인증정보 저장소 커밋
 - 대형 원천 GIS 데이터 직접 커밋
+- 검증되지 않은 결과를 “통신 보장”, “최적 운용 확정”, “작전 성공 보장”처럼 확정적으로 표현
 
 본 프로젝트는 **분석·시뮬레이션·교육용 의사결정 보조 도구**로 유지한다.
+
+---
 
 ## 4. 권장 저장소 구조
 
@@ -83,9 +102,22 @@ uav-rf-terrain-planner/
 │   ├── sample_config.yaml
 │   └── synthetic_terrain.py
 ├── docs/
+│   └── paper/
+│       ├── paper-outline.md
+│       ├── research-log.md
+│       ├── experiment-log.md
+│       ├── decision-log.md
+│       ├── pr-review-log.md
+│       ├── figures-plan.md
+│       ├── tables-plan.md
+│       ├── related-work-notes.md
+│       ├── limitations.md
+│       └── full-paper-draft.md
 ├── .github/
 └── pyproject.toml
 ```
+
+---
 
 ## 5. 기능 단위 작업 원칙
 
@@ -106,30 +138,60 @@ Task 009: 경로탐색 기반 경로 후보 3개 생성
 Task 010: 500m 단위 경유점 및 실 비행거리 계산
 Task 011: Streamlit/Folium 기반 MVP UI
 Task 012: 통합 테스트, 문서화, 샘플 실행 시나리오
+Task 013: 논문용 연구기록 구조 생성 및 기존 기록 정리
+Task 014: 실험 결과·그림·표 후보 정리
+Task 015: 학회 풀 페이퍼 초안 작성
 ```
 
-## 6. Codex/Claude Code 교대 및 인계 원칙
+각 Task 종료 시 논문 작성용 연구기록 업데이트 항목을 남긴다.
 
-### 6.1 기본 원칙: Task 경계에서만 교대한다
+---
 
-Codex와 Claude Code는 기본적으로 **Task 경계**에서만 교대한다.
+## 6. 에이전트 운영 원칙
+
+### 6.1 기본 원칙: Cloud Execution Agent 우선
+
+본 프로젝트는 로컬 실행이 반드시 필요한 작업을 제외하고 **Cloud Execution Agent**를 우선 활용한다.
 
 ```text
-정상 교대 예시:
-Codex가 Task 001 완료 → PR 생성 → GPT 검토 → 사용자 승인/merge
-→ Claude Code가 Task 002 시작
+GPT Master가 Task를 정의하고,
+Cloud Execution Agent가 클라우드에서 가능한 구현·문서·PR 작업을 먼저 수행하며,
+Codex와 Claude Code는 로컬 실행이 반드시 필요한 검증·수정 작업에만 투입하고,
+사용자는 PR 단위로 최종 승인한다.
 ```
 
-다음 방식은 기본적으로 금지한다.
+Cloud Execution Agent는 다음 작업을 우선 담당한다.
 
-```text
-비권장 방식:
-Codex가 Task 004를 절반 구현 → 토큰 소모 → Claude Code가 같은 브랜치에서 즉시 이어쓰기
-```
+- GitHub 문서 조회
+- Issue/PR 본문 작성
+- 브랜치 생성
+- 문서 생성·수정
+- 순수 Python 모듈 초안 작성
+- synthetic 테스트 코드 작성
+- CI 설정 초안 작성
+- 연구 로그, 실험 로그, 의사결정 로그, PR 검토 로그 초안 작성
+- 로컬 검증 필요사항 분리
 
-Task 중간 교대는 맥락 손실, 중복 수정, 테스트 누락, 브랜치 충돌 가능성이 높다. 따라서 에이전트 교대는 **완료된 Task, 완료된 PR, 또는 명시적 handoff checkpoint**를 기준으로 한다.
+Cloud Execution Agent는 로컬에서 실행하지 않은 테스트를 통과했다고 말하지 않는다. `python -m pytest`, 패키지 설치, Streamlit/Folium 화면 확인, rasterio/GDAL 설치, 실제 DEM/DSM 연결은 로컬 검증 필요사항으로 분리한다.
 
-### 6.2 하나의 Task는 하나의 브랜치와 하나의 PR로 관리한다
+### 6.2 Codex와 Claude Code 투입 기준
+
+Codex와 Claude Code는 기본 구현자가 아니라 로컬 실행·환경검증·UI 확인·GIS 의존성 문제 해결 담당자로 운용한다.
+
+| 작업 | 추천 담당 |
+|---|---|
+| 순수 함수 단위 테스트 보완 | Codex |
+| 작은 버그 수정 | Codex |
+| 로컬 `pytest` 재현 | Codex 또는 Claude Code |
+| 패키지 설치 확인 | Claude Code |
+| rasterio/GDAL/geopandas 설치 문제 | Claude Code |
+| Streamlit/Folium 화면 확인 | Claude Code |
+| 지도 색상 레이어 시각 검증 | Claude Code |
+| 실제 DEM/DSM 파일 연결 테스트 | Claude Code |
+| CI와 로컬 결과 불일치 해결 | Claude Code |
+| 복잡한 다중 파일 리팩터링 | Claude Code |
+
+### 6.3 하나의 Task는 하나의 브랜치와 하나의 PR로 관리한다
 
 ```text
 하나의 Task = 하나의 브랜치 = 하나의 PR
@@ -149,18 +211,13 @@ agent/task-008-waypoints
 agent/task-009-streamlit-ui
 ```
 
-### 6.3 예외: 같은 Task를 다른 에이전트가 이어받아야 하는 경우
+### 6.4 같은 브랜치 동시 수정 금지
 
-다음 상황에서는 같은 Task를 다른 에이전트가 이어받을 수 있다.
+Cloud Execution Agent, Codex, Claude Code는 같은 브랜치를 동시에 수정하지 않는다. 로컬 에이전트가 Cloud Execution Agent 작업을 이어받아야 할 때는 handoff checkpoint를 먼저 확인한다.
 
-1. Codex 또는 Claude Code의 사용량/토큰이 Task 중간에 소진된 경우
-2. 로컬 실행 또는 CI 실패가 한 에이전트의 환경에서 해결되지 않는 경우
-3. 사용자가 명시적으로 다른 에이전트에게 이어받기를 지시한 경우
-4. 기존 에이전트가 draft PR 또는 handoff note를 남긴 경우
+---
 
-단, 같은 Task를 이어받기 전에는 반드시 아래 handoff checkpoint를 남긴다.
-
-### 6.4 Handoff checkpoint 필수 항목
+## 7. Handoff checkpoint 필수 항목
 
 handoff는 GitHub Issue comment, PR comment, 또는 `docs/handoff/` 문서로 남긴다.
 
@@ -173,6 +230,9 @@ Task 00X - 작업명
 ## 현재 브랜치
 agent/task-00X-...
 
+## 담당했던 에이전트
+Cloud Execution Agent / Codex / Claude Code
+
 ## 작업한 내용
 - 변경 파일 1
 - 변경 파일 2
@@ -182,10 +242,11 @@ agent/task-00X-...
 - 남은 구현
 - 실패한 테스트
 - 불확실한 설계 판단
+- 로컬 검증 필요사항
 
 ## 실행한 명령
-- python -m pytest ...
-- python -m compileall ...
+- Cloud Execution Agent는 실제 로컬 명령을 실행하지 않았다면 "미실행"으로 기록
+- Codex/Claude Code는 실제 실행한 명령만 기록
 
 ## 현재 테스트 상태
 - 통과:
@@ -197,36 +258,22 @@ agent/task-00X-...
 2. ...
 3. ...
 
+## 논문 기록 필요사항
+- 이 Task가 논문 어느 장에 반영되는가?
+- 실험/테스트 결과가 있는가?
+- 그림/표 후보가 있는가?
+- 한계 또는 검증 필요사항이 있는가?
+
 ## 주의사항
+- 발진기지 기본 출력은 Top 5가 아니라 색상 기반 가능구역 지도
 - AGL/MSL 혼동 금지
 - 대형 GIS 데이터 커밋 금지
 - 실제 드론 제어 기능 구현 금지
 ```
 
-### 6.5 이어받는 에이전트의 의무
+---
 
-이어받는 Codex 또는 Claude Code는 다음을 먼저 수행한다.
-
-1. `git status` 확인
-2. 현재 브랜치 확인
-3. 기존 PR 또는 handoff checkpoint 확인
-4. 변경된 파일 diff 확인
-5. 실패한 테스트 재현
-6. 기존 구현 의도를 보존하면서 최소 수정
-
-이어받는 에이전트는 기존 작업을 전면 재작성하지 않는다. 재작성이 필요하면 먼저 이유를 PR 또는 Issue에 기록한다.
-
-### 6.6 GPT Master 검토 의무
-
-에이전트 교대가 발생할 때 GPT Master는 다음을 확인한다.
-
-1. Task 범위가 유지되었는가?
-2. 같은 파일을 서로 다른 에이전트가 충돌되게 수정하지 않았는가?
-3. handoff checkpoint가 충분한가?
-4. 테스트 실패 원인이 기록되었는가?
-5. 다음 에이전트가 수행할 작업이 명확한가?
-
-## 7. 브랜치 전략
+## 8. 브랜치 전략
 
 각 기능은 별도 브랜치에서 작업한다.
 
@@ -255,82 +302,16 @@ PR 제목 형식:
 [Task 006] Implement launch feasible area map layer
 ```
 
-## 8. 코드 품질 기준
+---
+
+## 9. 코드 품질 기준
 
 - Python 3.11 이상을 기준으로 한다.
-- 타입 힌트를 적극 사용한다.
-- 좌표, 거리, 고도 단위는 명시한다.
-- 함수는 작게 유지하고, 단위 테스트 가능한 구조로 작성한다.
-- GIS 원천 데이터가 없어도 synthetic raster 기반 테스트가 동작해야 한다.
-- 모든 계산 함수는 입력 단위와 출력 단위를 docstring에 기록한다.
-- 테스트 없이 핵심 알고리즘을 추가하지 않는다.
-
-## 9. 데이터 처리 원칙
-
-- 대형 DEM/DSM 원천 파일은 저장소에 커밋하지 않는다.
-- 테스트에는 synthetic raster 또는 작은 샘플 파일을 사용한다.
-- 실제 데이터 경로는 `.env`, 로컬 설정 파일, 또는 사용자 입력으로 처리한다.
-- 좌표계는 반드시 명시한다.
-- MGRS → WGS84 → 투영좌표계 변환 흐름을 문서화한다.
-
-## 10. 알고리즘 기준
-
-### 10.1 발진 가능구역 점수
-
-기본 점수식은 `docs/master-plan.md`를 따른다. 이 점수는 사용자에게 점 목록을 우선 제시하기 위한 것이 아니라, 지도 평면의 격자/셀을 색상 등급으로 분류하기 위한 내부 점수다.
-
-```text
-발진 가능구역 종합점수 = 차폐안정성 점수 × 0.80 + 거리점수 × 0.20
-차폐안정성 점수 = LOS 점수 × 0.50 + Fresnel 여유 점수 × 0.35 + DSM 장애물 점수 × 0.15
-거리점수 = 100 × (1 - 목표까지 3D 거리 / 드론 운용반경)
-```
-
-색상 등급 기본안:
-
-```text
-녹색: 추천 가능구역
-노란색: 제한적 가능구역
-주황색/적색: 비추천 또는 차폐위험구역
-회색/투명: 운용반경 초과 또는 계산 제외구역
-```
-
-### 10.2 경로 후보
-
-사용자가 지도상에서 발진기지를 선택한 뒤 반드시 3개 경로 후보를 생성한다.
-
-1. 차폐 최소 경로
-2. 거리-차폐 균형 경로
-3. 우회 안정 경로
-
-각 경로에는 실 비행거리, 평균 차폐점수, 최저 차폐점수, 약 500m 단위 경유점이 포함되어야 한다.
-
-## 11. PR 완료 조건
-
-PR에는 다음을 포함한다.
-
-- 작업 요약
-- 구현한 파일 목록
-- 테스트 결과
-- 남은 한계
-- 사용자가 검토해야 할 사항
-- 에이전트 교대 여부 및 handoff 여부
-
-PR은 테스트가 통과해야 하며, `main` 병합은 사용자가 승인할 때만 수행한다.
-
-## 12. 에이전트 응답 형식
-
-작업 완료 보고는 아래 형식을 사용한다.
-
-```markdown
-## 작업 요약
-
-## 변경 파일
-
-## 테스트 결과
-
-## 구현 한계
-
-## 에이전트 교대 여부
-
-## 다음 권장 작업
-```
+- 함수와 클래스에 타입 힌트를 작성한다.
+- 입력/출력 단위는 변수명 또는 docstring에 명확히 기록한다.
+- GIS 데이터가 없어도 테스트 가능한 synthetic 데이터 생성기를 둔다.
+- 핵심 수학 함수는 순수 함수로 구현하여 테스트 가능하게 한다.
+- UI 코드와 계산 엔진을 분리한다.
+- 대형 데이터는 저장소에 포함하지 않는다.
+- 발진기지 기본 출력이 Top 5 목록으로 축소되지 않도록 테스트와 문서에서 확인한다.
+- 각 Task 종료 시 연구기록 업데이트 항목을 남긴다.
