@@ -1,0 +1,288 @@
+import pytest
+
+from uav_rf_terrain.coordinates import LocalPoint
+from uav_rf_terrain.fresnel import (
+    SPEED_OF_LIGHT_MPS,
+    FresnelAnalysis,
+    FresnelAnalysisError,
+    analyze_dsm_fresnel,
+    first_fresnel_radius_m,
+    wavelength_m,
+)
+from uav_rf_terrain.los import LineOfSightAnalysis, LineOfSightSample, analyze_dsm_los
+from uav_rf_terrain.profile import TerrainProfile, TerrainProfileSample
+
+
+def _terrain_sample(
+    sample_index: int,
+    distance_from_start_m: float,
+    distance_to_end_m: float,
+    dsm_msl: float = 0.0,
+) -> TerrainProfileSample:
+    return TerrainProfileSample(
+        sample_index=sample_index,
+        ix=sample_index,
+        iy=0,
+        point=LocalPoint(x_m=distance_from_start_m, y_m=0.0),
+        distance_from_start_m=distance_from_start_m,
+        distance_to_end_m=distance_to_end_m,
+        dem_msl=0.0,
+        dsm_msl=dsm_msl,
+        surface_delta_m=dsm_msl,
+    )
+
+
+def _profile_with_clearance_values(clearances: tuple[float, ...]) -> TerrainProfile:
+    total_distance_m = 1000.0
+    if len(clearances) == 1:
+        distances = (500.0,)
+    else:
+        step_m = total_distance_m / (len(clearances) - 1)
+        distances = tuple(index * step_m for index in range(len(clearances)))
+
+    samples = tuple(
+        _terrain_sample(
+            sample_index=index,
+            distance_from_start_m=distance,
+            distance_to_end_m=total_distance_m - distance,
+            dsm_msl=100.0 - clearance,
+        )
+        for index, (distance, clearance) in enumerate(zip(distances, clearances, strict=True))
+    )
+    return TerrainProfile(
+        scenario_name="manual_fresnel",
+        start=LocalPoint(x_m=0.0, y_m=0.0),
+        end=LocalPoint(x_m=total_distance_m, y_m=0.0),
+        sample_spacing_m=250.0,
+        samples=samples,
+    )
+
+
+def _los_analysis_with_clearance_values(clearances: tuple[float, ...]) -> LineOfSightAnalysis:
+    profile = _profile_with_clearance_values(clearances)
+    return analyze_dsm_los(profile, launch_antenna_msl=100.0, drone_flight_msl=100.0)
+
+
+def _manual_los_analysis(samples: tuple[LineOfSightSample, ...]) -> LineOfSightAnalysis:
+    return LineOfSightAnalysis(
+        scenario_name="manual_fresnel",
+        launch_antenna_msl=100.0,
+        drone_flight_msl=100.0,
+        samples=samples,
+        dsm_los_score=100.0,
+    )
+
+
+def _los_sample(
+    sample_index: int,
+    d1_m: float,
+    d2_m: float,
+    dsm_clearance_m: float,
+) -> LineOfSightSample:
+    terrain_sample = _terrain_sample(
+        sample_index=sample_index,
+        distance_from_start_m=d1_m,
+        distance_to_end_m=d2_m,
+        dsm_msl=100.0 - dsm_clearance_m,
+    )
+    total_distance_m = d1_m + d2_m
+    ratio = 0.0 if total_distance_m == 0.0 else d1_m / total_distance_m
+    return LineOfSightSample(
+        sample_index=sample_index,
+        terrain_sample=terrain_sample,
+        ratio=ratio,
+        los_line_msl=100.0,
+        dsm_clearance_m=dsm_clearance_m,
+        is_blocked=dsm_clearance_m <= 0.0,
+    )
+
+
+def test_wavelength_m_calculation() -> None:
+    assert wavelength_m(2_400_000_000.0) == pytest.approx(SPEED_OF_LIGHT_MPS / 2_400_000_000.0)
+
+
+@pytest.mark.parametrize("frequency_hz", [0.0, -1.0, float("nan"), float("inf")])
+def test_frequency_hz_must_be_positive_and_finite(frequency_hz: float) -> None:
+    with pytest.raises(FresnelAnalysisError, match="frequency_hz"):
+        wavelength_m(frequency_hz)
+
+
+def test_first_fresnel_radius_m_calculation() -> None:
+    lam = wavelength_m(2_400_000_000.0)
+
+    radius = first_fresnel_radius_m(wavelength_m=lam, d1_m=500.0, d2_m=500.0)
+
+    assert radius == pytest.approx((lam * 500.0 * 500.0 / 1000.0) ** 0.5)
+
+
+def test_endpoint_sample_radius_zero_and_score_100() -> None:
+    los_analysis = _manual_los_analysis(
+        (
+            _los_sample(0, 0.0, 1000.0, dsm_clearance_m=-50.0),
+            _los_sample(1, 1000.0, 0.0, dsm_clearance_m=-50.0),
+        )
+    )
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.samples[0].fresnel_radius_m == 0.0
+    assert analysis.samples[0].fresnel_intrusion_ratio == 0.0
+    assert analysis.samples[0].dsm_fresnel_sample_score == 100.0
+    assert analysis.samples[1].fresnel_radius_m == 0.0
+    assert analysis.samples[1].dsm_fresnel_sample_score == 100.0
+
+
+def test_sample_count_matches_los_analysis() -> None:
+    los_analysis = _los_analysis_with_clearance_values((100.0, 100.0, 100.0))
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.sample_count == len(los_analysis.samples)
+
+
+def test_d1_d2_match_terrain_profile_distances() -> None:
+    los_analysis = _los_analysis_with_clearance_values((100.0, 100.0, 100.0))
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    for fresnel_sample, los_sample in zip(analysis.samples, los_analysis.samples, strict=True):
+        assert fresnel_sample.d1_m == los_sample.terrain_sample.distance_from_start_m
+        assert fresnel_sample.d2_m == los_sample.terrain_sample.distance_to_end_m
+
+
+def test_midpoint_fresnel_radius_is_larger_than_endpoint_and_near_end() -> None:
+    los_analysis = _manual_los_analysis(
+        (
+            _los_sample(0, 0.0, 1000.0, dsm_clearance_m=100.0),
+            _los_sample(1, 100.0, 900.0, dsm_clearance_m=100.0),
+            _los_sample(2, 300.0, 700.0, dsm_clearance_m=100.0),
+            _los_sample(3, 500.0, 500.0, dsm_clearance_m=100.0),
+            _los_sample(4, 800.0, 200.0, dsm_clearance_m=100.0),
+            _los_sample(5, 1000.0, 0.0, dsm_clearance_m=100.0),
+        )
+    )
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+    radius_by_distance = {
+        sample.d1_m: sample.fresnel_radius_m
+        for sample in analysis.samples
+    }
+
+    assert radius_by_distance[500.0] == analysis.max_fresnel_radius_m
+    assert radius_by_distance[500.0] > radius_by_distance[0.0]
+    assert radius_by_distance[500.0] > radius_by_distance[100.0]
+    assert radius_by_distance[500.0] > radius_by_distance[800.0]
+
+
+def test_24ghz_radius_is_larger_than_58ghz_radius() -> None:
+    radius_24 = first_fresnel_radius_m(
+        wavelength_m=wavelength_m(2_400_000_000.0),
+        d1_m=500.0,
+        d2_m=500.0,
+    )
+    radius_58 = first_fresnel_radius_m(
+        wavelength_m=wavelength_m(5_800_000_000.0),
+        d1_m=500.0,
+        d2_m=500.0,
+    )
+
+    assert radius_24 > radius_58
+
+
+def test_clearance_greater_than_or_equal_radius_scores_100() -> None:
+    lam = wavelength_m(2_400_000_000.0)
+    radius = first_fresnel_radius_m(wavelength_m=lam, d1_m=500.0, d2_m=500.0)
+    los_analysis = _manual_los_analysis((_los_sample(0, 500.0, 500.0, radius),))
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.samples[0].clearance_ratio == pytest.approx(1.0)
+    assert analysis.samples[0].fresnel_intrusion_ratio == 0.0
+    assert analysis.samples[0].dsm_fresnel_sample_score == 100.0
+
+
+def test_zero_clearance_scores_zero() -> None:
+    los_analysis = _manual_los_analysis((_los_sample(0, 500.0, 500.0, 0.0),))
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.samples[0].clearance_ratio == 0.0
+    assert analysis.samples[0].fresnel_intrusion_ratio == 1.0
+    assert analysis.samples[0].dsm_fresnel_sample_score == 0.0
+
+
+def test_negative_clearance_scores_zero() -> None:
+    los_analysis = _manual_los_analysis((_los_sample(0, 500.0, 500.0, -5.0),))
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.samples[0].fresnel_intrusion_ratio == 1.0
+    assert analysis.samples[0].dsm_fresnel_sample_score == 0.0
+
+
+def test_partial_clearance_scores_between_zero_and_100() -> None:
+    lam = wavelength_m(2_400_000_000.0)
+    radius = first_fresnel_radius_m(wavelength_m=lam, d1_m=500.0, d2_m=500.0)
+    los_analysis = _manual_los_analysis((_los_sample(0, 500.0, 500.0, radius / 2.0),))
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.samples[0].clearance_ratio == pytest.approx(0.5)
+    assert analysis.samples[0].fresnel_intrusion_ratio == pytest.approx(0.5)
+    assert 0.0 < analysis.samples[0].dsm_fresnel_sample_score < 100.0
+    assert analysis.samples[0].dsm_fresnel_sample_score == pytest.approx(50.0)
+
+
+def test_dsm_fresnel_score_is_average_sample_score() -> None:
+    los_analysis = _manual_los_analysis(
+        (
+            _los_sample(0, 0.0, 1000.0, 100.0),
+            _los_sample(1, 500.0, 500.0, 0.0),
+            _los_sample(2, 1000.0, 0.0, 100.0),
+        )
+    )
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    expected_average = sum(
+        sample.dsm_fresnel_sample_score for sample in analysis.samples
+    ) / analysis.sample_count
+    assert analysis.dsm_fresnel_score == pytest.approx(expected_average)
+    assert analysis.dsm_fresnel_score == pytest.approx((100.0 + 0.0 + 100.0) / 3.0)
+
+
+def test_analysis_properties() -> None:
+    los_analysis = _manual_los_analysis(
+        (
+            _los_sample(0, 0.0, 1000.0, 100.0),
+            _los_sample(1, 500.0, 500.0, 0.0),
+            _los_sample(2, 1000.0, 0.0, 100.0),
+        )
+    )
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.max_fresnel_radius_m == analysis.samples[1].fresnel_radius_m
+    assert analysis.max_intrusion_ratio == 1.0
+    assert analysis.min_sample_score == 0.0
+    assert isinstance(analysis, FresnelAnalysis)
+
+
+def test_empty_los_samples_raise_fresnel_analysis_error() -> None:
+    los_analysis = _manual_los_analysis(())
+
+    with pytest.raises(FresnelAnalysisError, match="at least one sample"):
+        analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+
+@pytest.mark.parametrize("frequency_hz", [float("nan"), float("inf")])
+def test_non_finite_frequency_raises_fresnel_analysis_error(frequency_hz: float) -> None:
+    los_analysis = _los_analysis_with_clearance_values((100.0, 100.0, 100.0))
+
+    with pytest.raises(FresnelAnalysisError, match="frequency_hz"):
+        analyze_dsm_fresnel(los_analysis, frequency_hz=frequency_hz)
+
+
+def test_first_fresnel_radius_rejects_negative_distance() -> None:
+    with pytest.raises(FresnelAnalysisError, match="d1_m"):
+        first_fresnel_radius_m(wavelength_m=1.0, d1_m=-1.0, d2_m=10.0)

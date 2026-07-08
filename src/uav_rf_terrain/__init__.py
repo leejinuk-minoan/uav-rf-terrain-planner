@@ -24,6 +24,14 @@ from .coordinates import (
     local_offset_point,
     mgrs_to_wgs84,
 )
+from .fresnel import (
+    FresnelAnalysis,
+    FresnelAnalysisError,
+    FresnelSample,
+    analyze_dsm_fresnel,
+    first_fresnel_radius_m,
+    wavelength_m,
+)
 from .grid import (
     CandidateCell,
     CandidateGridConfig,
@@ -69,6 +77,9 @@ __all__ = [
     "DISTANCE_WEIGHT",
     "DSM_FRESNEL_WEIGHT",
     "DSM_LOS_WEIGHT",
+    "FresnelAnalysis",
+    "FresnelAnalysisError",
+    "FresnelSample",
     "LaunchAreaCellScore",
     "LineOfSightAnalysis",
     "LineOfSightError",
@@ -86,6 +97,7 @@ __all__ = [
     "TerrainProfileError",
     "TerrainProfileSample",
     "WGS84Point",
+    "analyze_dsm_fresnel",
     "analyze_dsm_los",
     "available_synthetic_scenarios",
     "create_flat_terrain",
@@ -101,11 +113,13 @@ __all__ = [
     "distance_3d_m",
     "extract_terrain_profile",
     "filter_within_operation_radius",
+    "first_fresnel_radius_m",
     "generate_candidate_grid",
     "grid_index_to_local_point",
     "local_offset_point",
     "local_point_to_grid_index",
     "mgrs_to_wgs84",
+    "wavelength_m",
 ]
 
 __version__ = "0.1.0"
