@@ -243,11 +243,22 @@ else:
 
 LOS 중심선이 통과하더라도 Fresnel Zone은 침범될 수 있다. Fresnel 평가는 LOS 중심선 주변의 전파 통로 여유를 평가한다.
 
+각 샘플 지점에서 제1 Fresnel 반경은 다음과 같이 계산한다.
+
+```text
+c_mps = 299792458
+lambda_m = c_mps / frequency_hz
+d1_m = 발진기지에서 샘플 지점까지의 3D 거리
+d2_m = 샘플 지점에서 드론 비행위치까지의 3D 거리
+fresnel_radius_m = sqrt(lambda_m × d1_m × d2_m / (d1_m + d2_m))
+```
+
+여기서 `d1_m`과 `d2_m`이 샘플 지점의 상대 위치를 반영한다. 따라서 같은 높이의 차폐점이라도 발진기지에 가까운지, 중간 지점에 있는지, 드론에 가까운지에 따라 Fresnel 반경과 침범률이 달라진다. 일반적으로 Fresnel 반경은 양 끝점 부근에서 작고, 경로 중간 부근에서 커진다.
+
 각 샘플 지점에서 다음을 계산한다.
 
 ```text
 clearance_m = los_line_msl - DSM_surface_msl
-fresnel_radius_m = 제1 Fresnel Zone 반경
 fresnel_clearance_ratio = clearance_m / fresnel_radius_m
 ```
 
@@ -294,6 +305,7 @@ Fresnel 일부 침범 또는 여유 부족으로 감점
 | DEM 보조 | DEM은 DSM fallback, AGL 산정 기준, DSM-DEM 차이 분석에 사용한다. |
 | 고정 AGL | 사용자가 입력한 AGL을 단일 운용고도로 보고 계산한다. |
 | 위치 기반 차폐판정 | 차폐물 영향은 절대높이뿐 아니라 발진기지와 드론 사이에서의 상대적 위치에 따라 평가한다. |
+| Fresnel 위치 의존성 | 제1 Fresnel 반경은 d1/d2 거리와 주파수에 따라 샘플 지점별로 계산한다. |
 | 표면복잡도 제외 | 표면장애물 복잡도 보정점수는 기본 점수식에서 제외한다. |
 | 링크품질 직접 주장 금지 | RSSI/SINR/packet loss 없이 통신품질 보장 표현을 쓰지 않는다. |
 | 가중치 고정값 경계 | 0.40/0.60은 초기 휴리스틱으로 기록하고 민감도 분석으로 검토한다. |
@@ -374,12 +386,16 @@ controller_antenna_agl
 각 단면 샘플 지점에서 다음을 계산한다.
 
 ```text
-d1 = 발진점에서 샘플 지점까지 거리
-d2 = 샘플 지점에서 드론 비행위치까지 거리
-F1 = 제1 Fresnel 반경
+c_mps = 299792458
+lambda_m = c_mps / frequency_hz
+d1_m = 발진점에서 샘플 지점까지의 3D 거리
+d2_m = 샘플 지점에서 드론 비행위치까지의 3D 거리
+F1 = sqrt(lambda_m × d1_m × d2_m / (d1_m + d2_m))
 clearance_m = los_line_msl - DSM_surface_msl
 fresnel_clearance_ratio = clearance_m / F1
 ```
+
+`d1_m`과 `d2_m`은 차폐점 또는 샘플 지점의 상대 위치를 반영한다. 따라서 같은 DSM 표면고도라도 발진점과 드론 사이 어느 위치에 있느냐에 따라 Fresnel 반경과 침범률이 달라진다.
 
 ### 침범률 산정
 
@@ -443,12 +459,13 @@ Fresnel 점수 = 100 × (1 - fresnel_intrusion_ratio)
 6. 후보점과 목표 상공점 사이 DSM 단면을 추출한다.
 7. 각 샘플 지점에서 LOS 직선고도를 계산한다.
 8. DSM 표면고도와 LOS 직선고도를 비교하여 DSM 기반 LOS 점수를 계산한다.
-9. 각 샘플 지점에서 Fresnel 반경과 DSM 침범률을 계산한다.
-10. DSM 기반 Fresnel 여유 점수를 계산한다.
-11. 거리점수를 계산한다.
-12. 차폐안정성 점수를 계산한다.
-13. 발진 가능구역 종합점수를 계산한다.
-14. 종합점수를 색상 등급으로 변환한다.
+9. 각 샘플 지점에서 d1, d2, 주파수 기반 제1 Fresnel 반경을 계산한다.
+10. 각 샘플 지점에서 DSM 표면고도의 Fresnel 침범률을 계산한다.
+11. DSM 기반 Fresnel 여유 점수를 계산한다.
+12. 거리점수를 계산한다.
+13. 차폐안정성 점수를 계산한다.
+14. 발진 가능구역 종합점수를 계산한다.
+15. 종합점수를 색상 등급으로 변환한다.
 ```
 
 ---
@@ -498,6 +515,7 @@ Fresnel 점수 = 100 × (1 - fresnel_intrusion_ratio)
 | S6 운용반경 경계 | 거리만 증가 | 거리점수 하락, 초과 지역 제외 |
 | S7 고정 AGL 비교 | 사용자가 입력한 AGL 하나로 계산 | 기본 계산은 단일 AGL 결과만 산출 |
 | S8 장애물 위치 변화 | 같은 높이 장애물을 발진기지 근처/중간/드론 근처에 배치 | 장애물 위치에 따라 LOS/Fresnel 영향이 달라짐 |
+| S9 Fresnel 반경 위치 변화 | 같은 높이 장애물을 경로 시작점/중간/끝점에 배치 | d1/d2 변화에 따라 Fresnel 반경과 침범률이 달라짐 |
 
 ## Stage 3. DEM-only vs DSM-primary 비교
 
@@ -592,6 +610,7 @@ horizontal_distance = 1,000m
 |---|---|
 | synthetic 검증 | 알고리즘 동작 및 경계조건 검증 |
 | AGL 기하 검증 | 동일 장애물이라도 상대 위치에 따라 차폐 영향이 달라지는지 검증 |
+| Fresnel 위치 의존성 검증 | d1/d2와 주파수 변화에 따른 제1 Fresnel 반경 변화 검토 |
 | DEM-only vs DSM-primary 비교 | DSM이 건물·수목 등 표면장애물을 반영하는지 검토 |
 | LOS/Fresnel 가중치 민감도 | LOS와 Fresnel 비율 변화에 따른 색상지도 안정성 비교 |
 | 공개 DEM/DSM 검증 | 지형자료 기반 오프라인 재현성 확인 |
@@ -610,13 +629,14 @@ MVP 단계에서는 다음을 적용한다.
 3. 사용자 입력 AGL은 드론의 단일 고정 운용고도로 사용한다.
 4. 발진기지 안테나 고도와 드론 비행고도를 잇는 3차원 LOS 직선을 기준으로 차폐를 판정한다.
 5. 같은 높이의 장애물이라도 발진기지와 드론 사이의 상대 위치에 따라 LOS/Fresnel 영향이 다르게 계산되어야 한다.
-6. 표면장애물 복잡도 보정점수는 기본 점수식에서 제외한다.
-7. 차폐안정성 점수는 `DSM LOS 0.40 + DSM Fresnel 0.60`으로 시작한다.
-8. LOS가 완전 차단되거나 심각하게 침범된 후보는 Fresnel 점수로 보상하지 않도록 cap 또는 제외 규칙을 둔다.
-9. Fresnel 점수는 내부적으로 연속 점수로 계산하고, 로그와 논문에는 10% 구간도 함께 기록한다.
-10. 고도별 반복계산은 기본 기능이 아니라 선택적 민감도 분석 기능으로 분리한다.
-11. RSSI, SINR, packet loss, 실제 통신 성공률은 산출 대상에서 제외한다.
-12. 모든 실험 로그에 `actual_drone_operation = false`, `actual_link_measurement = false`를 기록한다.
+6. Fresnel 반경은 주파수와 d1/d2 거리관계에 따라 샘플 지점별로 계산한다.
+7. 표면장애물 복잡도 보정점수는 기본 점수식에서 제외한다.
+8. 차폐안정성 점수는 `DSM LOS 0.40 + DSM Fresnel 0.60`으로 시작한다.
+9. LOS가 완전 차단되거나 심각하게 침범된 후보는 Fresnel 점수로 보상하지 않도록 cap 또는 제외 규칙을 둔다.
+10. Fresnel 점수는 내부적으로 연속 점수로 계산하고, 로그와 논문에는 10% 구간도 함께 기록한다.
+11. 고도별 반복계산은 기본 기능이 아니라 선택적 민감도 분석 기능으로 분리한다.
+12. RSSI, SINR, packet loss, 실제 통신 성공률은 산출 대상에서 제외한다.
+13. 모든 실험 로그에 `actual_drone_operation = false`, `actual_link_measurement = false`를 기록한다.
 
 ---
 
@@ -632,8 +652,9 @@ Cloud Execution Agent가 점수식 관련 Task를 수행할 때는 다음 조건
 6. 사용자 입력 AGL을 단일 고정 운용고도로 계산한다.
 7. 발진기지 안테나 고도와 드론 비행고도를 잇는 LOS 직선고도를 샘플 지점별로 계산한다.
 8. DSM 표면고도와 LOS 직선고도, Fresnel 반경을 비교하여 차폐위험 proxy를 산출한다.
-9. 고도별 반복계산은 기본 기능이 아니라 선택적 민감도 분석으로 분리한다.
-10. synthetic DEM/DSM으로 재현 가능한 테스트를 우선 작성한다.
-11. 공개/샘플 DEM·DSM은 경로와 메타데이터만 기록하고 원천 대형 데이터는 커밋하지 않는다.
-12. 출력값 이름에는 `proxy`, `risk`, `score`, `offline` 등 표현을 사용하고 `guaranteed`, `verified link quality`, `communication success` 표현은 사용하지 않는다.
-13. 논문 기록에는 실제 드론운용 없이 산출된 오프라인 분석 결과임을 명시한다.
+9. Fresnel 반경은 `frequency_hz`, `d1_m`, `d2_m`을 사용하여 샘플 지점별로 계산한다.
+10. 고도별 반복계산은 기본 기능이 아니라 선택적 민감도 분석으로 분리한다.
+11. synthetic DEM/DSM으로 재현 가능한 테스트를 우선 작성한다.
+12. 공개/샘플 DEM·DSM은 경로와 메타데이터만 기록하고 원천 대형 데이터는 커밋하지 않는다.
+13. 출력값 이름에는 `proxy`, `risk`, `score`, `offline` 등 표현을 사용하고 `guaranteed`, `verified link quality`, `communication success` 표현은 사용하지 않는다.
+14. 논문 기록에는 실제 드론운용 없이 산출된 오프라인 분석 결과임을 명시한다.
