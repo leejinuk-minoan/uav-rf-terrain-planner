@@ -179,7 +179,7 @@ synthetic DEM/DSM grid에서 발진점과 드론 위치 사이의 지형 profile
 
 - Task: 005 - DSM-based LOS analysis and tests
 - Issue: #15
-- PR: 생성 예정
+- PR: #16
 
 ## 목적
 
@@ -220,29 +220,29 @@ Task 004의 TerrainProfile을 입력으로 받아 발진기지 안테나 MSL과 
 
 - Cloud: GitHub connector file operations
 - Local: Not run in this cloud/GitHub-only context.
-- CI: PR 생성 후 확인 필요
+- CI: GitHub Actions CI success observed for PR #16 head commit before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
 
 ## 실행 명령
 
 - Local commands: Not run in this cloud/GitHub-only context.
-- CI commands: PR 생성 후 GitHub Actions가 install, syntax check, pytest, ruff, mypy를 실행할 것으로 예상
+- CI commands: GitHub Actions executed install, syntax check, pytest, ruff, and mypy successfully on the checked PR #16 run.
 
 ## 결과
 
-- DSM LOS analysis 가능 여부: PR/CI 확인 전
-- Task 005 scaffold CI status: PR 생성 후 확인 필요
-- package install in CI: PR 생성 후 확인 필요
-- syntax check in CI: PR 생성 후 확인 필요
-- pytest in CI: PR 생성 후 확인 필요
-- ruff in CI: PR 생성 후 확인 필요
-- mypy in CI: PR 생성 후 확인 필요
+- DSM LOS analysis 가능 여부: success on the checked PR #16 CI run
+- Task 005 scaffold CI status: success on the checked PR #16 CI run
+- package install in CI: success
+- syntax check in CI: success
+- pytest in CI: success
+- ruff in CI: success
+- mypy in CI: success
 - 색상 등급별 셀 수: 미산출
 - 경로 후보별 실 비행거리: 미산출
 - 500m 경유점 수: 미산출
 
 ## 해석
 
-Task 005는 실제 실험 결과가 아니라 DSM LOS component analysis 준비 단계다. 논문 결과 장에는 아직 반영하지 않는다.
+Task 005는 실제 실험 결과가 아니라 DSM LOS component analysis 준비 단계다. CI success는 LOS analysis 코드와 테스트 코드의 동작 확인에 한정하며, 실제 DEM/DSM 또는 링크품질 검증 결과가 아니다.
 
 ## 한계
 
@@ -260,4 +260,4 @@ Task 005는 실제 실험 결과가 아니라 DSM LOS component analysis 준비 
 
 ## GPT Master 검토 메모
 
-PR 생성 후 LOS line height, DSM clearance, blocked/clear 판정, strict dsm_los_score, 100m/300m/500m/800m geometry example, CI 결과를 기준으로 편입 여부를 판단한다.
+PR #16 생성 후 LOS line height, DSM clearance, blocked/clear 판정, strict dsm_los_score, 100m/300m/500m/800m geometry example, CI 결과를 기준으로 편입 여부를 판단한다. 이 로그 업데이트 이후 follow-up CI 결과도 merge 전 확인해야 한다.
