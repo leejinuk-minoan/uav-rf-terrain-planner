@@ -197,40 +197,10 @@ Task 004의 TerrainProfile을 입력으로 받아 발진기지 안테나 MSL과 
 - actual_drone_operation: false
 - actual_link_measurement: false
 
-## 좌표계 및 범위
-
-- TerrainProfile distance fields 기준 ratio 계산
-- DSM 기준 LOS 침범 판정
-- DEM은 보조 자료이며 기본 LOS 판정면이 아님
-
-## 입력 파라미터
-
-- launch_antenna_msl
-- drone_flight_msl
-- TerrainProfile
-- 주파수 대역: 사용하지 않음, Fresnel Task 범위
-- 색상 등급 임계값: 사용하지 않음
-- 점수식 가중치: strict DSM LOS component score만 산출
-
-## 방법
-
-각 profile sample에서 `ratio = distance_from_start_m / (distance_from_start_m + distance_to_end_m)`로 계산하고, `los_line_msl = launch_antenna_msl + ratio × (drone_flight_msl - launch_antenna_msl)`로 LOS line height를 계산한다. DSM clearance는 `los_line_msl - dsm_msl`이며, `dsm_msl >= los_line_msl`이면 blocked로 판정한다.
-
-## 실행 환경
-
-- Cloud: GitHub connector file operations
-- Local: Not run in this cloud/GitHub-only context.
-- CI: GitHub Actions CI success observed for PR #16 head commit before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
-
-## 실행 명령
-
-- Local commands: Not run in this cloud/GitHub-only context.
-- CI commands: GitHub Actions executed install, syntax check, pytest, ruff, and mypy successfully on the checked PR #16 run.
-
 ## 결과
 
-- DSM LOS analysis 가능 여부: success on the checked PR #16 CI run
-- Task 005 scaffold CI status: success on the checked PR #16 CI run
+- DSM LOS analysis 가능 여부: success
+- Task 005 scaffold CI status: success
 - package install in CI: success
 - syntax check in CI: success
 - pytest in CI: success
@@ -239,10 +209,6 @@ Task 004의 TerrainProfile을 입력으로 받아 발진기지 안테나 MSL과 
 - 색상 등급별 셀 수: 미산출
 - 경로 후보별 실 비행거리: 미산출
 - 500m 경유점 수: 미산출
-
-## 해석
-
-Task 005는 실제 실험 결과가 아니라 DSM LOS component analysis 준비 단계다. CI success는 LOS analysis 코드와 테스트 코드의 동작 확인에 한정하며, 실제 DEM/DSM 또는 링크품질 검증 결과가 아니다.
 
 ## 한계
 
@@ -254,10 +220,93 @@ Task 005는 실제 실험 결과가 아니라 DSM LOS component analysis 준비 
 - 색상지도 classification 없음
 - 지도 렌더링 확인 없음
 
+---
+
+# Experiment EXP-20260708-006
+
+## 관련 Task / Issue / PR
+
+- Task: 006 - DSM-based Fresnel radius and clearance analysis
+- Issue: #17
+- PR: 생성 예정
+
+## 목적
+
+Task 004 TerrainProfile과 Task 005 LineOfSightAnalysis를 입력으로 받아 sample별 제1 Fresnel radius, DSM clearance ratio, Fresnel intrusion ratio, DSM Fresnel sample score, 평균 dsm_fresnel_score를 계산하는 순수 Python DSM Fresnel 분석 구조를 준비한다.
+
+## 데이터 종류
+
+- synthetic terrain profile and DSM LOS analysis only
+- synthetic DEM: TerrainProfile source only
+- synthetic DSM: DSM Fresnel analysis source only
+- 공개/샘플 DEM: 없음
+- 공개/샘플 DSM: 없음
+- 실제 DEM/DSM: 없음
+- 실제 링크상태 데이터: 없음
+- actual_drone_operation: false
+- actual_link_measurement: false
+
+## 좌표계 및 범위
+
+- LineOfSightAnalysis sample distance fields 기준 d1/d2 계산
+- DSM clearance는 Task 005 LOS sample의 dsm_clearance_m 사용
+- 실제 좌표계 변환 또는 실제 GIS file loading 없음
+
+## 입력 파라미터
+
+- frequency_hz
+- LineOfSightAnalysis
+- TerrainProfile은 LOS sample 내부 참조로만 사용
+- 색상 등급 임계값: 사용하지 않음
+- 점수식 가중치: final scoring 통합 없음
+
+## 방법
+
+`lambda_m = 299792458.0 / frequency_hz`로 파장을 계산하고, 각 sample에서 `sqrt(lambda_m × d1_m × d2_m / (d1_m + d2_m))`로 제1 Fresnel radius를 계산한다. DSM clearance ratio는 `dsm_clearance_m / fresnel_radius_m`, Fresnel intrusion ratio는 `max(0.0, 1.0 - clearance_ratio)`의 clamp 형태로 계산한다. Endpoint sample은 radius 0 조건에서 division by zero를 피하고 score 100으로 처리한다.
+
+## 실행 환경
+
+- Cloud: GitHub connector file operations
+- Local: Not run in this cloud/GitHub-only context.
+- CI: PR 생성 후 확인 필요
+
+## 실행 명령
+
+- Local commands: Not run in this cloud/GitHub-only context.
+- CI commands: PR 생성 후 GitHub Actions가 install, syntax check, pytest, ruff, mypy를 실행할 것으로 예상
+
+## 결과
+
+- Fresnel radius/clearance analysis 가능 여부: PR/CI 확인 전
+- Task 006 scaffold CI status: PR 생성 후 확인 필요
+- package install in CI: PR 생성 후 확인 필요
+- syntax check in CI: PR 생성 후 확인 필요
+- pytest in CI: PR 생성 후 확인 필요
+- ruff in CI: PR 생성 후 확인 필요
+- mypy in CI: PR 생성 후 확인 필요
+- 색상 등급별 셀 수: 미산출
+- 경로 후보별 실 비행거리: 미산출
+- 500m 경유점 수: 미산출
+
+## 해석
+
+Task 006은 실제 실험 결과가 아니라 DSM Fresnel component analysis 준비 단계다. 논문 결과 장에는 아직 반영하지 않는다.
+
+## 한계
+
+- 실제 DEM/DSM 없음
+- 실제 링크상태 검증 없음
+- 실제 드론운용 없음
+- final scoring 없음
+- shielding_stability_score 통합 없음
+- overall_score 통합 없음
+- 색상지도 classification 없음
+- 지도 렌더링 확인 없음
+
 ## 논문 반영 가능 여부
 
-방법론의 DSM LOS line analysis, strict LOS cap score 설계, synthetic geometry test design에는 반영 가능. 실제 결과 장에는 아직 반영 불가.
+방법론의 DSM Fresnel radius/clearance analysis, frequency 및 sample position sensitivity test design에는 반영 가능. 실제 결과 장에는 아직 반영 불가.
 
 ## GPT Master 검토 메모
 
-PR #16 생성 후 LOS line height, DSM clearance, blocked/clear 판정, strict dsm_los_score, 100m/300m/500m/800m geometry example, CI 결과를 기준으로 편입 여부를 판단한다. 이 로그 업데이트 이후 follow-up CI 결과도 merge 전 확인해야 한다.
+PR 생성 후 wavelength, Fresnel radius, clearance ratio, intrusion ratio, sample score, dsm_fresnel_score, 2.4GHz/5.8GHz 및 midpoint radius 테스트, CI 결과를 기준으로 편입 여부를 판단한다.
