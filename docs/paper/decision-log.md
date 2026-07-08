@@ -216,3 +216,70 @@ Task 005와 Task 006에서 각각 DSM LOS component와 DSM Fresnel component가 
 ## GPT Master 검토 메모
 
 PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, color-map classification, Streamlit/Folium UI, Top 5 기본 출력이 포함되지 않았는지 확인해야 한다.
+
+### DEC-20260708-10
+
+## 관련 Task / Issue / PR
+
+- Task: 008 - Color map classification and launch-area cell evaluation
+- Issue: #21
+- PR: 생성 예정
+
+## 결정 일자
+
+2026-07-08
+
+## 결정 주체
+
+사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토 필요
+
+## 결정 내용
+
+Task 008에서는 CandidateScore를 color launch-area map용 class로 분류하는 데이터 로직만 구현한다. Green/Yellow/Orange/Red/Excluded threshold는 MVP heuristic이며 실제 통신 성공률 보장값이 아니다. 실제 지도 렌더링, Folium/Streamlit UI, 실제 DEM/DSM 연결은 후속 local-required Task로 분리한다. Top 5 launch-site output은 기본 출력으로 구현하지 않는다.
+
+## 배경
+
+Task 007에서 CandidateScore 산출 구조가 준비되었으므로, 후속 지도 표시 전에 score-only 결과를 color class 데이터로 변환하는 중간 단계를 분리한다.
+
+## 대안
+
+1. Task 008에서 color classification data structure와 판정 로직만 구현
+2. Task 008에서 지도 렌더링과 UI까지 함께 구현
+3. Task 008에서 Top 5/ranking output까지 구현
+
+## 선택 이유
+
+1안을 선택한다. 색상 분류 데이터와 실제 지도 렌더링은 책임이 다르며, UI/지도 검증은 로컬 환경 검증이 필요하다. 또한 기본 출력은 Top 5가 아니라 색상 기반 발진 가능구역 지도이므로 ranking output을 기본 구조로 만들지 않는다.
+
+## 영향받는 모듈
+
+- `src/uav_rf_terrain/classification.py`
+- `tests/test_classification.py`
+- `src/uav_rf_terrain/__init__.py`
+- 향후 색상지도 렌더링 모듈
+
+## 논문 반영 위치
+
+- 방법론: launch-area candidate color classification
+- 재현성: threshold boundary tests, excluded/high-risk handling tests
+- 한계: 실제 지도 렌더링 및 실제 링크상태 검증 전 단계
+
+## 검증 필요사항
+
+- existing ColorClass enum 재사용
+- threshold finite 및 ordering validation
+- within_operation_radius=False 후보 Excluded 처리
+- DSM LOS blocked/high-risk 후보 Red 처리
+- overall_score threshold별 Green/Yellow/Orange/Red 처리
+- Top 5/ranking/RSSI/SINR/packet_loss 필드 부재 확인
+- 지도 렌더링/UI/GIS dependency 부재 확인
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 Task 008 범위에 반영
+- 보류: CI/로컬 테스트 결과
+- 반려: 없음
+
+## GPT Master 검토 메모
+
+PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, Folium/Streamlit UI, map rendering, route planning, Top 5 기본 출력이 포함되지 않았는지 확인해야 한다.
