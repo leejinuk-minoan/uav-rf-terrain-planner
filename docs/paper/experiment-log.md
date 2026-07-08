@@ -367,7 +367,7 @@ PR #20 생성 후 distance_score, shielding_stability_score, overall_score, stri
 
 - Task: 008 - Color map classification and launch-area cell evaluation
 - Issue: #21
-- PR: 생성 예정
+- PR: #22
 
 ## 목적
 
@@ -446,4 +446,4 @@ Task 008은 실제 지도 결과가 아니라 color launch-area map에 사용할
 
 ## GPT Master 검토 메모
 
-PR 생성 후 ColorClass 재사용, threshold validation, within-radius/out-of-radius 분류, LOS blocked Red 처리, score threshold 분류, CI 결과를 기준으로 편입 여부를 판단한다.
+PR #22 생성 후 ColorClass 재사용, threshold validation, within-radius/out-of-radius 분류, LOS blocked Red 처리, score threshold 분류, CI 결과를 기준으로 편입 여부를 판단한다.
