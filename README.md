@@ -122,6 +122,12 @@ Waypoints are offline analysis/reporting points, not flight commands. The output
 
 This task does not implement actual flight execution, autopilot control, map rendering, real DEM/DSM loading, or real link-quality validation.
 
+## Task 011 synthetic end-to-end scenario output scaffold
+
+Task 011 adds a pure Python synthetic end-to-end scenario output scaffold.
+
+The scenario connects candidate scoring, color classification, route candidate evaluation, and waypoint reporting. The output is an offline synthetic analysis example, not a real map, real DEM/DSM result, flight command, or link-quality validation.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
