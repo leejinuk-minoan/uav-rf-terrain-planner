@@ -578,10 +578,9 @@ horizontal_distance = 1,000m
 | A2 | DSM LOS 제거 |
 | A3 | DSM Fresnel 제거 |
 | A4 | distance-only 또는 LOS-only 기준과 DSM 기반 LOS/Fresnel 기준의 요구 고도 차이 |
-| A4 | DSM LOS만 사용 |
-| A5 | DSM Fresnel만 사용 |
-| A6 | 거리만 사용 |
-| A7 | DEM-only 계산 |
+| A5 | DSM LOS만 사용 |
+| A6 | DSM Fresnel만 사용 |
+| A7 | 거리만 사용 |
 
 ## Stage 7. 공개/샘플 DEM·DSM 오프라인 검증
 
