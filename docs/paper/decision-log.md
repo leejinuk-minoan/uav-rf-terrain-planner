@@ -158,64 +158,15 @@ Task 006에서는 LOS analysis 결과를 기반으로 DSM Fresnel radius/clearan
 - Issue: #19
 - PR: #20
 
-## 결정 일자
-
-2026-07-08
-
-## 결정 주체
-
-사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토 필요
-
 ## 결정 내용
 
 Task 007에서는 DSM LOS component, DSM Fresnel component, distance component를 통합해 candidate score만 산출한다. 색상지도 classification과 UI는 후속 Task로 분리한다. strict LOS cap은 shielding_stability_score에 적용한다. distance_score는 운용반경 여유도 proxy이며 실제 RF 품질 점수가 아니다.
-
-## 배경
-
-Task 005와 Task 006에서 각각 DSM LOS component와 DSM Fresnel component가 준비되었으므로, 후속 색상지도 classification 전에 candidate-level scoring integration을 순수 Python으로 분리 구현한다. 이 단계는 점수 산출까지만 담당하고 지도 색상 등급화는 다음 Task로 분리한다.
-
-## 대안
-
-1. Task 007에서 score integration만 구현
-2. Task 007에서 color map classification까지 함께 구현
-3. Task 007에서 Top 5/ranking output까지 구현
-
-## 선택 이유
-
-1안을 선택한다. 점수 산출, 색상지도 분류, UI 출력은 책임이 다른 단계이므로 분리해야 한다. 또한 기본 출력은 Top 5가 아니라 색상 기반 발진 가능구역 지도이므로 ranking output을 기본 구조로 만들지 않는다.
-
-## 영향받는 모듈
-
-- `src/uav_rf_terrain/scoring.py`
-- `tests/test_scoring.py`
-- `src/uav_rf_terrain/__init__.py`
-- 향후 색상지도 classification 모듈
-
-## 논문 반영 위치
-
-- 방법론: scoring integration
-- 재현성: distance reserve, strict LOS cap, weight validation tests
-- 한계: 색상지도 classification 및 실제 링크상태 검증 전 단계
-
-## 검증 필요사항
-
-- distance_score 계산 및 clamp
-- shielding_stability_score LOS/Fresnel 40/60 계산
-- dsm_los_score == 0 strict cap
-- overall_score shielding/distance 80/20 계산
-- score input finite 및 [0,100] 검증
-- weight finite, non-negative, normalized 검증
-- Top 5/ranking/RSSI/SINR/packet_loss 필드 부재 확인
 
 ## 사용자 승인 여부
 
 - 승인: 사용자 지시로 Task 007 범위에 반영
 - 보류: CI/로컬 테스트 결과
 - 반려: 없음
-
-## GPT Master 검토 메모
-
-PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, color-map classification, Streamlit/Folium UI, Top 5 기본 출력이 포함되지 않았는지 확인해야 한다.
 
 ### DEC-20260708-10
 
@@ -225,54 +176,9 @@ PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, color-map classi
 - Issue: #21
 - PR: #22
 
-## 결정 일자
-
-2026-07-08
-
-## 결정 주체
-
-사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토 필요
-
 ## 결정 내용
 
 Task 008에서는 CandidateScore를 color launch-area map용 class로 분류하는 데이터 로직만 구현한다. Green/Yellow/Orange/Red/Excluded threshold는 MVP heuristic이며 실제 통신 성공률 보장값이 아니다. 실제 지도 렌더링, Folium/Streamlit UI, 실제 DEM/DSM 연결은 후속 local-required Task로 분리한다. Top 5 launch-site output은 기본 출력으로 구현하지 않는다.
-
-## 배경
-
-Task 007에서 CandidateScore 산출 구조가 준비되었으므로, 후속 지도 표시 전에 score-only 결과를 color class 데이터로 변환하는 중간 단계를 분리한다.
-
-## 대안
-
-1. Task 008에서 color classification data structure와 판정 로직만 구현
-2. Task 008에서 지도 렌더링과 UI까지 함께 구현
-3. Task 008에서 Top 5/ranking output까지 구현
-
-## 선택 이유
-
-1안을 선택한다. 색상 분류 데이터와 실제 지도 렌더링은 책임이 다르며, UI/지도 검증은 로컬 환경 검증이 필요하다. 또한 기본 출력은 Top 5가 아니라 색상 기반 발진 가능구역 지도이므로 ranking output을 기본 구조로 만들지 않는다.
-
-## 영향받는 모듈
-
-- `src/uav_rf_terrain/classification.py`
-- `tests/test_classification.py`
-- `src/uav_rf_terrain/__init__.py`
-- 향후 색상지도 렌더링 모듈
-
-## 논문 반영 위치
-
-- 방법론: launch-area candidate color classification
-- 재현성: threshold boundary tests, excluded/high-risk handling tests
-- 한계: 실제 지도 렌더링 및 실제 링크상태 검증 전 단계
-
-## 검증 필요사항
-
-- existing ColorClass enum 재사용
-- threshold finite 및 ordering validation
-- within_operation_radius=False 후보 Excluded 처리
-- DSM LOS blocked/high-risk 후보 Red 처리
-- overall_score threshold별 Green/Yellow/Orange/Red 처리
-- Top 5/ranking/RSSI/SINR/packet_loss 필드 부재 확인
-- 지도 렌더링/UI/GIS dependency 부재 확인
 
 ## 사용자 승인 여부
 
@@ -280,6 +186,74 @@ Task 007에서 CandidateScore 산출 구조가 준비되었으므로, 후속 지
 - 보류: CI/로컬 테스트 결과
 - 반려: 없음
 
+### DEC-20260709-11
+
+## 관련 Task / Issue / PR
+
+- Task: 009 - Route candidate evaluation scaffold
+- Issue: #24
+- PR: 생성 예정
+
+## 결정 일자
+
+2026-07-09
+
+## 결정 주체
+
+사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토 필요
+
+## 결정 내용
+
+Route candidate는 실제 비행명령이 아니라 후속 지도/UI 및 논문 분석을 위한 offline route evaluation data structure로 정의한다. High-risk cell은 DSM 기반 차폐위험 Red/Orange cell만 의미하며, 적 위협·방공망·회피기동·침투경로·공격경로를 의미하지 않는다.
+
+## 배경
+
+Task 008에서 color classification data structure가 준비되었으므로, 사용자가 색상지도에서 발진기지를 선택한 이후 후속 UI/지도에 표시할 수 있는 경로 후보 데이터 구조와 비용 계산 scaffold를 분리 구현한다.
+
+## 대안
+
+1. Task 009에서 offline route candidate data structure와 cost calculation logic만 구현
+2. Task 009에서 지도 렌더링과 waypoint 500m output까지 함께 구현
+3. Task 009에서 실제 비행 실행 또는 autopilot/control API까지 구현
+
+## 선택 이유
+
+1안을 선택한다. route candidate 평가, waypoint 산출, 지도 렌더링, UI 검증은 책임이 다른 단계이므로 분리해야 한다. 실제 비행 실행, autopilot/control API, 작전 회피·침투·공격 경로 표현은 본 프로젝트의 안전 경계 밖이다.
+
+## 영향받는 모듈
+
+- `src/uav_rf_terrain/routing.py`
+- `tests/test_routing.py`
+- `src/uav_rf_terrain/__init__.py`
+- 향후 waypoint 및 UI 모듈
+
+## 논문 반영 위치
+
+- 방법론: route candidate cost model
+- 재현성: route type weights, high-risk count, route_cost tests
+- 결과/민감도 분석: route_total_distance, route_mean_shielding_score, route_high_risk_cell_count
+- 한계: 실제 지도 렌더링 및 실제 링크상태 검증 전 단계
+
+## 검증 필요사항
+
+- RouteCandidateType 3종 구현
+- default route weights 구현
+- RouteCostWeights, RouteCell, RouteCandidate validation
+- total distance, mean/min shielding score 계산
+- RED/ORANGE high-risk cell count
+- EXCLUDED route cell rejection
+- route_cost 계산
+- lowest-cost selection 및 tie order 유지
+- RSSI/SINR/packet_loss 필드 부재 확인
+- flight command/autopilot/control field 부재 확인
+- map/GIS dependency 부재 확인
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 Task 009 범위에 반영
+- 보류: CI/로컬 테스트 결과
+- 반려: 없음
+
 ## GPT Master 검토 메모
 
-PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, Folium/Streamlit UI, map rendering, route planning, Top 5 기본 출력이 포함되지 않았는지 확인해야 한다.
+PR 생성 후 실제 DEM/DSM, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인해야 한다.
