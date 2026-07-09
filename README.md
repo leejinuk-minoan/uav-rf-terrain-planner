@@ -106,6 +106,14 @@ Classification uses `CandidateScore`, operation-radius inclusion, DSM LOS status
 
 This task does not render maps, use Folium/Streamlit, load real DEM/DSM files, or create Top 5 launch-site output.
 
+## Task 009 route candidate evaluation scaffold
+
+Task 009 adds pure Python route candidate evaluation scaffolding.
+
+The route candidates are offline analysis data structures for future map/UI output. The task defines shielding-minimum, distance-shielding balanced, and detour-stability route candidate types. Costs combine shielding risk, distance cost, and DSM shielding high-risk cell penalty.
+
+This task does not implement actual flight execution, autopilot control, map rendering, real DEM/DSM loading, or real link-quality validation.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
