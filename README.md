@@ -128,6 +128,14 @@ Task 011 adds a pure Python synthetic end-to-end scenario output scaffold.
 
 The scenario connects candidate scoring, color classification, route candidate evaluation, and waypoint reporting. The output is an offline synthetic analysis example, not a real map, real DEM/DSM result, flight command, or link-quality validation.
 
+## Task 012 map/UI output data scaffold
+
+Task 012 adds pure Python map/UI output data scaffolding.
+
+The output package contains candidate cell, route, and waypoint feature records for future UI/map rendering. The output is map-ready data, not a rendered map.
+
+This task does not implement real DEM/DSM loading, Folium/Streamlit, map rendering, flight commands, or link-quality validation.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
