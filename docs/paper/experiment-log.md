@@ -126,7 +126,7 @@
 
 - Task: 009 - Route candidate evaluation scaffold
 - Issue: #24
-- PR: 생성 예정
+- PR: #25
 
 ## 목적
 
