@@ -16,6 +16,7 @@
 6. 차폐 최소 / 거리-차폐 균형 / 우회 안정 경로 3개 제시
 7. 경로별 실 비행거리 산정
 8. 약 500m 단위 경유점 생성 및 AGL 고도·발진기지 기준 고도차 표기
+9. 향후 기능: DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL 산출 및 직선 운용구간 내 최고 지표고 기준 AGL 변환
 
 ## 발진기지 표시 기준
 
@@ -136,6 +137,16 @@ The output package contains candidate cell, route, and waypoint feature records 
 
 This task does not implement real DEM/DSM loading, Folium/Streamlit, map rendering, flight commands, or link-quality validation.
 
+## 향후 고도 판단 보조 기능
+
+향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
+
+이 기능은 오프라인 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 고도 판단 보조 기능이며, 실제 정찰 성공, 실제 통신 가능, 실제 비행 가능, 또는 공역승인 최적고도를 보장하지 않는다.
+
+## 제품화·배포 로드맵
+
+Android/TMMR offline은 논문 핵심 기능이 아니라 현장 운용자의 사용성을 높이기 위한 제품화·배포 전략으로 별도 관리한다. 구체 계획은 `docs/deployment/android-tmmr-offline-plan.md`에 둔다.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
@@ -164,6 +175,7 @@ Cloud Execution Agent는 로컬 명령을 직접 실행하지 않는다. 실제 
 - `docs/agent-operations-plan.md`: Codex/Claude Code 교대 운영 플랜
 - `docs/github-app-limit-report.md`: GitHub 앱 작업 가능 범위 점검 보고
 - `docs/paper/score-model-validation-plan.md`: 실제 드론운용 없는 오프라인 점수식 검증 계획
+- `docs/deployment/android-tmmr-offline-plan.md`: Android/TMMR offline 제품화·배포 로드맵
 
 ## 개발 원칙
 
