@@ -355,3 +355,75 @@ Task 008에서 color classification data structure가 준비되었으므로, 사
 ## GPT Master 검토 메모
 
 PR #25는 코드 기준 Task 009 acceptance criteria를 충족한다. 실제 DEM/DSM, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인했다. CI success 확인 후 merge 가능하다.
+
+### DEC-20260709-12
+
+## 관련 Task / Issue / PR
+
+- Task: 010 - 500m waypoint output scaffold
+- Issue: #27
+- PR: 생성 예정
+
+## 결정 일자
+
+2026-07-09
+
+## 결정 주체
+
+사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토 필요
+
+## 결정 내용
+
+Waypoint는 실제 비행명령이 아니라 후속 지도/UI 및 논문 분석을 위한 offline route reporting point로 정의한다. 약 500m 간격 waypoint는 분석·보고용 sampling output이며, autopilot/control waypoint가 아니다.
+
+## 배경
+
+Task 009에서 route candidate evaluation scaffold가 준비되었으므로, 후속 지도/UI와 논문 표·부록에 사용할 route reporting point data structure를 분리 구현한다.
+
+## 대안
+
+1. Task 010에서 offline waypoint report data structure와 약 500m sampling helper만 구현
+2. Task 010에서 interpolation 고급 구현까지 포함
+3. Task 010에서 실제 flight command/autopilot/control waypoint까지 구현
+
+## 선택 이유
+
+1안을 선택한다. 보고용 waypoint sampling과 실제 지도 렌더링, interpolation, flight execution은 책임이 다른 단계이므로 분리해야 한다. 실제 flight command, autopilot/control integration은 본 프로젝트의 안전 경계 밖이다.
+
+## 영향받는 모듈
+
+- `src/uav_rf_terrain/waypoints.py`
+- `tests/test_waypoints.py`
+- `src/uav_rf_terrain/__init__.py`
+- 향후 지도/UI 모듈
+
+## 논문 반영 위치
+
+- 방법론: waypoint report model
+- 재현성: spacing, include_start/include_end, source point validation tests
+- 결과/민감도 분석: route waypoint count, cumulative distance, segment distance, AGL/MSL, launch-height difference, red/orange waypoint count
+- 한계: 실제 지도 렌더링 및 실제 비행명령 검증 전 단계
+
+## 검증 필요사항
+
+- WaypointSourcePoint, WaypointSamplingConfig, RouteWaypoint, RouteWaypointReport validation
+- 500m spacing source point selection
+- include_start/include_end option
+- flight_msl_m = terrain_msl_m + flight_agl_m 계산
+- height_difference_from_launch_m 계산
+- segment distance 계산
+- red/orange waypoint count summary
+- EXCLUDED source point rejection
+- RSSI/SINR/packet_loss 필드 부재 확인
+- flight command/autopilot/control field 부재 확인
+- map/GIS dependency 부재 확인
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 Task 010 범위에 반영
+- 보류: CI/로컬 테스트 결과
+- 반려: 없음
+
+## GPT Master 검토 메모
+
+PR 생성 후 waypoint가 실제 비행명령이나 autopilot/control waypoint가 아니라 offline route reporting point로만 구현되었는지 확인해야 한다. 실제 DEM/DSM loading, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지도 확인해야 한다.
