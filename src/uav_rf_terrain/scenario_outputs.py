@@ -30,6 +30,9 @@ from .waypoints import (
     summarize_waypoint_report,
 )
 
+CandidateSpec = tuple[str, float, float, float, float, bool]
+RouteSpec = tuple[str, RouteCandidateType, tuple[RouteCell, ...], tuple[WaypointSourcePoint, ...]]
+
 
 class ScenarioOutputError(ValueError):
     """Raised when synthetic scenario output inputs or records are invalid."""
@@ -97,65 +100,37 @@ class SyntheticEndToEndScenario:
 def build_synthetic_candidate_records() -> tuple[SyntheticCandidateRecord, ...]:
     """Build synthetic candidate score and color classification records."""
 
-    candidate_specs = (
-        {
-            "candidate_id": "candidate-green",
-            "distance_3d_m": 1_000.0,
-            "operating_radius_m": 5_000.0,
-            "dsm_los_score": 100.0,
-            "dsm_fresnel_score": 95.0,
-            "within_operation_radius": True,
-        },
-        {
-            "candidate_id": "candidate-yellow",
-            "distance_3d_m": 3_000.0,
-            "operating_radius_m": 5_000.0,
-            "dsm_los_score": 100.0,
-            "dsm_fresnel_score": 60.0,
-            "within_operation_radius": True,
-        },
-        {
-            "candidate_id": "candidate-orange",
-            "distance_3d_m": 3_500.0,
-            "operating_radius_m": 5_000.0,
-            "dsm_los_score": 100.0,
-            "dsm_fresnel_score": 35.0,
-            "within_operation_radius": True,
-        },
-        {
-            "candidate_id": "candidate-red-los-blocked",
-            "distance_3d_m": 1_000.0,
-            "operating_radius_m": 5_000.0,
-            "dsm_los_score": 0.0,
-            "dsm_fresnel_score": 100.0,
-            "within_operation_radius": True,
-        },
-        {
-            "candidate_id": "candidate-excluded-out-of-radius",
-            "distance_3d_m": 6_000.0,
-            "operating_radius_m": 5_000.0,
-            "dsm_los_score": 100.0,
-            "dsm_fresnel_score": 90.0,
-            "within_operation_radius": False,
-        },
+    candidate_specs: tuple[CandidateSpec, ...] = (
+        ("candidate-green", 1_000.0, 5_000.0, 100.0, 95.0, True),
+        ("candidate-yellow", 3_000.0, 5_000.0, 100.0, 60.0, True),
+        ("candidate-orange", 3_500.0, 5_000.0, 100.0, 35.0, True),
+        ("candidate-red-los-blocked", 1_000.0, 5_000.0, 0.0, 100.0, True),
+        ("candidate-excluded-out-of-radius", 6_000.0, 5_000.0, 100.0, 90.0, False),
     )
 
     records: list[SyntheticCandidateRecord] = []
-    for spec in candidate_specs:
+    for (
+        candidate_id,
+        distance_3d_m,
+        operating_radius_m,
+        dsm_los_score,
+        dsm_fresnel_score,
+        within_operation_radius,
+    ) in candidate_specs:
         candidate_score = compute_candidate_score(
-            distance_3d_m=float(spec["distance_3d_m"]),
-            operating_radius_m=float(spec["operating_radius_m"]),
-            dsm_los_score=float(spec["dsm_los_score"]),
-            dsm_fresnel_score=float(spec["dsm_fresnel_score"]),
+            distance_3d_m=distance_3d_m,
+            operating_radius_m=operating_radius_m,
+            dsm_los_score=dsm_los_score,
+            dsm_fresnel_score=dsm_fresnel_score,
         )
         evaluation = evaluate_launch_area_cell(
-            cell_id=str(spec["candidate_id"]),
+            cell_id=candidate_id,
             candidate_score=candidate_score,
-            within_operation_radius=bool(spec["within_operation_radius"]),
+            within_operation_radius=within_operation_radius,
         )
         records.append(
             SyntheticCandidateRecord(
-                candidate_id=str(spec["candidate_id"]),
+                candidate_id=candidate_id,
                 candidate_score=candidate_score,
                 color_class=evaluation.color_class,
                 within_operation_radius=evaluation.within_operation_radius,
@@ -168,7 +143,7 @@ def build_synthetic_candidate_records() -> tuple[SyntheticCandidateRecord, ...]:
 def build_synthetic_route_outputs() -> tuple[SyntheticRouteOutput, ...]:
     """Build three synthetic route outputs with matching waypoint reports."""
 
-    route_specs = (
+    route_specs: tuple[RouteSpec, ...] = (
         (
             "route-shielding-minimum",
             RouteCandidateType.SHIELDING_MINIMUM,
