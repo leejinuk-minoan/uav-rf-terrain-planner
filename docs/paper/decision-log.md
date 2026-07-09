@@ -427,3 +427,76 @@ Task 009에서 route candidate evaluation scaffold가 준비되었으므로, 후
 ## GPT Master 검토 메모
 
 PR #28은 코드 기준 Task 010 acceptance criteria를 충족한다. Waypoint가 실제 비행명령이나 autopilot/control waypoint가 아니라 offline route reporting point로만 구현되었는지 확인했다. 실제 DEM/DSM loading, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인했다. CI success 확인 후 merge 가능하다.
+
+### DEC-20260709-13
+
+## 관련 Task / Issue / PR
+
+- Task: 011 - Synthetic end-to-end scenario output scaffold
+- Issue: #29
+- PR: #30
+
+## 결정 일자
+
+2026-07-09
+
+## 결정 주체
+
+사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토
+
+## 결정 내용
+
+Task 011은 실제 지도/UI 구현이 아니라 candidate scoring, color classification, route candidate, waypoint report를 synthetic data로 연결하는 offline end-to-end output scaffold로 정의한다.
+
+## 배경
+
+Task 007~010에서 scoring, classification, routing, waypoint reporting 구조가 각각 준비되었으므로, 실제 DEM/DSM 또는 지도 UI 연결 전에 synthetic data 기준으로 모듈 연결성을 확인하는 재현 가능한 scenario output을 분리 구현한다.
+
+## 대안
+
+1. Task 011에서 synthetic end-to-end output data structure와 example summary만 구현
+2. Task 011에서 실제 DEM/DSM loading까지 포함
+3. Task 011에서 지도 렌더링 또는 UI까지 포함
+4. Task 011에서 실제 운용 검증 또는 실제 링크품질 검증까지 포함
+
+## 선택 이유
+
+1안을 선택한다. Synthetic pipeline consistency check와 실제 지형 적용, 지도 렌더링, UI 검증은 책임이 다른 단계이므로 분리해야 한다. 실제 운용 검증 및 링크품질 검증은 본 Task와 본 프로젝트 MVP의 범위 밖이다.
+
+## 영향받는 모듈
+
+- `src/uav_rf_terrain/scenario_outputs.py`
+- `tests/test_scenario_outputs.py`
+- `examples/synthetic_end_to_end.py`
+- `src/uav_rf_terrain/__init__.py`
+- 향후 실제 지형 적용 및 UI 모듈
+
+## 논문 반영 위치
+
+- 방법론: candidate-to-waypoint synthetic report model
+- 재현성: synthetic candidate color counts, route outputs, selected route summary, waypoint report summary
+- 결과/민감도 분석 준비: candidate color distribution, selected route cost/distance, waypoint counts
+- 한계: 실제 DEM/DSM 및 지도 렌더링 전 단계
+
+## 검증 필요사항
+
+- SyntheticCandidateRecord, SyntheticRouteOutput, SyntheticEndToEndScenario validation
+- CandidateScore와 ColorClass 연결 확인
+- RouteCandidate와 RouteWaypointReport 연결 확인
+- candidate color counts summary
+- selected route summary
+- example script output
+- RSSI/SINR/packet_loss 필드 부재 확인
+- flight command/autopilot/control field 부재 확인
+- map/GIS dependency 부재 확인
+- 기존 experiment/decision/pr-review logs 삭제·축약 여부 확인
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 Task 011 범위에 반영
+- 보류: 없음
+- 반려: 없음
+
+## GPT Master 검토 메모
+
+PR #30은 코드 기준 Task 011 acceptance criteria를 충족한다. Synthetic end-to-end output이 실제 지도/UI 구현이 아니라 candidate scoring, color classification, route candidate, waypoint report를 synthetic data로 연결하는 offline scenario output scaffold로만 구현되었는지 확인했다. 실제 DEM/DSM loading, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인했다. CI success 확인 후 merge 가능하다.

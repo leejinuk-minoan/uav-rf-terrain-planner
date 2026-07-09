@@ -75,6 +75,17 @@ from .routing import (
     default_route_cost_weights,
     select_lowest_cost_route,
 )
+from .scenario_outputs import (
+    ScenarioOutputError,
+    SyntheticCandidateRecord,
+    SyntheticEndToEndScenario,
+    SyntheticRouteOutput,
+    build_synthetic_candidate_records,
+    build_synthetic_end_to_end_scenario,
+    build_synthetic_route_outputs,
+    format_synthetic_end_to_end_summary,
+    summarize_synthetic_end_to_end_scenario,
+)
 from .schemas import ColorClass, LaunchAreaCellScore, MissionInput, OutputMode, TerrainMode
 from .scoring import (
     CandidateScore,
@@ -145,9 +156,13 @@ __all__ = [
     "RouteWaypointReport",
     "RoutingError",
     "SHIELDING_WEIGHT",
+    "ScenarioOutputError",
     "ScoreComponentWeights",
     "ScoreWeights",
     "ScoringError",
+    "SyntheticCandidateRecord",
+    "SyntheticEndToEndScenario",
+    "SyntheticRouteOutput",
     "SyntheticTerrainError",
     "SyntheticTerrainGrid",
     "TerrainMode",
@@ -163,6 +178,9 @@ __all__ = [
     "available_synthetic_scenarios",
     "build_route_candidate",
     "build_route_waypoints",
+    "build_synthetic_candidate_records",
+    "build_synthetic_end_to_end_scenario",
+    "build_synthetic_route_outputs",
     "classification_reason",
     "classify_candidate_score",
     "clamp_score",
@@ -193,6 +211,7 @@ __all__ = [
     "extract_terrain_profile",
     "filter_within_operation_radius",
     "first_fresnel_radius_m",
+    "format_synthetic_end_to_end_summary",
     "generate_candidate_grid",
     "grid_index_to_local_point",
     "local_offset_point",
@@ -200,6 +219,7 @@ __all__ = [
     "mgrs_to_wgs84",
     "select_lowest_cost_route",
     "select_waypoint_source_points",
+    "summarize_synthetic_end_to_end_scenario",
     "summarize_waypoint_report",
     "wavelength_m",
 ]
