@@ -25,16 +25,17 @@ def make_source_point(
     cumulative_distance_m: float,
     color_class: ColorClass = ColorClass.GREEN,
     terrain_msl_m: float = 100.0,
-    surface_msl_m: float = 105.0,
+    surface_msl_m: float | None = None,
     shielding_stability_score: float = 90.0,
     overall_score: float = 85.0,
 ) -> WaypointSourcePoint:
+    resolved_surface_msl_m = terrain_msl_m + 5.0 if surface_msl_m is None else surface_msl_m
     return WaypointSourcePoint(
         point_id=point_id,
         x_m=cumulative_distance_m,
         y_m=0.0,
         terrain_msl_m=terrain_msl_m,
-        surface_msl_m=surface_msl_m,
+        surface_msl_m=resolved_surface_msl_m,
         cumulative_distance_m=cumulative_distance_m,
         color_class=color_class,
         shielding_stability_score=shielding_stability_score,
