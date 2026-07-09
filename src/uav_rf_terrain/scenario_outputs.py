@@ -285,21 +285,23 @@ def format_synthetic_end_to_end_summary(
     if not isinstance(scenario, SyntheticEndToEndScenario):
         raise ScenarioOutputError("scenario must be a SyntheticEndToEndScenario instance.")
     summary = scenario.summary or summarize_synthetic_end_to_end_scenario(scenario)
+    selected_route_cost = float(summary["selected_route_cost"])
+    selected_route_total_distance_m = float(summary["selected_route_total_distance_m"])
     return "\n".join(
         (
             "Synthetic/offline end-to-end scenario summary",
             f"Scenario: {summary['scenario_name']}",
             "Candidate color counts: "
-            f"green={summary['green_candidate_count']}, "
-            f"yellow={summary['yellow_candidate_count']}, "
-            f"orange={summary['orange_candidate_count']}, "
-            f"red={summary['red_candidate_count']}, "
-            f"excluded={summary['excluded_candidate_count']}",
-            f"Route count: {summary['route_count']}",
+            f"green={int(summary['green_candidate_count'])}, "
+            f"yellow={int(summary['yellow_candidate_count'])}, "
+            f"orange={int(summary['orange_candidate_count'])}, "
+            f"red={int(summary['red_candidate_count'])}, "
+            f"excluded={int(summary['excluded_candidate_count'])}",
+            f"Route count: {int(summary['route_count'])}",
             f"Selected route id: {summary['selected_route_id']}",
-            f"Selected route cost: {summary['selected_route_cost']:.3f}",
-            f"Selected route distance m: {summary['selected_route_total_distance_m']:.3f}",
-            f"Selected route waypoint count: {summary['selected_route_waypoint_count']}",
+            f"Selected route cost: {selected_route_cost:.3f}",
+            f"Selected route distance m: {selected_route_total_distance_m:.3f}",
+            f"Selected route waypoint count: {int(summary['selected_route_waypoint_count'])}",
             "This is a reproducible synthetic analysis example, not a real map or field validation.",
         )
     )
