@@ -10,6 +10,8 @@
 
 본 문서는 UAV RF Terrain Planner 프로젝트의 학회 풀 페이퍼 작성을 준비하기 위한 관리 문서다. 논문 최종 작성은 GPT Master Agent가 총괄하며, Cloud Execution Agent, Codex, Claude Code는 Task별 작업기록과 검증 근거를 제공한다.
 
+Task 014 이후 논문 기록 작성자는 먼저 `docs/paper/log-structure.md`를 읽고, 신규 기록은 `docs/paper/decisions/`, `docs/paper/research-notes/`, `docs/paper/experiments/`, `docs/paper/pr-reviews/` 아래의 개별 파일로 작성한다. 기존 장문 로그는 historical archive 및 legacy index로만 참조한다. 제품화 또는 배포 로드맵 항목은 논문 기여로 오해되지 않도록 논문 범위와 분리해 기록하며, 공개 저장소에는 민감 좌표, 운용성 세부자료, 계정 정보, 토큰, 키, 비공개 경로를 남기지 않는다.
+
 ---
 
 ## 2. 논문 작성 책임 구분

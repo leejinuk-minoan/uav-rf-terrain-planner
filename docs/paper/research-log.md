@@ -1,5 +1,9 @@
 # Research Log
 
+> Task 014 이후 이 문서는 historical archive 및 legacy index로 유지한다.
+> 신규 기록은 장문 누적을 피하기 위해 docs/paper/research-notes/ 아래의 개별 파일로 작성한다.
+> 기존 기록은 삭제하거나 축약하지 않는다.
+
 책임 주체: GPT Master Agent  
 목적: Task별 연구적 의미, 구현 근거, 논문 반영 위치를 누적 기록한다.
 

@@ -174,8 +174,11 @@ Cloud Execution Agent는 로컬 명령을 직접 실행하지 않는다. 실제 
 - `docs/research/research-index.md`: 선행연구 자료집 및 모델 반영안
 - `docs/agent-operations-plan.md`: Codex/Claude Code 교대 운영 플랜
 - `docs/github-app-limit-report.md`: GitHub 앱 작업 가능 범위 점검 보고
+- `docs/paper/log-structure.md`: Task 014 이후 논문 기록 분산 구조와 작성 규칙
 - `docs/paper/score-model-validation-plan.md`: 실제 드론운용 없는 오프라인 점수식 검증 계획
 - `docs/deployment/android-tmmr-offline-plan.md`: Android/TMMR offline 제품화·배포 로드맵
+
+Task 014 이후 논문용 의사결정, 연구 노트, 실험 기록, PR 검토 기록은 장문 누적 로그에 계속 덧붙이지 않고 `docs/paper/decisions/`, `docs/paper/research-notes/`, `docs/paper/experiments/`, `docs/paper/pr-reviews/` 아래의 개별 파일로 작성한다. 기존 `docs/paper/*-log.md` 파일은 historical archive 및 legacy index로 보존한다.
 
 ## 개발 원칙
 
