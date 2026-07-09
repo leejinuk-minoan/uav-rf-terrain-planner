@@ -114,6 +114,14 @@ The route candidates are offline analysis data structures for future map/UI outp
 
 This task does not implement actual flight execution, autopilot control, map rendering, real DEM/DSM loading, or real link-quality validation.
 
+## Task 010 waypoint output scaffold
+
+Task 010 adds pure Python waypoint output scaffolding.
+
+Waypoints are offline analysis/reporting points, not flight commands. The output includes cumulative distance, segment distance, AGL, MSL, launch-height difference, color class, and shielding score.
+
+This task does not implement actual flight execution, autopilot control, map rendering, real DEM/DSM loading, or real link-quality validation.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
