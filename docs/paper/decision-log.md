@@ -1,5 +1,9 @@
 # Decision Log
 
+> Task 014 이후 이 문서는 historical archive 및 legacy index로 유지한다.
+> 신규 기록은 장문 누적을 피하기 위해 docs/paper/decisions/ 아래의 개별 파일로 작성한다.
+> 기존 기록은 삭제하거나 축약하지 않는다.
+
 책임 주체: GPT Master Agent  
 목적: 프로젝트의 주요 설계 판단과 사용자 승인 여부를 누적 기록한다.
 

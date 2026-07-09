@@ -111,6 +111,20 @@ Codex와 Claude Code는 작업 완료 시 다음을 남긴다.
 - 논문에 반영 가능한 결과와 반영 불가능한 결과
 - 추가 검증 필요사항
 
+### 4.4 Task 014 이후 논문 기록 분산 구조
+
+Task 014 이후 신규 논문 기록은 장문 누적 로그에 직접 계속 추가하지 않고 `docs/paper/log-structure.md`의 규칙을 따른다.
+
+- 의사결정 기록은 `docs/paper/decisions/` 아래에 개별 파일로 작성한다.
+- 연구 노트는 `docs/paper/research-notes/` 아래에 개별 파일로 작성한다.
+- 실험 기록은 `docs/paper/experiments/` 아래에 개별 파일로 작성한다.
+- PR 검토 기록은 `docs/paper/pr-reviews/` 아래에 개별 파일로 작성한다.
+- 신규 기록은 `docs/paper/templates/`의 해당 템플릿을 사용한다.
+- 기존 `docs/paper/research-log.md`, `docs/paper/decision-log.md`, `docs/paper/experiment-log.md`, `docs/paper/pr-review-log.md`는 historical archive 및 legacy index로 유지한다.
+- GPT Master가 기록 구조, 논문 반영 경계, 제품/배포 경계를 최종 판단한다.
+- Codex는 긴 문서 직접 수정이 필요한 경우에만 제한적으로 투입하고, 신규 기록은 가능한 한 개별 파일로 작성한다.
+- 공개 저장소에 남길 수 없는 좌표, 작전성 데이터, 계정 정보, 토큰, 키, 비공개 경로는 기록하지 않는다.
+
 ---
 
 ## 5. 점수식 검증 및 보완 원칙

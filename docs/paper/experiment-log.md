@@ -1,5 +1,9 @@
 # Experiment Log
 
+> Task 014 이후 이 문서는 historical archive 및 legacy index로 유지한다.
+> 신규 기록은 장문 누적을 피하기 위해 docs/paper/experiments/ 아래의 개별 파일로 작성한다.
+> 기존 기록은 삭제하거나 축약하지 않는다.
+
 책임 주체: GPT Master Agent  
 목적: synthetic 및 공개/샘플 DEM·DSM 기반 실험 조건과 결과를 누적 기록한다.
 

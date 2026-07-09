@@ -1,5 +1,9 @@
 # PR Review Log
 
+> Task 014 이후 이 문서는 historical archive 및 legacy index로 유지한다.
+> 신규 기록은 장문 누적을 피하기 위해 docs/paper/pr-reviews/ 아래의 개별 파일로 작성한다.
+> 기존 기록은 삭제하거나 축약하지 않는다.
+
 책임 주체: GPT Master Agent  
 목적: PR별 변경사항, 검토 결과, 논문 반영 가능성을 추적한다.
 
