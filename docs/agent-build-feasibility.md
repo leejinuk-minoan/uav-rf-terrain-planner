@@ -289,5 +289,5 @@ CLAUDE.md
 .github/ISSUE_TEMPLATE/feature_task.md
 .github/workflows/ci.yml
 docs/prompts/codex-task-prompts.md
-docs/proprompts/claude-code-task-prompts.md
+docs/prompts/claude-code-task-prompts.md
 ```

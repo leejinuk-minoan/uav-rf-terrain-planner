@@ -581,6 +581,7 @@ horizontal_distance = 1,000m
 | A5 | DSM LOS만 사용 |
 | A6 | DSM Fresnel만 사용 |
 | A7 | 거리만 사용 |
+| A8 | DEM-only 계산 |
 
 ## Stage 7. 공개/샘플 DEM·DSM 오프라인 검증
 
