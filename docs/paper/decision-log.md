@@ -362,7 +362,7 @@ PR #25는 코드 기준 Task 009 acceptance criteria를 충족한다. 실제 DEM
 
 - Task: 010 - 500m waypoint output scaffold
 - Issue: #27
-- PR: 생성 예정
+- PR: #28
 
 ## 결정 일자
 
@@ -370,7 +370,7 @@ PR #25는 코드 기준 Task 009 acceptance criteria를 충족한다. 실제 DEM
 
 ## 결정 주체
 
-사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토 필요
+사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토
 
 ## 결정 내용
 
@@ -421,9 +421,9 @@ Task 009에서 route candidate evaluation scaffold가 준비되었으므로, 후
 ## 사용자 승인 여부
 
 - 승인: 사용자 지시로 Task 010 범위에 반영
-- 보류: CI/로컬 테스트 결과
+- 보류: 없음
 - 반려: 없음
 
 ## GPT Master 검토 메모
 
-PR 생성 후 waypoint가 실제 비행명령이나 autopilot/control waypoint가 아니라 offline route reporting point로만 구현되었는지 확인해야 한다. 실제 DEM/DSM loading, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지도 확인해야 한다.
+PR #28은 코드 기준 Task 010 acceptance criteria를 충족한다. Waypoint가 실제 비행명령이나 autopilot/control waypoint가 아니라 offline route reporting point로만 구현되었는지 확인했다. 실제 DEM/DSM loading, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인했다. CI success 확인 후 merge 가능하다.
