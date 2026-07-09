@@ -464,9 +464,9 @@ Task 010 범위에서 offline waypoint report data structure와 약 500m spacing
 ## 테스트 상태
 
 - Cloud 확인: 파일 생성 및 PR 생성 완료
-- CI: CI success 확인 필요
-- Local: 로컬 미실행
-- 미실행: `python -m pip install -e '.[dev]'`, `python -m pytest`, `python -m compileall src tests examples`, 실제 DEM/DSM, UI, route execution, 실제 링크품질 검증
+- CI: success
+- Local: 로컬 미실행, CI에서 install/syntax/pytest/ruff/mypy 성공 확인
+- 미실행: 로컬 직접 실행은 미실행. 실제 DEM/DSM, UI, route execution, 실제 링크품질 검증은 후속 local-required task로 유지.
 
 ## 검토 결과
 
@@ -474,7 +474,7 @@ Task 010 범위에서 offline waypoint report data structure와 약 500m spacing
 - 금지범위 침범 없음: Cloud Agent 기준 위반사항 없음
 - 실제 비행명령/autopilot/control waypoint 표현 없음
 - 지도 렌더링/UI 구현 없음
-- 논문 기록 업데이트 여부: experiment/decision/pr-review log 초안 반영
+- 논문 기록 업데이트 여부: experiment/decision/pr-review log 반영
 
 ## 논문 반영 가능 항목
 
@@ -496,15 +496,14 @@ Task 010 범위에서 offline waypoint report data structure와 약 500m spacing
 
 - waypoint를 offline route reporting point로만 해석하는 기준이 적절한지
 - target distance 이상이 되는 첫 source point 선택 방식이 MVP에 적절한지
-- CI 결과 확인
 - merge 승인 여부 결정
 
 ## 최종 판단
 
-- 승인 가능: CI 및 GPT Master 검토 후 판단
-- 수정 필요: 확인 필요
-- 보류: 실제 CI 결과 확인 전까지 보류
+- 승인 가능: 예
+- 수정 필요: 없음
+- 보류: 없음
 
 ## GPT Master 메모
 
-GPT Master 검토 필요. CI success 확인 필요. 실제 DEM/DSM, UI, route execution, flight command generation, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인 필요.
+CI success 확인 완료. 실제 DEM/DSM, UI, route execution, flight command generation, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인 필요. PR #28은 GPT Master 검토 후 merge 가능하다.
