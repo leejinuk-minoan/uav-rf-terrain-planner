@@ -283,3 +283,75 @@ Task 007에서 CandidateScore 산출 구조가 준비되었으므로, 후속 지
 ## GPT Master 검토 메모
 
 PR 생성 후 실제 DEM/DSM, rasterio/GDAL/geopandas, GeoTIFF, Folium/Streamlit UI, map rendering, route planning, Top 5 기본 출력이 포함되지 않았는지 확인해야 한다.
+
+### DEC-20260709-11
+
+## 관련 Task / Issue / PR
+
+- Task: 009 - Route candidate evaluation scaffold
+- Issue: #24
+- PR: #25
+
+## 결정 일자
+
+2026-07-09
+
+## 결정 주체
+
+사용자 지시 / Cloud Execution Agent 반영 / GPT Master 검토
+
+## 결정 내용
+
+Route candidate는 실제 비행명령이 아니라 후속 지도/UI 및 논문 분석을 위한 offline route evaluation data structure로 정의한다. High-risk cell은 DSM 기반 차폐위험 Red/Orange cell만 의미하며, 적 위협·방공망·회피기동·침투경로·공격경로를 의미하지 않는다.
+
+## 배경
+
+Task 008에서 color classification data structure가 준비되었으므로, 사용자가 색상지도에서 발진기지를 선택한 이후 후속 UI/지도에 표시할 수 있는 경로 후보 데이터 구조와 비용 계산 scaffold를 분리 구현한다.
+
+## 대안
+
+1. Task 009에서 offline route candidate data structure와 cost calculation logic만 구현
+2. Task 009에서 지도 렌더링과 waypoint 500m output까지 함께 구현
+3. Task 009에서 실제 비행 실행 또는 autopilot/control API까지 구현
+
+## 선택 이유
+
+1안을 선택한다. route candidate 평가, waypoint 산출, 지도 렌더링, UI 검증은 책임이 다른 단계이므로 분리해야 한다. 실제 비행 실행, autopilot/control API, 작전 회피·침투·공격 경로 표현은 본 프로젝트의 안전 경계 밖이다.
+
+## 영향받는 모듈
+
+- `src/uav_rf_terrain/routing.py`
+- `tests/test_routing.py`
+- `src/uav_rf_terrain/__init__.py`
+- 향후 waypoint 및 UI 모듈
+
+## 논문 반영 위치
+
+- 방법론: route candidate cost model
+- 재현성: route type weights, high-risk count, route_cost tests
+- 결과/민감도 분석: route_total_distance, route_mean_shielding_score, route_high_risk_cell_count
+- 한계: 실제 지도 렌더링 및 실제 링크상태 검증 전 단계
+
+## 검증 필요사항
+
+- RouteCandidateType 3종 구현
+- default route weights 구현
+- RouteCostWeights, RouteCell, RouteCandidate validation
+- total distance, mean/min shielding score 계산
+- RED/ORANGE high-risk cell count
+- EXCLUDED route cell rejection
+- route_cost 계산
+- lowest-cost selection 및 tie order 유지
+- RSSI/SINR/packet_loss 필드 부재 확인
+- flight command/autopilot/control field 부재 확인
+- map/GIS dependency 부재 확인
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 Task 009 범위에 반영
+- 보류: 없음
+- 반려: 없음
+
+## GPT Master 검토 메모
+
+PR #25는 코드 기준 Task 009 acceptance criteria를 충족한다. 실제 DEM/DSM, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인했다. CI success 확인 후 merge 가능하다.
