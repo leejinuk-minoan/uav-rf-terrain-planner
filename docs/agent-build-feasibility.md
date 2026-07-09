@@ -88,7 +88,7 @@ Codex는 다음 작업에 적합하다.
 11. 이슈 단위 기능 구현
 12. DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL 계산 scaffold 작성
 13. 최고 지표고 기준 AGL 변환 helper 작성
-12. PR 생성 및 반복 수정
+14. PR 생성 및 반복 수정
 
 ### 3.2 한계
 
@@ -289,5 +289,5 @@ CLAUDE.md
 .github/ISSUE_TEMPLATE/feature_task.md
 .github/workflows/ci.yml
 docs/prompts/codex-task-prompts.md
-docs/prompts/claude-code-task-prompts.md
+docs/proprompts/claude-code-task-prompts.md
 ```
