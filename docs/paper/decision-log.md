@@ -574,3 +574,136 @@ Task 011에서 candidate scoring, color classification, route candidate, waypoin
 ## GPT Master 검토 메모
 
 PR #32는 코드 기준 Task 012 acceptance criteria의 핵심 구현을 충족한다. Map output은 실제 지도 렌더링이 아니라 SyntheticEndToEndScenario를 후속 UI/지도 구현이 읽을 수 있는 map-ready data package로 변환하는 offline output scaffold로만 구현되었는지 확인했다. 실제 DEM/DSM loading, 지도 렌더링, route execution, RSSI/SINR/packet_loss, autopilot/control field가 포함되지 않았는지 확인했다. CI success 확인 후 merge 가능하다.
+
+### DEC-20260709-15
+
+## 관련 Task / Issue / PR
+
+- Task: 013 - Docs altitude requirement and Android roadmap decision
+- Issue: 별도 생성 없음
+- PR: #33
+
+## 결정 일자
+
+2026-07-09
+
+## 결정 주체
+
+사용자 지시 / GPT Master 결정 / Codex 반영
+
+## 결정 내용
+
+Minimum Required MSL/AGL 기능을 논문·프로젝트 핵심 기능으로 반영한다. 이 기능은 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 공역사용승인 신청 고도 판단 보조 기능이다.
+
+## 배경
+
+여단급 이하 제대의 지휘소가 정찰목표에 대한 공역사용승인을 신청하거나 예하부대 드론 운용 고도를 조정할 때, 실제 정찰에 필요한 고도를 사전에 정량적으로 판단하기 어렵다는 문제정의가 확정되었다.
+
+## 선택 이유
+
+기존 발진 가능구역 색상지도와 경로 후보 산출은 위치와 경로의 차폐위험을 설명한다. 최소 요구 MSL/AGL 산출은 사용자가 고도 신청 또는 고도 조정 의사결정에 참고할 수 있는 직접적인 산출값을 제공하므로 논문·프로젝트 핵심 기능으로 관리한다.
+
+## 한계
+
+이 산출값은 실제 정찰 성공, 실제 통신 가능, 실제 비행 가능, 공역승인 최적고도를 보장하지 않는다.
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 반영
+- 보류: 없음
+- 반려: 없음
+
+### DEC-20260709-16
+
+## 관련 Task / Issue / PR
+
+- Task: 013 - Docs altitude requirement and Android roadmap decision
+- Issue: 별도 생성 없음
+- PR: #33
+
+## 결정 일자
+
+2026-07-09
+
+## 결정 주체
+
+사용자 지시 / GPT Master 결정 / Codex 반영
+
+## 결정 내용
+
+현장 문제정의 주체를 “여단급 이하 제대의 지휘소”로 확정한다.
+
+## 배경
+
+공역사용승인 신청 고도 판단 보조 기능은 개인 조종자 편의 기능이 아니라 여단급 이하 제대의 지휘소가 정찰목표에 대한 공역사용승인을 신청하거나 예하부대 드론 운용 고도를 조정하는 상황을 대상으로 한다.
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 반영
+- 보류: 없음
+- 반려: 없음
+
+### DEC-20260709-17
+
+## 관련 Task / Issue / PR
+
+- Task: 013 - Docs altitude requirement and Android roadmap decision
+- Issue: 별도 생성 없음
+- PR: #33
+
+## 결정 일자
+
+2026-07-09
+
+## 결정 주체
+
+사용자 지시 / GPT Master 결정 / Codex 반영
+
+## 결정 내용
+
+Android/TMMR offline은 논문에 반영하지 않고 제품 로드맵에만 반영한다.
+
+## 배경
+
+Android/TMMR offline은 논문 기능이 아니라 현장 운용자의 사용성을 보장하기 위한 제품화·배포 전략이다. 논문 작성 AI가 이를 논문 본문, 연구 결과, 구현 완료 사항으로 오해하는 것을 차단해야 한다.
+
+## 영향받는 문서
+
+- 반영 허용: `README.md`, `docs/master-plan.md`, `docs/agent-operations-plan.md`, `docs/agent-build-feasibility.md`, `docs/paper/decision-log.md`, `docs/deployment/android-tmmr-offline-plan.md`
+- 반영 금지: `docs/paper/paper-preparation-plan.md`, `docs/paper/score-model-validation-plan.md`, `docs/paper/experiment-log.md`
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 반영
+- 보류: 없음
+- 반려: 없음
+
+### DEC-20260709-18
+
+## 관련 Task / Issue / PR
+
+- Task: 013 - Docs altitude requirement and Android roadmap decision
+- Issue: 별도 생성 없음
+- PR: #33
+
+## 결정 일자
+
+2026-07-09
+
+## 결정 주체
+
+사용자 지시 / GPT Master 결정 / Codex 반영
+
+## 결정 내용
+
+Android/TMMR offline은 `docs/paper/paper-preparation-plan.md`에 기록하지 않는다.
+
+## 선택 이유
+
+논문 준비 문서는 GPT Master가 논문 본문 구성과 연구 결과를 정리할 때 직접 참조하는 문서이므로, 제품화·배포 전략인 Android/TMMR offline을 기록하면 논문 범위로 오해될 위험이 있다.
+
+## 사용자 승인 여부
+
+- 승인: 사용자 지시로 반영
+- 보류: 없음
+- 반려: 없음

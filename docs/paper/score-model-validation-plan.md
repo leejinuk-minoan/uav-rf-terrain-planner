@@ -21,6 +21,7 @@
 5. 고도별 반복계산은 기본 기능이 아니라 선택적 민감도 분석 기능으로 분리한다.
 6. 표면장애물 복잡도 보정점수는 본 연구의 기본 점수식에서 제외한다.
 7. 점수는 실제 통신 성공률이 아니라 오프라인 지형·표면장애물 기반 차폐위험 proxy이다.
+8. 최소 요구 MSL/AGL 산출값은 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 고도 판단 보조 값이며 실제 정찰 성공, 실제 통신 가능, 실제 비행 가능을 보장하지 않는다.
 
 ---
 
@@ -538,6 +539,12 @@ horizontal_distance = 1,000m
 
 장애물이 100m 지점에 있으면 LOS 침범 가능성이 높고, 500m 또는 800m 지점에 있으면 LOS 영향이 제한되는지 확인한다.
 
+추가 검증:
+
+- AGL 변화에 따른 `minimum_required_msl_m` 민감도를 확인한다.
+- 직선 운용구간 내 최고 DEM 지표고 기준 `required_agl_above_highest_dem_m` 변환이 일관적인지 확인한다.
+- DEM 최고지표고 기준 AGL과 DSM 최고표면고 기준 clearance 요구량의 차이를 비교한다.
+
 ## Stage 5. 가중치 민감도 분석
 
 종합점수 가중치:
@@ -558,6 +565,8 @@ horizontal_distance = 1,000m
 | S3 | 0.30 | 0.70 | Fresnel 강조 기준 |
 | S4 | 0.60 | 0.40 | LOS 강조 기준 |
 
+주파수 변화에 따른 Fresnel clearance requirement와 최소 요구 MSL 변화도 함께 기록한다.
+
 ## Stage 6. Ablation 분석
 
 다음 케이스를 비교한다.
@@ -568,10 +577,11 @@ horizontal_distance = 1,000m
 | A1 | 거리점수 제거 |
 | A2 | DSM LOS 제거 |
 | A3 | DSM Fresnel 제거 |
-| A4 | DSM LOS만 사용 |
-| A5 | DSM Fresnel만 사용 |
-| A6 | 거리만 사용 |
-| A7 | DEM-only 계산 |
+| A4 | distance-only 또는 LOS-only 기준과 DSM 기반 LOS/Fresnel 기준의 요구 고도 차이 |
+| A5 | DSM LOS만 사용 |
+| A6 | DSM Fresnel만 사용 |
+| A7 | 거리만 사용 |
+| A8 | DEM-only 계산 |
 
 ## Stage 7. 공개/샘플 DEM·DSM 오프라인 검증
 

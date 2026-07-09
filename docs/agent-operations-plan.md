@@ -29,6 +29,7 @@ Codex와 Claude Code는 기본 구현자가 아니라 **로컬 실행·환경검
 ```text
 발진기지 기본 출력 = Top 5 점 목록이 아니라 색상 기반 발진 가능구역 지도
 경로 추천 = 사용자가 지도상에서 발진기지를 선택한 뒤 경로 후보 3개 제시
+최소 요구 고도 = DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 MSL 및 최고 지표고 기준 AGL 판단 보조
 ```
 
 ---
@@ -204,8 +205,15 @@ Cloud Execution Agent는 `python -m pytest` 실행, Streamlit 화면 확인, ras
 | 011 | Streamlit/Folium MVP UI | Claude Code | 처음부터 로컬 화면 확인 필요 | GPT Master가 UI 그림 후보 관리 |
 | 012 | 통합 테스트, 문서화, 샘플 실행 시나리오 | Claude Code | 로컬 실행·화면·CI 검증 필요 | GPT Master가 검증 장 관리 |
 | 013 | 논문용 연구기록 구조 생성 | Cloud Execution Agent 또는 GPT Master | 로컬 불필요 | GPT Master 총괄 |
+| 013-A | 문서 기준 정리 및 고도 판단 보조 개념 반영 | Codex | 장문 문서 diff 안전검증 필요 | GPT Master가 논문 경계 확인 |
 | 014 | 실험 결과·그림·표 후보 정리 | GPT Master + Cloud Execution Agent | 실제 화면 캡처는 Claude Code | GPT Master 총괄 |
 | 015 | 학회 풀 페이퍼 초안 작성 | GPT Master | 로컬 불필요 | GPT Master 전담 |
+
+향후 추가 Task 분장은 다음 원칙을 따른다.
+
+- Minimum Required MSL and AGL Estimation Scaffold는 순수 Python 계산 모듈로 우선 구현한다.
+- 실제 DEM/DSM adapter와 UI/map rendering은 후속 Task로 분리한다.
+- Android/TMMR offline은 제품/배포 로드맵 Task로 분리하고 논문 핵심 기능으로 다루지 않는다.
 
 ---
 

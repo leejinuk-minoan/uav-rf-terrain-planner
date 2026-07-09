@@ -29,6 +29,8 @@ DSM 기반 LOS 및 Fresnel Clearance를 고려한 여단급 이하 제대의 드
 
 본 프로젝트의 최종 논문은 실제 DEM/DSM 지형자료를 적용한 시스템 구현 결과와 민감도 및 ablation 분석을 통해 DSM, LOS, Fresnel Clearance, 거리 여유도 요소가 드론 발진기지 및 비행경로 선정 결과에 미치는 영향을 분석하는 **모델 설계·구현·분석 논문**이다.
 
+문제정의에는 여단급 이하 제대의 지휘소가 공역사용승인 신청 또는 예하부대 드론 운용 고도 조정 시 필요한 고도를 정량적으로 판단하기 어렵다는 점을 포함한다. 본 논문은 이를 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL 산출과 최고 지표고 기준 AGL 변환을 시스템 산출 구조에 포함한다.
+
 최종 논문은 다음 범위를 포함한다.
 
 1. DSM 기반 LOS 및 Fresnel Clearance 모델 설계
@@ -38,6 +40,7 @@ DSM 기반 LOS 및 Fresnel Clearance를 고려한 여단급 이하 제대의 드
 5. 주파수, AGL, 운용반경, 가중치, threshold 변화에 따른 민감도 분석
 6. distance-only, DEM-only, LOS-only 등 baseline 대비 ablation 분석
 7. 실측자료 부재에 따른 한계와 후속 RF 계측·드론 로그 기반 검증 가능성
+8. DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL 및 최고 지표고 기준 AGL 산출 구조
 
 ---
 
@@ -87,6 +90,9 @@ latency 예측
 후보 cell별 color class 및 classification reason
 경로 후보 3종
 waypoint별 AGL/MSL/발진기지 대비 고도차/누적거리
+minimum_required_msl_m
+highest_dem_msl_m
+required_agl_above_highest_dem_m
 ```
 
 이 분석은 실제 통신품질 검증이 아니라 **실제 지형자료 기반 적용 가능성 분석**이다. 논문에서는 “실제 지형 적용”, “적용성 분석”, “사례분석”으로 표현하고, “실제 통신성능 검증”으로 표현하지 않는다.
@@ -104,6 +110,8 @@ AGL 운용고도 변화
 shielding/distance 가중치 변화
 LOS/Fresnel 가중치 변화
 color classification threshold 변화
+minimum_required_msl_m 변화
+required_agl_above_highest_dem_m 변화
 ```
 
 각 항목은 다음 산출 결과의 변화로 분석한다.
@@ -119,6 +127,8 @@ Green/Yellow/Orange/Red/Excluded cell 비율
 경로 후보별 high-risk cell 통과 수
 경로 후보별 평균 shielding score
 waypoint별 고도 변화
+DSM 기반 최소 요구 MSL 변화
+최고 지표고 기준 AGL 변환값 변화
 ```
 
 민감도 분석의 목적은 모델 입력값과 휴리스틱 가중치 변화가 발진 가능구역 및 경로 후보 결과에 미치는 영향을 확인하는 것이다. 이는 실제 통신품질 검증이 아니라 모델 반응성 분석이다.
@@ -181,6 +191,10 @@ waypoint AGL
 waypoint MSL
 waypoint height difference from launch site
 waypoint cumulative distance
+minimum_required_msl_m
+highest_dem_msl_m
+required_agl_above_highest_dem_m
+clearance_condition
 ```
 
 이 데이터는 실측 ground truth가 아니다. 논문에서는 모델 산출 결과 분석, 내부 일관성 검증, 실제 지형 적용성 분석, 민감도 분석, ablation 분석에 사용한다.
@@ -202,6 +216,7 @@ DSM 반영 여부에 따른 후보지 분류 차이를 분석하였다.
 LOS/Fresnel 요소가 발진지 평가 결과에 미치는 영향을 분석하였다.
 거리-only 방식과 제안 모델의 의사결정 결과 차이를 비교하였다.
 주파수·AGL·운용반경 변화에 따른 발진 가능구역 변화를 분석하였다.
+DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL과 최고 지표고 기준 AGL 변환값을 산출하였다.
 ```
 
 ---
@@ -218,6 +233,7 @@ RSSI/SINR/packet loss를 예측하였다.
 최적 발진지를 보장한다.
 통신 가능 여부를 보장한다.
 제안 점수가 실제 링크품질을 직접 예측한다.
+제안 고도가 실제 정찰 성공 또는 실제 비행 가능을 보장한다.
 ```
 
 ---
@@ -234,6 +250,7 @@ RSSI/SINR/packet loss를 예측하였다.
    4.1 후보 발진지 격자 모델
    4.2 DSM 기반 LOS 분석 모델
    4.3 DSM 기반 Fresnel Clearance 분석 모델
+   4.3.1 최소 요구 MSL 및 최고 지표고 기준 AGL 산출 모델
    4.4 거리 여유도 및 종합점수 모델
    4.5 색상지도 분류 및 경로 후보 모델
 5. 시스템 구현
@@ -257,7 +274,10 @@ Task 008 이후: color classification 결과를 Green/Yellow/Orange/Red/Excluded
 경로 후보 구현 이후: 경로별 거리·위험도·waypoint 분석에 연결
 민감도 분석 Task 이후: 주파수/AGL/운용반경/가중치/threshold 변화 결과를 논문 결과 장에 연결
 ablation 분석 Task 이후: distance-only, DEM-only, LOS-only 등 baseline 비교를 논문 핵심 결과로 연결
+최소 요구 고도 산출 Task 이후: minimum_required_msl_m, highest_dem_msl_m, required_agl_above_highest_dem_m을 고도 판단 보조 결과로 연결
 ```
+
+본 논문은 DSM 기반 LOS/Fresnel Clearance 평가모델과 시스템 산출 구조를 다루며, 특정 단말 기반 제품 배포 및 운용환경 확장 전략은 논문 범위에 포함하지 않는다.
 
 ---
 
