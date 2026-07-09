@@ -100,6 +100,18 @@ from .synthetic import (
     create_single_ridge_terrain,
     create_synthetic_terrain,
 )
+from .waypoints import (
+    RouteWaypoint,
+    RouteWaypointReport,
+    WaypointError,
+    WaypointSamplingConfig,
+    WaypointSourcePoint,
+    build_route_waypoints,
+    compute_flight_msl_m,
+    compute_height_difference_from_launch_m,
+    select_waypoint_source_points,
+    summarize_waypoint_report,
+)
 
 __all__ = [
     "CandidateCell",
@@ -129,6 +141,8 @@ __all__ = [
     "RouteCandidateType",
     "RouteCell",
     "RouteCostWeights",
+    "RouteWaypoint",
+    "RouteWaypointReport",
     "RoutingError",
     "SHIELDING_WEIGHT",
     "ScoreComponentWeights",
@@ -141,15 +155,21 @@ __all__ = [
     "TerrainProfileError",
     "TerrainProfileSample",
     "WGS84Point",
+    "WaypointError",
+    "WaypointSamplingConfig",
+    "WaypointSourcePoint",
     "analyze_dsm_fresnel",
     "analyze_dsm_los",
     "available_synthetic_scenarios",
     "build_route_candidate",
+    "build_route_waypoints",
     "classification_reason",
     "classify_candidate_score",
     "clamp_score",
     "compute_candidate_score",
     "compute_distance_score",
+    "compute_flight_msl_m",
+    "compute_height_difference_from_launch_m",
     "compute_overall_score",
     "compute_route_cost",
     "compute_route_mean_shielding_score",
@@ -179,6 +199,8 @@ __all__ = [
     "local_point_to_grid_index",
     "mgrs_to_wgs84",
     "select_lowest_cost_route",
+    "select_waypoint_source_points",
+    "summarize_waypoint_report",
     "wavelength_m",
 ]
 
