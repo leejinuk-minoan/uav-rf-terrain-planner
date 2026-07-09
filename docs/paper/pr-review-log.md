@@ -260,25 +260,72 @@ Task 007 범위에서 DSM LOS component, DSM Fresnel component, operating-radius
 ## 테스트 상태
 
 - Cloud 확인: 파일 생성 및 PR 생성 완료
-- CI: GitHub Actions CI success observed for PR #20 before this CI-status log update; follow-up CI after this log update should be rechecked before merge.
+- CI: success
 - Local: 로컬 미실행, CI에서 install/syntax/pytest/ruff/mypy 성공 확인
 - 미실행: 로컬 직접 실행은 미실행. 실제 DEM/DSM, rasterio/GDAL/geopandas, Streamlit/Folium 검증은 후속 local-required task로 유지.
 
+## 최종 판단
+
+- 승인 가능: 예
+- 수정 필요: 없음
+- 보류: 없음
+
+---
+
+# PR Review - PR #22
+
+## PR 제목
+
+task-008: add color classification
+
+## 관련 Task
+
+Task 008 - Color map classification and launch-area cell evaluation
+
+## 브랜치
+
+`agent/task-008-color-classification`
+
+## 담당 에이전트
+
+Cloud Execution Agent
+
+## 변경 파일
+
+- `src/uav_rf_terrain/classification.py`
+- `tests/test_classification.py`
+- `src/uav_rf_terrain/__init__.py`
+- `README.md`
+- `docs/paper/experiment-log.md`
+- `docs/paper/decision-log.md`
+- `docs/paper/pr-review-log.md`
+
+## 변경 요약
+
+Task 008 범위에서 CandidateScore 기반 color classification data structure와 판정 로직을 추가했다. 기존 ColorClass enum을 재사용하고, ColorClassificationThresholds, LaunchAreaCellEvaluation, Excluded/Red/Orange/Yellow/Green 분류, out-of-radius Excluded 처리, LOS blocked/high-risk Red 처리, threshold validation, 순수 Python 테스트를 추가했다. 지도 렌더링, Folium/Streamlit UI, 실제 DEM/DSM loading, route planning, Top 5 기본 출력은 구현하지 않았다.
+
+## 테스트 상태
+
+- Cloud 확인: 파일 생성 및 PR 생성 완료
+- CI: PR 생성 후 확인 필요
+- Local: 로컬 미실행
+- 미실행: `python -m pip install -e '.[dev]'`, `python -m pytest`, `python -m compileall src tests examples`, 실제 DEM/DSM, rasterio/GDAL/geopandas, Folium/Streamlit 검증
+
 ## 검토 결과
 
-- Task 범위 준수: CI 재확인 및 GPT Master 검토 필요
+- Task 범위 준수: GPT Master 검토 필요
 - 금지범위 침범 없음: Cloud Agent 기준 위반사항 없음
-- Top 5 기본 출력 금지 준수: score-only CandidateScore만 추가
-- 색상 기반 지도화 기준 준수: 후속 색상지도 classification 입력용 score component
-- 논문 기록 업데이트 여부: experiment/decision/pr-review log 반영
+- Top 5 기본 출력 금지 준수: score classification data만 추가
+- 색상 기반 지도화 기준 준수: 후속 지도 렌더링 입력용 color class data
+- 논문 기록 업데이트 여부: experiment/decision/pr-review log 초안 반영
 
 ## 논문 반영 가능 항목
 
-- scoring integration design
-- strict DSM LOS cap policy
-- distance reserve proxy
-- score/weight validation design
-- 실제 GIS dependency 없이 재현 가능한 scoring tests
+- CandidateScore 기반 color classification design
+- Green/Yellow/Orange/Red/Excluded threshold heuristic
+- within_operation_radius Excluded 처리
+- DSM LOS blocked/high-risk Red 처리
+- 실제 GIS/UI dependency 없이 재현 가능한 classification tests
 
 ## 논문 반영 불가 또는 보류 항목
 
@@ -286,21 +333,21 @@ Task 007 범위에서 DSM LOS component, DSM Fresnel component, operating-radius
 - 실제 링크품질 검증 결과
 - GeoTIFF/raster/GIS 처리 결과
 - 지도 시각화 결과
-- color-map classification 결과
+- route planning 결과
 
 ## 사용자 승인 필요사항
 
-- CandidateScore 구조가 Task 007 요구와 일치하는지
-- strict LOS cap을 shielding_stability_score에만 적용하는 해석이 적절한지
-- distance component가 LOS blocked 시에도 overall score에 남는 해석이 적절한지
-- follow-up CI 결과 확인
+- threshold 기본값이 MVP heuristic 기준에 적절한지
+- LOS blocked/high-risk 후보를 Red로 처리하는 해석이 적절한지
+- out-of-radius 후보를 Excluded로 처리하는 해석이 적절한지
+- CI 결과 확인
 - merge 승인 여부 결정
 
 ## 최종 판단
 
-- 승인 가능: CI 재확인 및 GPT Master 검토 후 판단
-- 수정 필요: 없음
-- 보류: 없음
+- 승인 가능: CI 및 GPT Master 검토 후 판단
+- 수정 필요: 확인 필요
+- 보류: 실제 CI 결과 확인 전까지 보류
 
 ## GPT Master 메모
 

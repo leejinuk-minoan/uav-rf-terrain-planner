@@ -98,6 +98,14 @@ Task 007 adds pure Python scoring integration. The score combines DSM LOS, DSM F
 
 This task does not implement color-map classification, real DEM/DSM loading, Streamlit/Folium UI, or map rendering.
 
+## Task 008 color classification
+
+Task 008 adds pure Python color classification for launch-area candidate cells.
+
+Classification uses `CandidateScore`, operation-radius inclusion, DSM LOS status, and overall score thresholds. The output is classification data for a future color launch-area map. Green/Yellow/Orange/Red/Excluded thresholds are MVP heuristic visualization rules and are not actual communication-success guarantees.
+
+This task does not render maps, use Folium/Streamlit, load real DEM/DSM files, or create Top 5 launch-site output.
+
 ## DSM/DEM 기준
 
 - LOS 판정 기본 기준면: DSM
