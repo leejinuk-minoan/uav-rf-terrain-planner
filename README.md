@@ -137,6 +137,14 @@ The output package contains candidate cell, route, and waypoint feature records 
 
 This task does not implement real DEM/DSM loading, Folium/Streamlit, map rendering, flight commands, or link-quality validation.
 
+## Task 015 minimum required altitude scaffold
+
+Task 015 adds a pure Python synthetic-profile model that estimates the minimum required MSL satisfying DSM-based LOS/Fresnel clearance proxy conditions and converts it to AGL over the highest DEM sample and the target DEM sample.
+
+This is an offline altitude planning aid and not a real communication-success, flight-safety, reconnaissance-success, or airspace-approval guarantee.
+
+No real DEM/DSM loading, GIS dependency, map rendering, Android/TMMR implementation, or control-command generation is included.
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
