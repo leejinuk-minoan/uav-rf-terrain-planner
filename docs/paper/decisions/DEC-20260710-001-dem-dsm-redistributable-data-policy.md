@@ -11,7 +11,7 @@ Approved
 ## Related Task / Issue / PR
 
 - Task: 016A - Terrain Data Policy Documentation
-- PR: TBD
+- PR: #36
 
 ## Decision Owner
 
