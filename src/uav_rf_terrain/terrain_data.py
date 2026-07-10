@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
+import re
 from typing import Protocol
 
 from .synthetic import SyntheticTerrainGrid
@@ -13,15 +14,11 @@ Bounds = tuple[float, float, float, float]
 RASTER_TYPE_DEM = "DEM"
 RASTER_TYPE_DSM = "DSM"
 
-_PRIVATE_PATH_MARKERS = (
-    ":/",
-    ":\\",
-    "\\\\",
-    "/users/",
-    "\\users\\",
-    "/home/",
-    "\\home\\",
-)
+_LOCAL_URI_PREFIX = "file://"
+_PUBLIC_URL_PREFIXES = ("http://", "https://")
+_WINDOWS_DRIVE_PATH_PATTERN = re.compile(r"(^|[\s\"'`(=])[a-z]:[\\/]")
+_UNC_PATH_PATTERN = re.compile(r"(^|[\s\"'`(=])\\\\")
+_POSIX_PRIVATE_PATH_PATTERN = re.compile(r"(^|[\s\"'`(=])(/users/|/home/)")
 
 
 class TerrainDataError(ValueError):
@@ -200,8 +197,15 @@ def _validate_metadata_strings(values: tuple[str, ...]) -> None:
 
 
 def _raise_for_private_path(value: str) -> None:
-    normalized = value.casefold()
-    if any(marker in normalized for marker in _PRIVATE_PATH_MARKERS):
+    normalized = value.strip().casefold()
+    if normalized.startswith(_PUBLIC_URL_PREFIXES):
+        return
+    if (
+        normalized.startswith(_LOCAL_URI_PREFIX)
+        or _WINDOWS_DRIVE_PATH_PATTERN.search(normalized)
+        or _UNC_PATH_PATTERN.search(normalized)
+        or _POSIX_PRIVATE_PATH_PATTERN.search(normalized)
+    ):
         raise TerrainDataError("metadata must not include private local paths.")
 
 

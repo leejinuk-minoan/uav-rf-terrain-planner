@@ -145,6 +145,48 @@ def test_private_local_path_guard() -> None:
         )
 
 
+def test_public_https_url_is_allowed_in_metadata_field() -> None:
+    metadata = TerrainDatasetMetadata(
+        dataset_name="synthetic-dataset",
+        dem=replace(
+            _raster_metadata(raster_type=RASTER_TYPE_DEM),
+            license_or_terms="https://example.org/source-or-license",
+        ),
+        dsm=replace(
+            _raster_metadata(raster_type=RASTER_TYPE_DSM),
+            license_or_terms="https://example.org/source-or-license",
+        ),
+        processing_date="2026-07-10",
+        processing_tool="unit-test",
+        alignment_status="aligned",
+        notes="Synthetic unit-test metadata.",
+    )
+
+    validate_terrain_dataset_metadata(metadata)
+
+
+@pytest.mark.parametrize(
+    "local_path",
+    [
+        "C:/Users/example/source",
+        r"C:\Users\example\source",
+        "/home/example/source",
+        "file:///Users/example/source",
+    ],
+)
+def test_private_local_path_guard_blocks_local_path_forms(local_path: str) -> None:
+    with pytest.raises(TerrainDataError, match="private local paths"):
+        TerrainDatasetMetadata(
+            dataset_name="synthetic-dataset",
+            dem=_raster_metadata(raster_type=RASTER_TYPE_DEM),
+            dsm=_raster_metadata(raster_type=RASTER_TYPE_DSM),
+            processing_date="2026-07-10",
+            processing_tool=local_path,
+            alignment_status="aligned",
+            notes="Synthetic unit-test metadata.",
+        )
+
+
 def test_terrain_data_module_has_no_external_gis_imports() -> None:
     module_text = Path("src/uav_rf_terrain/terrain_data.py").read_text(encoding="utf-8")
 
