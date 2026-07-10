@@ -10,3 +10,4 @@ Legacy accumulated research records remain in `docs/paper/research-log.md` as hi
 
 - [RN-20260710-001 - minimum required altitude model](RN-20260710-001-minimum-required-altitude-model.md)
 - [RN-20260710-002 - terrain data adapter interface](RN-20260710-002-terrain-data-adapter-interface.md)
+- [RN-20260710-003 - terrain profile adapter integration](RN-20260710-003-terrain-profile-adapter-integration.md)
