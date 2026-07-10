@@ -185,6 +185,8 @@ Task 018B local smoke and QGIS verification results are recorded in [the Task 01
 
 Task 018C manual QGIS overlay findings are recorded in [the Task 018C verification record](docs/handoff/task-018c-manual-qgis-overlay-verification.md).
 
+Task 018D QGIS overlay follow-up results are recorded in [the Task 018D verification record](docs/handoff/task-018d-qgis-overlay-followup.md).
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
