@@ -179,6 +179,8 @@ Optional local smoke test, not required in CI:
 
     python examples/local_geotiff_adapter_smoke.py --dem-path METADATA_MAP/DEM_PROCESSED/south_korea_dem_90m_epsg5179_alltiles.tif --dsm-path METADATA_MAP/DSM_PROXY_FROM_ESA_WORLDCOVER/south_korea_temporary_dsm_proxy_90m_epsg5179.tif --start-x 900000 --start-y 1800000 --end-x 900900 --end-y 1800000
 
+The local smoke CLI formats expected terrain data and profile input errors as concise stderr messages.
+
 Task 018B local smoke and QGIS verification results are recorded in [the Task 018B checkpoint](docs/handoff/task-018b-local-dem-dsm-smoke-qgis-checkpoint.md).
 
 Task 018C manual QGIS overlay findings are recorded in [the Task 018C verification record](docs/handoff/task-018c-manual-qgis-overlay-verification.md).
