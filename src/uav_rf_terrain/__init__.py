@@ -46,6 +46,7 @@ from .grid import (
     filter_within_operation_radius,
     generate_candidate_grid,
 )
+from .geotiff_terrain_data import LocalGeoTiffTerrainDataAdapter
 from .los import (
     LineOfSightAnalysis,
     LineOfSightError,
@@ -188,6 +189,7 @@ __all__ = [
     "LineOfSightError",
     "LineOfSightSample",
     "LocalPoint",
+    "LocalGeoTiffTerrainDataAdapter",
     "MapFeatureType",
     "MapOutputError",
     "MapOutputPackage",
