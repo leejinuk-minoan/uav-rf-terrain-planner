@@ -169,6 +169,16 @@ Task 017A adds adapter-based terrain profile extraction so future DEM/DSM loader
 
 The implementation remains pure Python and uses synthetic/in-memory adapter tests only. It does not load real DEM/DSM files, add GIS dependencies, render maps, or validate field outcomes.
 
+## Task 017B local GeoTIFF terrain data adapter
+
+Task 017B adds a local GeoTIFF DEM/DSM adapter that implements the TerrainDataAdapter interface for runtime use with user-prepared local terrain files.
+
+The adapter uses rasterio as an optional local runtime dependency and does not add rasterio to the package dependency list. Actual DEM/DSM GeoTIFF files remain outside Git under METADATA_MAP/. This task does not commit GIS data, render maps, validate field outcomes, or guarantee communication or flight performance.
+
+Optional local smoke test, not required in CI:
+
+    python examples/local_geotiff_adapter_smoke.py --dem-path METADATA_MAP/DEM_PROCESSED/south_korea_dem_90m_epsg5179_alltiles.tif --dsm-path METADATA_MAP/DSM_PROXY_FROM_ESA_WORLDCOVER/south_korea_temporary_dsm_proxy_90m_epsg5179.tif --start-x 900000 --start-y 1800000 --end-x 900900 --end-y 1800000
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
