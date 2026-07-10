@@ -49,7 +49,7 @@ if dsm_los_score == 0:
     shielding_stability_score = 0
 ```
 
-이 점수는 실제 통신 성공률, 실제 링크품질, RSSI, SINR, packet loss 검증값이 아니다. 본 프로젝트의 MVP 점수는 **offline terrain/surface-obstacle risk proxy**로만 사용한다.
+이 점수는 현장 링크 성능 검증값이 아니다. 본 프로젝트의 MVP 점수는 **offline terrain/surface-obstacle risk proxy**로만 사용한다.
 
 ## Task 002 좌표 및 후보 격자 scaffold
 
@@ -65,7 +65,7 @@ Task 003 adds pure Python synthetic DEM/DSM terrain generators. Synthetic terrai
 
 The generator creates small in-memory DEM/DSM grids for scenarios such as flat terrain, single ridge, building obstacle, tree canopy, obstacle-position variation, operating-radius boundary, fixed-AGL case, and Fresnel-position variation.
 
-No real DEM/DSM files are loaded. No GeoTIFF, rasterio, GDAL, geopandas, QGIS, or map-rendering integration is included. LOS/Fresnel/scoring/map rendering remain future tasks.
+No real DEM/DSM files are loaded. No GeoTIFF, rasterio, GDAL, geopandas, QGIS, or map-rendering work is included. LOS/Fresnel/scoring/map rendering remain future tasks.
 
 ## Task 004 terrain profile extraction
 
@@ -95,7 +95,7 @@ This task does not implement final scoring, real DEM/DSM loading, color-map clas
 
 Task 007 adds pure Python scoring integration. The score combines DSM LOS, DSM Fresnel, and operating-radius distance components.
 
-`shielding_stability_score` uses DSM LOS 40% and DSM Fresnel 60%, with a strict LOS cap. `overall_score` uses shielding stability 80% and distance reserve 20%. The distance reserve is an operating-radius proxy, not a real RF link-quality measurement.
+`shielding_stability_score` uses DSM LOS 40% and DSM Fresnel 60%, with a strict LOS cap. `overall_score` uses shielding stability 80% and distance reserve 20%. The distance reserve is an operating-radius proxy, not a field link-performance measurement.
 
 This task does not implement color-map classification, real DEM/DSM loading, Streamlit/Folium UI, or map rendering.
 
@@ -103,7 +103,7 @@ This task does not implement color-map classification, real DEM/DSM loading, Str
 
 Task 008 adds pure Python color classification for launch-area candidate cells.
 
-Classification uses `CandidateScore`, operation-radius inclusion, DSM LOS status, and overall score thresholds. The output is classification data for a future color launch-area map. Green/Yellow/Orange/Red/Excluded thresholds are MVP heuristic visualization rules and are not actual communication-success guarantees.
+Classification uses `CandidateScore`, operation-radius inclusion, DSM LOS status, and overall score thresholds. The output is classification data for a future color launch-area map. Green/Yellow/Orange/Red/Excluded thresholds are MVP heuristic visualization rules and are not field outcome guarantees.
 
 This task does not render maps, use Folium/Streamlit, load real DEM/DSM files, or create Top 5 launch-site output.
 
@@ -113,21 +113,21 @@ Task 009 adds pure Python route candidate evaluation scaffolding.
 
 The route candidates are offline analysis data structures for future map/UI output. The task defines shielding-minimum, distance-shielding balanced, and detour-stability route candidate types. Costs combine shielding risk, distance cost, and DSM shielding high-risk cell penalty.
 
-This task does not implement actual flight execution, autopilot control, map rendering, real DEM/DSM loading, or real link-quality validation.
+This task does not implement field execution workflows, control-system workflows, map rendering, real DEM/DSM loading, or field link validation.
 
 ## Task 010 waypoint output scaffold
 
 Task 010 adds pure Python waypoint output scaffolding.
 
-Waypoints are offline analysis/reporting points, not flight commands. The output includes cumulative distance, segment distance, AGL, MSL, launch-height difference, color class, and shielding score.
+Waypoints are offline analysis/reporting points, not vehicle-execution records. The output includes cumulative distance, segment distance, AGL, MSL, launch-height difference, color class, and shielding score.
 
-This task does not implement actual flight execution, autopilot control, map rendering, real DEM/DSM loading, or real link-quality validation.
+This task does not implement field execution workflows, control-system workflows, map rendering, real DEM/DSM loading, or field link validation.
 
 ## Task 011 synthetic end-to-end scenario output scaffold
 
 Task 011 adds a pure Python synthetic end-to-end scenario output scaffold.
 
-The scenario connects candidate scoring, color classification, route candidate evaluation, and waypoint reporting. The output is an offline synthetic analysis example, not a real map, real DEM/DSM result, flight command, or link-quality validation.
+The scenario connects candidate scoring, color classification, route candidate evaluation, and waypoint reporting. The output is an offline synthetic analysis example, not a real map, real DEM/DSM result, vehicle-execution record, or field link validation.
 
 ## Task 012 map/UI output data scaffold
 
@@ -135,21 +135,31 @@ Task 012 adds pure Python map/UI output data scaffolding.
 
 The output package contains candidate cell, route, and waypoint feature records for future UI/map rendering. The output is map-ready data, not a rendered map.
 
-This task does not implement real DEM/DSM loading, Folium/Streamlit, map rendering, flight commands, or link-quality validation.
+This task does not implement real DEM/DSM loading, Folium/Streamlit, map rendering, vehicle-execution records, or field link validation.
 
 ## Task 015 minimum required altitude scaffold
 
 Task 015 adds a pure Python synthetic-profile model that estimates the minimum required MSL satisfying DSM-based LOS/Fresnel clearance proxy conditions and converts it to AGL over the highest DEM sample and the target DEM sample.
 
-This is an offline altitude planning aid and not a real communication-success, flight-safety, reconnaissance-success, or airspace-approval guarantee.
+This is an offline altitude planning aid and not a field outcome guarantee.
 
-No real DEM/DSM loading, GIS dependency, map rendering, Android/TMMR implementation, or control-command generation is included.
+No real DEM/DSM loading, GIS dependency, map rendering, Android/TMMR implementation, or control-system output is included.
+
+## Task 016A terrain data policy documentation
+
+Task 016A defines the project terrain data policy before real DEM/DSM integration.
+
+Project DEM/DSM data is defined as redistributable processed data created by the user from public source data, when source, license, and processing metadata are documented.
+
+Actual DEM/DSM data is still being produced by the user and is not required for this task. When a future task requires real DEM/DSM files, work should pause until the user provides the local data path.
+
+This is a documentation-only task. It does not add terrain adapters, load real GeoTIFF files, add GIS dependencies, render maps, or validate field outcomes.
 
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
 
-이 기능은 오프라인 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 고도 판단 보조 기능이며, 실제 정찰 성공, 실제 통신 가능, 실제 비행 가능, 또는 공역승인 최적고도를 보장하지 않는다.
+이 기능은 오프라인 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 고도 판단 보조 기능이며, 현장 결과나 승인 결과를 보장하지 않는다.
 
 ## 제품화·배포 로드맵
 
@@ -182,6 +192,7 @@ Cloud Execution Agent는 로컬 명령을 직접 실행하지 않는다. 실제 
 - `docs/research/research-index.md`: 선행연구 자료집 및 모델 반영안
 - `docs/agent-operations-plan.md`: Codex/Claude Code 교대 운영 플랜
 - `docs/github-app-limit-report.md`: GitHub 앱 작업 가능 범위 점검 보고
+- `docs/data/terrain-data-policy.md`: DEM/DSM 데이터 정책 및 redistributable processed data 기준
 - `docs/paper/log-structure.md`: Task 014 이후 논문 기록 분산 구조와 작성 규칙
 - `docs/paper/score-model-validation-plan.md`: 실제 드론운용 없는 오프라인 점수식 검증 계획
 - `docs/deployment/android-tmmr-offline-plan.md`: Android/TMMR offline 제품화·배포 로드맵
@@ -197,6 +208,6 @@ Task 014 이후 논문용 의사결정, 연구 노트, 실험 기록, PR 검토 
 - 실제 드론 제어
 - 실시간 조종 또는 자동 비행 제어
 - 침투·회피·공격 경로 제공
-- 실제 통신 성공률 또는 링크품질 보장 표현
-- RSSI/SINR/packet loss를 필수 입력으로 요구하는 MVP schema
+- 현장 링크 성능 보장 표현
+- 실측 링크지표를 필수 입력으로 요구하는 MVP schema
 - 대형 GIS 원천 데이터 저장소 커밋
