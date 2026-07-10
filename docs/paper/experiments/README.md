@@ -9,3 +9,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 ## Index
 
 - [EXP-20260710-001 - minimum required altitude tests](EXP-20260710-001-minimum-required-altitude-tests.md)
+- [EXP-20260710-002 - terrain data adapter tests](EXP-20260710-002-terrain-data-adapter-tests.md)
