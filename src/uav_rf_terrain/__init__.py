@@ -138,6 +138,16 @@ from .synthetic import (
     create_single_ridge_terrain,
     create_synthetic_terrain,
 )
+from .terrain_data import (
+    RASTER_TYPE_DEM,
+    RASTER_TYPE_DSM,
+    SyntheticTerrainDataAdapter,
+    TerrainDataAdapter,
+    TerrainDataError,
+    TerrainDatasetMetadata,
+    TerrainRasterMetadata,
+    validate_terrain_dataset_metadata,
+)
 from .waypoints import (
     RouteWaypoint,
     RouteWaypointReport,
@@ -193,6 +203,8 @@ __all__ = [
     "RouteWaypoint",
     "RouteWaypointReport",
     "RoutingError",
+    "RASTER_TYPE_DEM",
+    "RASTER_TYPE_DSM",
     "SHIELDING_WEIGHT",
     "ScenarioOutputError",
     "ScoreComponentWeights",
@@ -201,12 +213,17 @@ __all__ = [
     "SyntheticCandidateRecord",
     "SyntheticEndToEndScenario",
     "SyntheticRouteOutput",
+    "SyntheticTerrainDataAdapter",
     "SyntheticTerrainError",
     "SyntheticTerrainGrid",
+    "TerrainDataAdapter",
+    "TerrainDataError",
+    "TerrainDatasetMetadata",
     "TerrainMode",
     "TerrainProfile",
     "TerrainProfileError",
     "TerrainProfileSample",
+    "TerrainRasterMetadata",
     "WGS84Point",
     "WaypointError",
     "WaypointMapFeature",
@@ -271,6 +288,7 @@ __all__ = [
     "summarize_minimum_altitude_result",
     "summarize_synthetic_end_to_end_scenario",
     "summarize_waypoint_report",
+    "validate_terrain_dataset_metadata",
     "wavelength_m",
 ]
 
