@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
+import sys
 
 from uav_rf_terrain.coordinates import LocalPoint
 from uav_rf_terrain.geotiff_terrain_data import LocalGeoTiffTerrainDataAdapter
-from uav_rf_terrain.profile import extract_terrain_profile_from_adapter
+from uav_rf_terrain.profile import TerrainProfileError, extract_terrain_profile_from_adapter
 from uav_rf_terrain.terrain_data import TerrainDataError
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dem-path", type=Path, required=True)
     parser.add_argument("--dsm-path", type=Path, required=True)
@@ -20,10 +22,10 @@ def main() -> int:
     parser.add_argument("--end-x", type=float, required=True)
     parser.add_argument("--end-y", type=float, required=True)
     parser.add_argument("--sample-spacing-m", type=float)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    adapter = LocalGeoTiffTerrainDataAdapter(args.dem_path, args.dsm_path)
     try:
+        adapter = LocalGeoTiffTerrainDataAdapter(args.dem_path, args.dsm_path)
         metadata = adapter.validate_metadata()
         profile = extract_terrain_profile_from_adapter(
             adapter,
@@ -31,8 +33,9 @@ def main() -> int:
             LocalPoint(args.end_x, args.end_y),
             sample_spacing_m=args.sample_spacing_m,
         )
-    except TerrainDataError as exc:
-        raise SystemExit(f"Local GeoTIFF smoke test failed: {exc}") from exc
+    except (TerrainDataError, TerrainProfileError) as exc:
+        print(f"Local GeoTIFF smoke test failed: {exc}", file=sys.stderr)
+        return 1
 
     print(f"dataset={metadata.dataset_name}")
     print(f"crs={metadata.dem.crs}")
