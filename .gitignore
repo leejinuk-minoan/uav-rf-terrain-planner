@@ -1,0 +1,13 @@
+METADATA_MAP/
+.tmp/
+__pycache__/
+*.py[cod]
+data_raw/
+data_processed/
+*.aux.xml
+*.ovr
+*.vrt
+*.tif
+*.tiff
+*.img
+*.zip
