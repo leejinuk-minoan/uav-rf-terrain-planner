@@ -179,6 +179,8 @@ Optional local smoke test, not required in CI:
 
     python examples/local_geotiff_adapter_smoke.py --dem-path METADATA_MAP/DEM_PROCESSED/south_korea_dem_90m_epsg5179_alltiles.tif --dsm-path METADATA_MAP/DSM_PROXY_FROM_ESA_WORLDCOVER/south_korea_temporary_dsm_proxy_90m_epsg5179.tif --start-x 900000 --start-y 1800000 --end-x 900900 --end-y 1800000
 
+Task 018B local smoke and QGIS verification results are recorded in [the Task 018B checkpoint](docs/handoff/task-018b-local-dem-dsm-smoke-qgis-checkpoint.md).
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
