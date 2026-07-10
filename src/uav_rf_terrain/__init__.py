@@ -84,8 +84,11 @@ from .profile import (
     TerrainProfileError,
     TerrainProfileSample,
     extract_terrain_profile,
+    extract_terrain_profile_from_adapter,
     grid_index_to_local_point,
     local_point_to_grid_index,
+    local_point_to_metadata_grid_index,
+    metadata_grid_index_to_local_point,
 )
 from .routing import (
     RouteCandidate,
@@ -271,6 +274,7 @@ __all__ = [
     "distance_3d_m",
     "evaluate_launch_area_cell",
     "extract_terrain_profile",
+    "extract_terrain_profile_from_adapter",
     "filter_within_operation_radius",
     "first_fresnel_radius_m",
     "format_map_output_summary",
@@ -279,6 +283,8 @@ __all__ = [
     "grid_index_to_local_point",
     "local_offset_point",
     "local_point_to_grid_index",
+    "local_point_to_metadata_grid_index",
+    "metadata_grid_index_to_local_point",
     "mgrs_to_wgs84",
     "select_lowest_cost_route",
     "select_waypoint_source_points",
