@@ -6,6 +6,9 @@ The generated DSM is a terrain/surface-obstacle proxy:
 
 It is not an authoritative DSM and must not be described as validated link
 quality or actual obstacle height.
+
+NumPy and rasterio are local preprocessing script runtime dependencies, not
+package dependencies of uav-rf-terrain-planner.
 """
 
 from __future__ import annotations

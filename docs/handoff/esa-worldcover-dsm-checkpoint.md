@@ -2,7 +2,7 @@
 
 ## 현재 Task
 
-실제 DEM 도엽과 ESA WorldCover 10m 2021 v200을 결합한 남한 임시 DSM 구축
+Task 018A - DEM/DSM Preprocessing Handoff and Restore Scripts
 
 ## 담당했던 에이전트
 
@@ -19,8 +19,10 @@ Codex
 ## 입력 데이터
 
 - DEM: `METADATA_MAP/DEM_EXTRACTED_LATEST`의 225개 IMG 도엽
-- 토지피복: `C:/Users/USER/Desktop/지형분석 데이터/ESA_WorldCover_10m_2021_v200_60deg_macrotile_N30E120`
+- 토지피복: `<LOCAL_DATA_ROOT>/ESA_WorldCover_10m_2021_v200_60deg_macrotile_N30E120`
 - 토지피복 원본: EPSG:4326, 10m, ESA WorldCover 2021 v200, CC BY 4.0
+
+처리 스크립트의 `numpy`와 `rasterio`는 로컬 전처리 실행 환경에서만 필요한 runtime dependency이며 프로젝트 package dependency가 아니다.
 
 ## 표면 높이 가정
 

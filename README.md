@@ -67,6 +67,10 @@ The generator creates small in-memory DEM/DSM grids for scenarios such as flat t
 
 No real DEM/DSM files are loaded. No GeoTIFF, rasterio, GDAL, geopandas, QGIS, or map-rendering work is included. LOS/Fresnel/scoring/map rendering remain future tasks.
 
+## Task 018A DEM/DSM preprocessing handoff
+
+Task 018A adds local DEM/DSM regeneration scripts and checkpoint documentation; it does not commit actual GIS data. Large source and generated GIS files remain local under `METADATA_MAP/`, which is excluded from Git.
+
 ## Task 004 terrain profile extraction
 
 Task 004 adds pure Python terrain profile extraction over synthetic DEM/DSM grids.

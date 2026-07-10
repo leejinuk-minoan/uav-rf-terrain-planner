@@ -7,6 +7,9 @@ The output is suitable for research, education, and simulation prototyping:
 WorldCover contains land-cover classes, not measured building or vegetation
 heights. The surface deltas below are heuristic assumptions and must not be
 treated as an authoritative DSM.
+
+NumPy and rasterio are local preprocessing script runtime dependencies, not
+package dependencies of uav-rf-terrain-planner.
 """
 
 from __future__ import annotations

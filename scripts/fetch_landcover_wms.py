@@ -3,6 +3,9 @@
 This script uses the public land-cover WMS as a rendered map source and writes
 georeferenced RGB GeoTIFFs aligned to existing DEM tiles. It does not download
 source GIS vectors or claim authoritative land-cover class values.
+
+Rasterio is a local preprocessing script runtime dependency, not a package
+dependency of uav-rf-terrain-planner.
 """
 
 from __future__ import annotations

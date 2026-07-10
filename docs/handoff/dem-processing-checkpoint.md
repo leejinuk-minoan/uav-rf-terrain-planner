@@ -4,7 +4,7 @@
 
 ## 현재 Task
 
-남한지역 공개 DEM 원천 zip 묶음 확인 및 1차 모자이크 생성
+Task 018A - DEM/DSM Preprocessing Handoff and Restore Scripts
 
 ## 담당했던 에이전트
 
@@ -12,7 +12,7 @@ Codex
 
 ## 작업한 내용
 
-- `C:\Users\USER\Desktop\drone-paln\METADATA_MAP` 아래 공개 DEM zip 파일 342개 확인
+- `<LOCAL_PROJECT_ROOT>/METADATA_MAP` 아래 공개 DEM zip 파일 342개 확인
 - 파일명 기준 도엽 225개 식별
 - 도엽별 최신 연도 1개를 선택
   - 2025년 도엽: 220개
@@ -26,11 +26,11 @@ Codex
 Git 커밋 대상이 아닌 로컬 데이터 산출물이다.
 
 ```text
-C:\Users\USER\Desktop\drone-paln\METADATA_MAP\dem_latest_manifest.csv
-C:\Users\USER\Desktop\drone-paln\METADATA_MAP\DEM_EXTRACTED_LATEST\
-C:\Users\USER\Desktop\drone-paln\METADATA_MAP\DEM_PROCESSED\dem_img_list_nobom.txt
-C:\Users\USER\Desktop\drone-paln\METADATA_MAP\DEM_PROCESSED\south_korea_dem_90m_epsg5179_alltiles.vrt
-C:\Users\USER\Desktop\drone-paln\METADATA_MAP\DEM_PROCESSED\south_korea_dem_90m_epsg5179_alltiles.tif
+METADATA_MAP/dem_latest_manifest.csv
+METADATA_MAP/DEM_EXTRACTED_LATEST/
+METADATA_MAP/DEM_PROCESSED/dem_img_list_nobom.txt
+METADATA_MAP/DEM_PROCESSED/south_korea_dem_90m_epsg5179_alltiles.vrt
+METADATA_MAP/DEM_PROCESSED/south_korea_dem_90m_epsg5179_alltiles.tif
 ```
 
 ## 최종 DEM 검증 요약
