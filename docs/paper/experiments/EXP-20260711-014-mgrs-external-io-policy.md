@@ -24,7 +24,7 @@ The task adds an architecture policy document, a small coordinate I/O policy hel
 
 ## Actual Result
 
-Policy and guardrail helper were added in this branch. PR and CI status should be checked on the corresponding Task 020E pull request.
+Policy and guardrail helper were added. PR #52 GitHub Actions CI completed successfully on the checked head commit.
 
 ## Metrics
 
@@ -38,7 +38,7 @@ Policy and guardrail helper were added in this branch. PR and CI status should b
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI should be used for install, syntax, pytest, ruff, and mypy checks after the pull request is created.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #52.
 
 ## Interpretation
 
