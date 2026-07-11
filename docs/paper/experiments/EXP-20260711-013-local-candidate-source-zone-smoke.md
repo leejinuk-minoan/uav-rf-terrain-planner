@@ -47,6 +47,8 @@ Local raster-backed smoke passed. Synthetic provider, summary, aggregate formatt
 
 The source-zone metadata layers now connect from actual local raster values through candidate-grid records. The smoke confirms metadata plumbing only; the resulting counts do not measure candidate quality or nationwide source-zone proportions.
 
+The Task 020D smoke is compatible with the MGRS external I/O boundary policy because it reported aggregate counts only and did not publish coordinate fields. If a future smoke or report shows user-facing coordinates, those fields should be displayed as MGRS; projected coordinates and raster row/col values should remain internal/debug.
+
 ## Limitations
 
 Representative search is bounded rather than exhaustive. WMS classes remain a styled-RGB heuristic proxy. DEM-only fallback and mixed-boundary radius are model assumptions. No scoring or field outcome is evaluated.
@@ -61,4 +63,4 @@ Only anonymized aggregate results are recorded. No private path, coordinate, ras
 
 ## Follow-up Tasks
 
-Apply source-zone metadata to future raster-backed candidate output construction, retain source-sensitive flags in analyses, and test alternative neighborhood radii.
+Apply source-zone metadata to future raster-backed candidate output construction, retain source-sensitive flags in analyses, test alternative neighborhood radii, and display MGRS for any future user-facing coordinate fields.

@@ -6,6 +6,8 @@
 
 정찰목표지점 MGRS, 드론 운용반경, 허가 운용고도 AGL, 통신 주파수 대역을 입력받아 DEM/DSM 기반 지형 단면과 LOS/Fresnel Zone 차폐 위험을 분석하고, **지도 평면상에서 드론 최대 운용거리를 고려한 발진 가능구역을 색상 레이어로 표시**합니다. 사용자가 지도에서 발진기지를 선택하면 해당 지점부터 목표지점까지 차폐 위험이 낮은 비행경로 후보 3개를 제시합니다.
 
+사용자 입력 좌표와 사용자-facing 출력 좌표는 MGRS를 표준으로 한다. 내부 계산은 WGS84, EPSG:5179, local metric coordinates, raster row/col을 사용할 수 있으나 기본 사용자 출력에는 MGRS를 표시한다.
+
 ## 핵심 기능
 
 1. MGRS 좌표 입력 및 분석용 좌표계 변환
@@ -20,7 +22,7 @@
 
 ## 발진기지 표시 기준
 
-발진기지는 단순히 Top 5 점 목록으로 제시하지 않는다. 첨부 예시 이미지처럼 분석 평면을 격자화하고 각 격자점을 평가하여 다음과 같은 색상 구역으로 표시한다.
+발진기지는 단순히 Top 5 점 목록이 아니라 색상 기반 발진 가능구역 지도로 표시한다. 분석 평면을 격자화하고 각 격자점을 평가하여 다음과 같은 색상 구역으로 표시한다.
 
 - 추천 가능구역: 운용거리 조건을 만족하고 차폐위험이 낮은 지역
 - 제한적 가능구역: 운용거리 조건은 만족하지만 차폐위험이 보통인 지역
@@ -58,6 +60,8 @@ Task 002는 local coordinate and candidate-grid scaffolding을 추가한다. `co
 MGRS/pyproj 기반 변환은 optional GIS dependencies와 로컬 검증이 필요하다. 기본 dev 환경과 CI가 무거운 GIS 의존성 때문에 깨지지 않도록 MGRS 변환은 optional runtime import 구조로 둔다.
 
 Candidate grid는 색상 기반 발진 가능구역 지도 생성을 위한 grid/cell 구조이며, Top 5 발진지 기본 출력 구조가 아니다. 실제 DEM/DSM loading, DSM-based LOS/Fresnel computation, final scoring, and map rendering remain future tasks.
+
+좌표 외부 I/O 정책은 `docs/architecture/mgrs-external-io-policy.md`에 둔다. `x_m`, `y_m`, raster `row`/`col`, EPSG:5179 좌표는 internal/debug 좌표이며 기본 사용자-facing 좌표 표시에는 MGRS를 사용한다.
 
 ## Task 003 synthetic DEM/DSM terrain generator
 
@@ -199,6 +203,8 @@ Task 020C adds a pure Python candidate-grid source-zone assignment scaffold so c
 
 Task 020D records the local raster-backed candidate source-zone smoke that connects `LocalSourceZoneRasterClassifier` output to candidate-grid source-zone assignment without committing raster data.
 
+Task 020E defines MGRS as the external input/output coordinate boundary while keeping WGS84, EPSG:5179, local x/y, and raster row/col as internal/debug computation coordinates.
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
@@ -237,6 +243,7 @@ Cloud Execution Agent는 로컬 명령을 직접 실행하지 않는다. 실제 
 - `docs/agent-operations-plan.md`: Codex/Claude Code 교대 운영 플랜
 - `docs/github-app-limit-report.md`: GitHub 앱 작업 가능 범위 점검 보고
 - `docs/data/terrain-data-policy.md`: DEM/DSM 데이터 정책 및 redistributable processed data 기준
+- `docs/architecture/mgrs-external-io-policy.md`: MGRS external input/output boundary policy
 - `docs/paper/log-structure.md`: Task 014 이후 논문 기록 분산 구조와 작성 규칙
 - `docs/paper/score-model-validation-plan.md`: 실제 드론운용 없는 오프라인 점수식 검증 계획
 - `docs/deployment/android-tmmr-offline-plan.md`: Android/TMMR offline 제품화·배포 로드맵
