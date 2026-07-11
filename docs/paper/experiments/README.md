@@ -16,3 +16,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260710-006 - manual QGIS overlay verification](EXP-20260710-006-manual-qgis-overlay-verification.md)
 - [EXP-20260710-007 - QGIS overlay follow-up verification](EXP-20260710-007-qgis-overlay-followup.md)
 - [EXP-20260710-008 - MCEE WMS landcover gap fill](EXP-20260710-008-mcee-wms-landcover-gap-fill.md)
+- [EXP-20260711-009 - mixed-source boundary quantification](EXP-20260711-009-mixed-source-boundary-quantification.md)
