@@ -197,6 +197,8 @@ Task 020B local source-zone raster classifier results are recorded in [the Task 
 
 Task 020C adds a pure Python candidate-grid source-zone assignment scaffold so candidate cells can receive ESA-derived, WMS gap-filled, mixed-boundary, or DEM-only fallback interpretation metadata before later raster-backed scoring integration.
 
+Task 020D records the local raster-backed candidate source-zone smoke that connects `LocalSourceZoneRasterClassifier` output to candidate-grid source-zone assignment without committing raster data.
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
