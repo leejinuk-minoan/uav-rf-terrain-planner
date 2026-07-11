@@ -3,8 +3,8 @@
 This module converts Task 020C candidate source-zone assignments into user-facing
 candidate output metadata records. User-facing coordinates are represented by
 ``candidate_cell_mgrs`` strings supplied by the caller. The module does not perform
-MGRS conversion, read raster files, compute scores, render maps, or validate field
-outcomes.
+MGRS conversion, read raster files, compute scores, render maps, or perform
+field-outcome validation.
 """
 
 from __future__ import annotations
@@ -16,7 +16,10 @@ from .candidate_source_zones import (
     CandidateSourceZoneAssignment,
     CandidateSourceZoneRecord,
 )
-from .coordinate_io_policy import require_mgrs_external_coordinate_field
+from .coordinate_io_policy import (
+    EXTERNAL_COORDINATE_FORMAT,
+    require_mgrs_external_coordinate_field,
+)
 from .source_zones import (
     SourceZoneSummary,
     TerrainSourceZone,
@@ -145,6 +148,7 @@ def summarize_candidate_source_zone_outputs(
     return {
         "candidate_source_zone_output_record_count": len(bundle.records),
         "candidate_source_zone_user_coordinate_field": "candidate_cell_mgrs",
+        "external_coordinate_format": EXTERNAL_COORDINATE_FORMAT,
         "esa_candidate_source_zone_output_count": summary.esa_derived_count,
         "wms_gap_filled_candidate_source_zone_output_count": summary.wms_gap_filled_count,
         "dem_only_fallback_candidate_source_zone_output_count": summary.dem_only_fallback_count,
