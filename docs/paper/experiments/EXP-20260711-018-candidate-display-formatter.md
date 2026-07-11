@@ -25,7 +25,7 @@ The formatter reads attached candidate metadata, preserves `candidate_cell_mgrs`
 
 ## Actual Result
 
-Implemented in the Task 021D pull request. Candidate display records, bundle helpers, by-candidate-id mapping, summaries, synthetic tests, handoff documentation, and experiment documentation were added.
+Implemented in PR #56. Candidate display records, bundle helpers, by-candidate-id mapping, summaries, synthetic tests, handoff documentation, README summary, and experiment documentation were added.
 
 ## Metrics
 
@@ -39,7 +39,7 @@ Implemented in the Task 021D pull request. Candidate display records, bundle hel
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI will be checked after the pull request is created.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #56 before this record update. The final documentation head is rechecked before completion reporting.
 
 ## Interpretation
 
