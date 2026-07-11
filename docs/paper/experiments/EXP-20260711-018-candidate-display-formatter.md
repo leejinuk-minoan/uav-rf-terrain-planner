@@ -39,7 +39,7 @@ Implemented in PR #56. Candidate display records, bundle helpers, by-candidate-i
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #56 before this record update. The final documentation head is rechecked before completion reporting.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #56 on the checked head commit.
 
 ## Interpretation
 
