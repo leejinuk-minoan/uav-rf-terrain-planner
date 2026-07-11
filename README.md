@@ -207,6 +207,8 @@ Task 020E defines MGRS as the external input/output coordinate boundary while ke
 
 Task 021A adds a candidate source-zone output metadata scaffold that preserves `candidate_cell_mgrs` as the user-facing candidate coordinate field while summarizing source-zone interpretation metadata.
 
+Task 021B adds a candidate source-zone map metadata bridge that converts MGRS-based candidate source-zone output records into future map-ready properties without rendering maps or exposing internal projected coordinates.
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
