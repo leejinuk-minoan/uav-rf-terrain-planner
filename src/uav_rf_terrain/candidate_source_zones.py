@@ -71,9 +71,13 @@ class CandidateSourceZoneAssignment:
     def __post_init__(self) -> None:
         _ensure_records(self.records)
         if not isinstance(self.source_zone_summary, SourceZoneSummary):
-            raise CandidateSourceZoneError("source_zone_summary must be a SourceZoneSummary value.")
+            raise CandidateSourceZoneError(
+                "source_zone_summary must be a SourceZoneSummary value."
+            )
         _validate_non_negative_int("source_sensitive_count", self.source_sensitive_count)
-        if self.source_sensitive_count != sum(1 for record in self.records if record.source_sensitive):
+        if self.source_sensitive_count != sum(
+            1 for record in self.records if record.source_sensitive
+        ):
             raise CandidateSourceZoneError(
                 "source_sensitive_count must match the assigned source-sensitive records."
             )
@@ -169,7 +173,9 @@ def _ensure_records(
         raise CandidateSourceZoneError("records must not be empty.")
     for record in records:
         if not isinstance(record, CandidateSourceZoneRecord):
-            raise CandidateSourceZoneError("all records must be CandidateSourceZoneRecord values.")
+            raise CandidateSourceZoneError(
+                "all records must be CandidateSourceZoneRecord values."
+            )
     return records
 
 
