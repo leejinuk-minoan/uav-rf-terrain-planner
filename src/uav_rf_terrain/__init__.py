@@ -6,6 +6,14 @@ actual UAV control, real-time flight control, mission success guarantees, or ver
 communication quality outputs.
 """
 
+from .candidate_source_zones import (
+    CandidateSourceZoneAssignment,
+    CandidateSourceZoneError,
+    CandidateSourceZoneRecord,
+    SourceZonePointProvider,
+    assign_source_zones_to_candidate_cells,
+    summarize_candidate_source_zone_assignment,
+)
 from .classification import (
     ClassificationError,
     ColorClassificationThresholds,
@@ -186,6 +194,9 @@ __all__ = [
     "CandidateCellMapFeature",
     "CandidateGridConfig",
     "CandidateScore",
+    "CandidateSourceZoneAssignment",
+    "CandidateSourceZoneError",
+    "CandidateSourceZoneRecord",
     "ClassificationError",
     "ColorClass",
     "ColorClassificationThresholds",
@@ -233,6 +244,7 @@ __all__ = [
     "ScoreWeights",
     "ScoringError",
     "SourceZoneError",
+    "SourceZonePointProvider",
     "SourceZoneRasterError",
     "SourceZoneRasterSample",
     "SourceZoneRasterSummary",
@@ -260,6 +272,7 @@ __all__ = [
     "AltitudeRequirementSample",
     "analyze_dsm_fresnel",
     "analyze_dsm_los",
+    "assign_source_zones_to_candidate_cells",
     "available_synthetic_scenarios",
     "build_candidate_cell_map_features",
     "build_map_output_package",
@@ -318,6 +331,7 @@ __all__ = [
     "select_waypoint_source_points",
     "style_for_color_class",
     "style_for_route_type",
+    "summarize_candidate_source_zone_assignment",
     "summarize_map_output_package",
     "summarize_minimum_altitude_result",
     "summarize_source_zones",
