@@ -193,6 +193,8 @@ Task 018F mixed-source boundary quantification results are recorded in [the Task
 
 Task 020A adds source-zone flags for candidate, route, and waypoint output records so ESA-derived, WMS gap-filled, mixed-boundary, and DEM-only fallback results can be identified in later analysis.
 
+Task 020B local source-zone raster classifier results are recorded in [the Task 020B handoff](docs/handoff/task-020b-local-source-zone-raster-classifier.md).
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.

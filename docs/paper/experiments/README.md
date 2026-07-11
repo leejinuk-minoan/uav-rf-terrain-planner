@@ -18,3 +18,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260710-008 - MCEE WMS landcover gap fill](EXP-20260710-008-mcee-wms-landcover-gap-fill.md)
 - [EXP-20260711-009 - mixed-source boundary quantification](EXP-20260711-009-mixed-source-boundary-quantification.md)
 - [EXP-20260711-010 - source-zone flag scaffold](EXP-20260711-010-source-zone-flag-scaffold.md)
+- [EXP-20260711-011 - local source-zone raster classifier](EXP-20260711-011-local-source-zone-raster-classifier.md)
