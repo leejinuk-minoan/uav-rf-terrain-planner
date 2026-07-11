@@ -26,7 +26,7 @@ The preview layer copies primitive dictionaries from `CandidateDisplayRecord.to_
 
 ## Actual Result
 
-Implemented on the Task 021E branch. The preview object, JSON-ready helper, plain-text formatter, truncation behavior, synthetic tests, handoff documentation, README summary, and experiment index update were added. PR and CI status are finalized after pull request creation.
+Implemented in PR #57. The preview object, JSON-ready helper, plain-text formatter, truncation behavior, synthetic tests, handoff documentation, README summary, and experiment index update were added.
 
 ## Metrics
 
@@ -40,7 +40,7 @@ Implemented on the Task 021E branch. The preview object, JSON-ready helper, plai
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI will be checked after the pull request is created and this record will be updated to the checked result.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #57 and is rechecked on the final documentation head before completion reporting.
 
 ## Interpretation
 
