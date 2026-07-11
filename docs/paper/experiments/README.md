@@ -22,3 +22,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260711-012 - candidate source-zone assignment scaffold](EXP-20260711-012-candidate-source-zone-assignment.md)
 - [EXP-20260711-013 - local candidate source-zone smoke](EXP-20260711-013-local-candidate-source-zone-smoke.md)
 - [EXP-20260711-014 - MGRS external I/O boundary policy](EXP-20260711-014-mgrs-external-io-policy.md)
+- [EXP-20260711-015 - candidate source-zone output metadata](EXP-20260711-015-candidate-source-zone-output-metadata.md)
