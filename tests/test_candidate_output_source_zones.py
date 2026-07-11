@@ -87,6 +87,13 @@ def test_source_zone_counts_and_sensitive_summary_are_preserved() -> None:
     assert summary["internal_debug_available_candidate_count"] == 4
 
 
+def test_summary_includes_external_coordinate_format() -> None:
+    bundle = build_candidate_source_zone_output_records(_assignment(), _mgrs_mapping())
+    summary = summarize_candidate_source_zone_outputs(bundle)
+
+    assert summary["external_coordinate_format"] == "MGRS"
+
+
 def test_output_bundle_validates_summary_consistency() -> None:
     record = CandidateSourceZoneOutputRecord(
         cell_id="cell-esa",
@@ -149,6 +156,19 @@ def test_summary_requires_bundle_type() -> None:
         summarize_candidate_source_zone_outputs(object())  # type: ignore[arg-type]
 
 
+def test_handoff_document_records_mgrs_and_internal_debug_policy() -> None:
+    text = Path("docs/handoff/task-021a-candidate-source-zone-output-scaffold.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "candidate_cell_mgrs" in text
+    assert "MGRS" in text
+    assert "internal/debug" in text
+    assert "does not implement MGRS conversion" in text
+    assert "external coordinate format" in text
+    assert "map" in text.lower()
+
+
 def test_candidate_output_source_zone_module_has_no_gis_dependency_imports() -> None:
     module_text = Path("src/uav_rf_terrain/candidate_output_source_zones.py").read_text(
         encoding="utf-8"
@@ -193,6 +213,7 @@ def test_new_files_do_not_add_forbidden_wording() -> None:
     paths = (
         Path("src/uav_rf_terrain/candidate_output_source_zones.py"),
         Path("docs/paper/experiments/EXP-20260711-015-candidate-source-zone-output-metadata.md"),
+        Path("docs/handoff/task-021a-candidate-source-zone-output-scaffold.md"),
     )
     for path in paths:
         text = path.read_text(encoding="utf-8")
