@@ -21,7 +21,7 @@ All seven rasters matched the DEM CRS, dimensions, transform, and bounds: `EPSG:
 - `valid DEM`: finite DEM pixels that are not NoData
 - `original ESA`: valid DEM pixels where original landcover is non-zero
 - `gap filled`: valid DEM pixels where original landcover is zero and gap-filled landcover is non-zero
-- `remaining zero`: valid DEM pixels where gap-filled landcover remains zero
+- `remaining zero`: valid DEM pixels where gap-filled landcover remains zero; modeled as an `unclassified / no-surface-obstacle fallback`
 - `ESA-neighbor zone`: original ESA pixels within an 8-connected square buffer outside the gap-filled mask
 - `WMS-filled boundary zone`: gap-filled pixels within the same buffer distance inside the mask
 
@@ -95,7 +95,13 @@ Existing non-zero landcover pixels changed: **0**. The 1,231,394 changed pixels 
 
 ## Remaining zero-pixel interpretation
 
-After gap fill, 761,792 valid-DEM pixels remained zero, or 4.380% of valid DEM coverage. This aggregate includes outer coverage, coastal or water-adjacent cells, and WMS-unclassified pixels. The current analysis does not classify every remaining zero by cause, so zero must not be treated uniformly as bare terrain or absence of obstacles.
+After gap fill, 761,792 valid-DEM pixels remained zero, or 4.380% of valid DEM coverage. These pixels use the following model fallback policy:
+
+- landcover class: `unclassified / no-surface-obstacle fallback`
+- `surface_delta_proxy_m = 0`
+- `temporary_dsm_proxy_m = DEM_msl`
+
+Candidate scoring and route evaluation therefore treat remaining-zero cells as `DSM proxy = DEM`. This is an obstacle-free fallback assumption for uncovered input cells, not evidence that real-world obstacles are absent. The policy is user-defined and is not based on measured obstacle-height verification.
 
 ## Interpretation for candidate scoring
 
@@ -103,6 +109,7 @@ After gap fill, 761,792 valid-DEM pixels remained zero, or 4.380% of valid DEM c
 - Class TVD of `0.451-0.523` indicates substantial source-dependent class composition near the boundary.
 - WMS-filled boundary surface delta was lower by `3.547-4.196m` in mean and `13m` in median, which can reduce DSM obstacle proxy values relative to neighboring ESA-derived cells.
 - Candidate scores or route comparisons that cross or lie near mixed-source boundaries should be flagged as source-sensitive.
+- Candidate scoring and route evaluation use the surface-delta zero fallback for remaining-zero valid DEM cells; results involving those cells should be flagged as fallback-dependent.
 - Paper experiments should stratify ESA-only, WMS-filled, and boundary-intersecting cases or run a sensitivity analysis rather than pool them without qualification.
 - These metrics quantify preprocessing discontinuity only; they do not validate field outcomes.
 
@@ -120,6 +127,7 @@ The mixed-source effect was quantified successfully and raster preservation chec
 - The square 8-connected buffer is a raster proximity definition, not a physical feature boundary.
 - DSM distribution differences include DEM elevation and geographic-placement effects.
 - No measured obstacle height or field data was used.
+- The remaining-zero obstacle-free fallback is a modeling policy, not a data-derived statement about actual obstacle presence.
 
 ## Public repository sensitivity check
 
@@ -130,4 +138,4 @@ Only repository-relative input descriptions and aggregate statistics are recorde
 1. Add source-zone flags to future candidate and route experiment datasets.
 2. Run candidate-score sensitivity analysis with ESA-only, WMS-filled, and boundary-intersecting strata.
 3. Replace styled WMS RGB classification if authoritative source class data becomes available.
-4. Classify remaining zero pixels by outer coverage, water, and unclassified-source cause.
+4. Run sensitivity analysis comparing the remaining-zero surface-delta zero fallback with alternative conservative fallback values.
