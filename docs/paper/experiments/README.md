@@ -24,3 +24,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260711-014 - MGRS external I/O boundary policy](EXP-20260711-014-mgrs-external-io-policy.md)
 - [EXP-20260711-015 - candidate source-zone output metadata](EXP-20260711-015-candidate-source-zone-output-metadata.md)
 - [EXP-20260711-016 - candidate source-zone map metadata](EXP-20260711-016-candidate-source-zone-map-metadata.md)
+- [EXP-20260711-017 - map output candidate source-zone properties](EXP-20260711-017-map-output-source-zone-properties.md)
