@@ -209,6 +209,8 @@ Task 021A adds a candidate source-zone output metadata scaffold that preserves `
 
 Task 021B adds a candidate source-zone map metadata bridge that converts MGRS-based candidate source-zone output records into future map-ready properties without rendering maps or exposing internal projected coordinates.
 
+Task 021C attaches candidate source-zone map metadata to candidate map features as optional MGRS-based properties while keeping existing internal geometry fields and map output constructors backward-compatible.
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
