@@ -40,7 +40,7 @@ Implemented in PR #57. The preview object, JSON-ready helper, plain-text formatt
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #57 and is rechecked on the final documentation head before completion reporting.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #57 on the checked head commit.
 
 ## Interpretation
 
