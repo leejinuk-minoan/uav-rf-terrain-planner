@@ -43,7 +43,7 @@ Implemented in PR #59. The architecture document, handoff record, experiment rec
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #59 on the checked documentation head. The final documentation-status commit is rechecked before completion reporting.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #59 on the checked head commit.
 
 ## Interpretation
 
