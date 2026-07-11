@@ -215,6 +215,8 @@ Task 021D adds a candidate display formatter scaffold that converts MGRS-based c
 
 Task 021E adds a candidate display preview scaffold that converts MGRS-based display records into JSON-ready and plain-text previews without exposing internal geometry coordinates or writing files.
 
+Task 021F connects the synthetic scenario flow to MGRS-based candidate display previews as an in-memory smoke path without file output, rendering, or internal coordinate exposure.
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
