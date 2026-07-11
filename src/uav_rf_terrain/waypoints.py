@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from math import isfinite
 
 from .schemas import ColorClass
+from .source_zones import TerrainSourceZone, is_source_sensitive_zone, summarize_source_zones
 
 
 class WaypointError(ValueError):
@@ -35,6 +36,7 @@ class WaypointSourcePoint:
     color_class: ColorClass
     shielding_stability_score: float
     overall_score: float
+    source_zone: TerrainSourceZone = TerrainSourceZone.ESA_DERIVED
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("point_id", self.point_id)
@@ -49,6 +51,7 @@ class WaypointSourcePoint:
         _reject_excluded(self.color_class)
         _validate_score("shielding_stability_score", self.shielding_stability_score)
         _validate_score("overall_score", self.overall_score)
+        _validate_source_zone(self.source_zone)
 
 
 @dataclass(frozen=True)
@@ -87,6 +90,7 @@ class RouteWaypoint:
     color_class: ColorClass
     shielding_stability_score: float
     overall_score: float
+    source_zone: TerrainSourceZone = TerrainSourceZone.ESA_DERIVED
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("waypoint_id", self.waypoint_id)
@@ -113,6 +117,7 @@ class RouteWaypoint:
         _reject_excluded(self.color_class)
         _validate_score("shielding_stability_score", self.shielding_stability_score)
         _validate_score("overall_score", self.overall_score)
+        _validate_source_zone(self.source_zone)
 
 
 @dataclass(frozen=True)
@@ -251,6 +256,7 @@ def build_route_waypoints(
                 color_class=point.color_class,
                 shielding_stability_score=point.shielding_stability_score,
                 overall_score=point.overall_score,
+                source_zone=point.source_zone,
             )
         )
         previous_cumulative_distance_m = point.cumulative_distance_m
@@ -265,7 +271,7 @@ def build_route_waypoints(
     )
 
 
-def summarize_waypoint_report(report: RouteWaypointReport) -> dict[str, float | int | str]:
+def summarize_waypoint_report(report: RouteWaypointReport) -> dict[str, float | int | str | bool]:
     """Summarize waypoint report metrics for paper tables or future UI summaries."""
 
     if not isinstance(report, RouteWaypointReport):
@@ -275,6 +281,7 @@ def summarize_waypoint_report(report: RouteWaypointReport) -> dict[str, float | 
     height_difference_values = [
         waypoint.height_difference_from_launch_m for waypoint in report.waypoints
     ]
+    source_zone_summary = summarize_source_zones(tuple(waypoint.source_zone for waypoint in report.waypoints))
     return {
         "route_id": report.route_id,
         "waypoint_count": len(report.waypoints),
@@ -291,6 +298,15 @@ def summarize_waypoint_report(report: RouteWaypointReport) -> dict[str, float | 
         "orange_waypoint_count": sum(
             1 for waypoint in report.waypoints if waypoint.color_class is ColorClass.ORANGE
         ),
+        "esa_derived_waypoint_count": source_zone_summary.esa_derived_count,
+        "wms_gap_filled_waypoint_count": source_zone_summary.wms_gap_filled_count,
+        "dem_only_fallback_waypoint_count": source_zone_summary.dem_only_fallback_count,
+        "mixed_boundary_waypoint_count": source_zone_summary.mixed_boundary_count,
+        "source_sensitive_waypoint_count": sum(
+            1 for waypoint in report.waypoints if is_source_sensitive_zone(waypoint.source_zone)
+        ),
+        "waypoint_source_sensitive": source_zone_summary.source_sensitive,
+        "waypoint_dominant_source_zone": source_zone_summary.dominant_zone.value,
     }
 
 
@@ -360,6 +376,11 @@ def _validate_score(field_name: str, value: float) -> None:
 def _validate_color_class(color_class: ColorClass) -> None:
     if not isinstance(color_class, ColorClass):
         raise WaypointError("color_class must be a ColorClass value.")
+
+
+def _validate_source_zone(source_zone: TerrainSourceZone) -> None:
+    if not isinstance(source_zone, TerrainSourceZone):
+        raise WaypointError("source_zone must be a TerrainSourceZone value.")
 
 
 def _reject_excluded(color_class: ColorClass) -> None:

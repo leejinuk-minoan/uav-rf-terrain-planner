@@ -128,6 +128,13 @@ from .scoring import (
     compute_overall_score,
     compute_shielding_stability_score,
 )
+from .source_zones import (
+    SourceZoneError,
+    SourceZoneSummary,
+    TerrainSourceZone,
+    is_source_sensitive_zone,
+    summarize_source_zones,
+)
 from .synthetic import (
     SyntheticTerrainError,
     SyntheticTerrainGrid,
@@ -215,6 +222,8 @@ __all__ = [
     "ScoreComponentWeights",
     "ScoreWeights",
     "ScoringError",
+    "SourceZoneError",
+    "SourceZoneSummary",
     "SyntheticCandidateRecord",
     "SyntheticEndToEndScenario",
     "SyntheticRouteOutput",
@@ -229,6 +238,7 @@ __all__ = [
     "TerrainProfileError",
     "TerrainProfileSample",
     "TerrainRasterMetadata",
+    "TerrainSourceZone",
     "WGS84Point",
     "WaypointError",
     "WaypointMapFeature",
@@ -283,6 +293,7 @@ __all__ = [
     "format_synthetic_end_to_end_summary",
     "generate_candidate_grid",
     "grid_index_to_local_point",
+    "is_source_sensitive_zone",
     "local_offset_point",
     "local_point_to_grid_index",
     "local_point_to_metadata_grid_index",
@@ -294,6 +305,7 @@ __all__ = [
     "style_for_route_type",
     "summarize_map_output_package",
     "summarize_minimum_altitude_result",
+    "summarize_source_zones",
     "summarize_synthetic_end_to_end_scenario",
     "summarize_waypoint_report",
     "validate_terrain_dataset_metadata",

@@ -9,7 +9,7 @@ commands, or validate radio-link quality.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from math import isfinite
 import re
@@ -21,6 +21,12 @@ from .scenario_outputs import (
     SyntheticRouteOutput,
 )
 from .schemas import ColorClass
+from .source_zones import (
+    SourceZoneSummary,
+    TerrainSourceZone,
+    is_source_sensitive_zone,
+    summarize_source_zones,
+)
 
 _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
@@ -66,6 +72,9 @@ class CandidateCellMapFeature:
     overall_score: float
     shielding_stability_score: float
     reason: str
+    source_zone: TerrainSourceZone = TerrainSourceZone.ESA_DERIVED
+    source_sensitive: bool = False
+    source_zone_reason: str = "ESA-derived source zone only."
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("feature_id", self.feature_id)
@@ -77,6 +86,9 @@ class CandidateCellMapFeature:
         _validate_score("overall_score", self.overall_score)
         _validate_score("shielding_stability_score", self.shielding_stability_score)
         _validate_non_empty_string("reason", self.reason)
+        _validate_source_zone(self.source_zone)
+        _validate_bool("source_sensitive", self.source_sensitive)
+        _validate_non_empty_string("source_zone_reason", self.source_zone_reason)
 
 
 @dataclass(frozen=True)
@@ -91,6 +103,11 @@ class RouteMapFeature:
     route_cost: float
     high_risk_cell_count: int
     style: MapStyle
+    source_zone_summary: SourceZoneSummary = field(
+        default_factory=lambda: summarize_source_zones((TerrainSourceZone.ESA_DERIVED,))
+    )
+    source_sensitive: bool = False
+    source_zone_reason: str = "ESA-derived source zone only."
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("feature_id", self.feature_id)
@@ -102,6 +119,10 @@ class RouteMapFeature:
         _validate_non_negative_finite("route_cost", self.route_cost)
         _validate_non_negative_int("high_risk_cell_count", self.high_risk_cell_count)
         _validate_map_style(self.style)
+        if not isinstance(self.source_zone_summary, SourceZoneSummary):
+            raise MapOutputError("source_zone_summary must be a SourceZoneSummary instance.")
+        _validate_bool("source_sensitive", self.source_sensitive)
+        _validate_non_empty_string("source_zone_reason", self.source_zone_reason)
 
 
 @dataclass(frozen=True)
@@ -120,6 +141,8 @@ class WaypointMapFeature:
     height_difference_from_launch_m: float
     color_class: ColorClass
     style: MapStyle
+    source_zone: TerrainSourceZone = TerrainSourceZone.ESA_DERIVED
+    source_sensitive: bool = False
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("feature_id", self.feature_id)
@@ -134,6 +157,8 @@ class WaypointMapFeature:
         _validate_finite("height_difference_from_launch_m", self.height_difference_from_launch_m)
         _validate_color_class(self.color_class)
         _validate_map_style(self.style)
+        _validate_source_zone(self.source_zone)
+        _validate_bool("source_sensitive", self.source_sensitive)
 
 
 @dataclass(frozen=True)
@@ -145,7 +170,7 @@ class MapOutputPackage:
     route_features: tuple[RouteMapFeature, ...]
     waypoint_features: tuple[WaypointMapFeature, ...]
     selected_route_id: str
-    summary: dict[str, float | int | str]
+    summary: dict[str, float | int | str | bool]
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("scenario_name", self.scenario_name)
@@ -199,6 +224,8 @@ def build_candidate_cell_map_features(
     resolved_candidates = _ensure_synthetic_candidates(candidates)
     features: list[CandidateCellMapFeature] = []
     for index, candidate in enumerate(resolved_candidates):
+        source_sensitive = is_source_sensitive_zone(candidate.source_zone)
+        source_summary = summarize_source_zones((candidate.source_zone,))
         features.append(
             CandidateCellMapFeature(
                 feature_id=f"candidate-feature-{index:03d}",
@@ -210,6 +237,9 @@ def build_candidate_cell_map_features(
                 overall_score=candidate.candidate_score.overall_score,
                 shielding_stability_score=candidate.candidate_score.shielding_stability_score,
                 reason=candidate.reason,
+                source_zone=candidate.source_zone,
+                source_sensitive=source_sensitive,
+                source_zone_reason=source_summary.reason,
             )
         )
     return tuple(features)
@@ -225,6 +255,7 @@ def build_route_map_features(
     for index, route_output in enumerate(resolved_routes):
         route_candidate = route_output.route_candidate
         point_ids = tuple(waypoint.waypoint_id for waypoint in route_output.waypoint_report.waypoints)
+        source_zone_summary = route_candidate.source_zone_summary
         features.append(
             RouteMapFeature(
                 feature_id=f"route-feature-{index:03d}",
@@ -235,6 +266,9 @@ def build_route_map_features(
                 route_cost=route_candidate.route_cost,
                 high_risk_cell_count=route_candidate.high_risk_cell_count,
                 style=style_for_route_type(route_candidate.route_type),
+                source_zone_summary=source_zone_summary,
+                source_sensitive=source_zone_summary.source_sensitive,
+                source_zone_reason=source_zone_summary.reason,
             )
         )
     return tuple(features)
@@ -264,6 +298,8 @@ def build_waypoint_map_features(
                     height_difference_from_launch_m=waypoint.height_difference_from_launch_m,
                     color_class=waypoint.color_class,
                     style=style_for_color_class(waypoint.color_class),
+                    source_zone=waypoint.source_zone,
+                    source_sensitive=is_source_sensitive_zone(waypoint.source_zone),
                 )
             )
             feature_index += 1
@@ -296,11 +332,13 @@ def build_map_output_package(scenario: SyntheticEndToEndScenario) -> MapOutputPa
     )
 
 
-def summarize_map_output_package(package: MapOutputPackage) -> dict[str, float | int | str]:
+def summarize_map_output_package(package: MapOutputPackage) -> dict[str, float | int | str | bool]:
     """Summarize map-ready feature counts for reporting and future UI cards."""
 
     if not isinstance(package, MapOutputPackage):
         raise MapOutputError("package must be a MapOutputPackage instance.")
+    candidate_source_summary = summarize_source_zones(tuple(feature.source_zone for feature in package.candidate_features))
+    waypoint_source_summary = summarize_source_zones(tuple(feature.source_zone for feature in package.waypoint_features))
     return {
         "scenario_name": package.scenario_name,
         "candidate_feature_count": len(package.candidate_features),
@@ -315,6 +353,15 @@ def summarize_map_output_package(package: MapOutputPackage) -> dict[str, float |
             package.candidate_features,
             ColorClass.EXCLUDED,
         ),
+        "esa_candidate_feature_count": candidate_source_summary.esa_derived_count,
+        "wms_gap_filled_candidate_feature_count": candidate_source_summary.wms_gap_filled_count,
+        "dem_only_fallback_candidate_feature_count": candidate_source_summary.dem_only_fallback_count,
+        "mixed_boundary_candidate_feature_count": candidate_source_summary.mixed_boundary_count,
+        "source_sensitive_candidate_feature_count": sum(1 for feature in package.candidate_features if feature.source_sensitive),
+        "source_sensitive_route_feature_count": sum(1 for feature in package.route_features if feature.source_sensitive),
+        "source_sensitive_waypoint_feature_count": sum(1 for feature in package.waypoint_features if feature.source_sensitive),
+        "dem_only_fallback_waypoint_feature_count": waypoint_source_summary.dem_only_fallback_count,
+        "mixed_boundary_waypoint_feature_count": waypoint_source_summary.mixed_boundary_count,
         "red_waypoint_feature_count": _count_waypoint_features(package.waypoint_features, ColorClass.RED),
         "orange_waypoint_feature_count": _count_waypoint_features(package.waypoint_features, ColorClass.ORANGE),
     }
@@ -339,6 +386,8 @@ def format_map_output_summary(package: MapOutputPackage) -> str:
             f"orange={int(summary['orange_candidate_feature_count'])}, "
             f"red={int(summary['red_candidate_feature_count'])}, "
             f"excluded={int(summary['excluded_candidate_feature_count'])}",
+            f"Source-sensitive candidates: {int(summary['source_sensitive_candidate_feature_count'])}",
+            f"Source-sensitive routes: {int(summary['source_sensitive_route_feature_count'])}",
             f"Selected route id: {summary['selected_route_id']}",
             "This is map-ready data, not a rendered map.",
         )
@@ -420,6 +469,16 @@ def _validate_map_style(style: MapStyle) -> None:
 def _validate_color_class(color_class: ColorClass) -> None:
     if not isinstance(color_class, ColorClass):
         raise MapOutputError("color_class must be a ColorClass value.")
+
+
+def _validate_source_zone(source_zone: TerrainSourceZone) -> None:
+    if not isinstance(source_zone, TerrainSourceZone):
+        raise MapOutputError("source_zone must be a TerrainSourceZone value.")
+
+
+def _validate_bool(field_name: str, value: bool) -> None:
+    if not isinstance(value, bool):
+        raise MapOutputError(f"{field_name} must be a bool.")
 
 
 def _validate_non_empty_string(field_name: str, value: str) -> None:
