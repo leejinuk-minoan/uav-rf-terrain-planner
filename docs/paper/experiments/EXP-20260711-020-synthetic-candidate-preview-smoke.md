@@ -41,7 +41,7 @@ Implemented in PR #58. The synthetic smoke helper, placeholder MGRS builder, sou
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #58 on the checked implementation head. The final documentation head is rechecked before completion reporting.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #58 on the checked head commit.
 
 ## Interpretation
 
