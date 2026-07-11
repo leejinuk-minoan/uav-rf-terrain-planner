@@ -71,6 +71,12 @@ Twenty-five candidate cells were assigned `dem_only_fallback`. The model policy 
 
 Fifteen candidate cells were assigned `mixed_boundary` because more than one valid base source zone occurred in the 3-cell square neighborhood. These cells are source-sensitive interpretation metadata outputs.
 
+## MGRS external I/O compatibility
+
+This smoke checkpoint is aggregate-only and does not publish candidate, route, waypoint, or map coordinates. It therefore does not conflict with the MGRS external input/output boundary policy.
+
+If future smoke outputs include user-facing coordinates, those fields should be converted to MGRS. Internal projected coordinates and raster row/col values should remain internal/debug or be omitted from user-facing summaries.
+
 ## Test result
 
 - Provider callable invocation and expected summary counts: passed
@@ -102,3 +108,4 @@ No private absolute path, coordinate, raster, `METADATA_MAP` file, CSV, image, P
 1. Connect source-zone assignment to later raster-backed candidate output construction without changing score semantics.
 2. Preserve base-zone details where future records need both base and mixed-boundary output zones.
 3. Test source-zone counts across alternative boundary radii and additional bounded scenarios.
+4. When future outputs include user-facing coordinates, display MGRS as the default coordinate field.
