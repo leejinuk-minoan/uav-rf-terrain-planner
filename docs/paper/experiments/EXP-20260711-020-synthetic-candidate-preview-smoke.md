@@ -27,7 +27,7 @@ Build the synthetic scenario, create candidate map features, generate determinis
 
 ## Actual Result
 
-Implemented on the Task 021F branch. The synthetic smoke helper, placeholder MGRS builder, source-zone metadata builder, preview output connection, synthetic tests, handoff document, README summary, and experiment index update were added. PR and CI status are finalized after pull request creation.
+Implemented in PR #58. The synthetic smoke helper, placeholder MGRS builder, source-zone metadata builder, preview output connection, synthetic tests, handoff document, README summary, and experiment index update were added.
 
 ## Metrics
 
@@ -41,7 +41,7 @@ Implemented on the Task 021F branch. The synthetic smoke helper, placeholder MGR
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI will be checked after the pull request is created and this record will be updated to the checked result.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #58 on the checked implementation head. The final documentation head is rechecked before completion reporting.
 
 ## Interpretation
 
