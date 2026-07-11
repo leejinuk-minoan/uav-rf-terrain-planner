@@ -39,7 +39,7 @@ Implemented in PR #60. The architecture plan, Local Task 022B prompt, handoff re
 - Local implementation prompts added: 1
 - Handoff documents added: 1
 - Experiment records added: 1
-- Output surface candidates compared: 5
+- Output surface candidates compared: 6
 - Source files changed: 0
 - Test files changed: 0
 - CLI implementations added: 0
@@ -50,7 +50,7 @@ Implemented in PR #60. The architecture plan, Local Task 022B prompt, handoff re
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #60 on the checked documentation head. The final documentation-status commit is rechecked before completion reporting.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for PR #60 on the checked head commit.
 
 ## Interpretation
 
