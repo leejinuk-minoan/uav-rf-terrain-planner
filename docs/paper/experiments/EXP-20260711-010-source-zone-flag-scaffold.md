@@ -25,7 +25,7 @@ Output records should identify their source zone, route-level summaries should c
 
 ## Actual Result
 
-Pending CI result for this PR. Implementation adds source-zone scaffold records and synthetic tests.
+Source-zone scaffold records and synthetic tests were added. PR #48 GitHub Actions CI completed successfully on the checked head commit.
 
 ## Metrics
 
@@ -38,7 +38,7 @@ Pending CI result for this PR. Implementation adds source-zone scaffold records 
 
 ## CI / Local Test Result
 
-Cloud Agent did not run local commands. GitHub Actions CI status is recorded on the PR.
+Cloud Agent did not run local commands. GitHub Actions CI completed successfully for PR #48.
 
 ## Interpretation
 
