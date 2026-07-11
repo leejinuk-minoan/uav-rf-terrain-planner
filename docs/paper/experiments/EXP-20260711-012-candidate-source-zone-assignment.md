@@ -20,7 +20,7 @@ Candidate cells should receive ESA-derived, WMS gap-filled, DEM-only fallback, o
 
 ## Actual Result
 
-Pending PR CI result. The implementation adds candidate-grid source-zone assignment records, provider integration, summary helpers, and synthetic tests.
+Candidate-grid source-zone assignment records, provider integration, summary helpers, and synthetic tests were added. PR #50 GitHub Actions CI completed successfully on the checked head commit.
 
 ## Metrics
 
@@ -34,7 +34,7 @@ Pending PR CI result. The implementation adds candidate-grid source-zone assignm
 
 ## CI / Local Test Result
 
-Cloud Agent did not run local commands. GitHub Actions CI status is recorded on the PR.
+Cloud Agent did not run local commands. GitHub Actions CI completed successfully for PR #50.
 
 ## Interpretation
 
