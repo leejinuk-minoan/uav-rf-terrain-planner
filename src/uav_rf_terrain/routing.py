@@ -8,11 +8,12 @@ communication-quality outputs.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from math import isfinite
 
 from .schemas import ColorClass
+from .source_zones import SourceZoneSummary, TerrainSourceZone, summarize_source_zones
 
 
 class RoutingError(ValueError):
@@ -64,6 +65,7 @@ class RouteCell:
     color_class: ColorClass
     shielding_stability_score: float
     overall_score: float
+    source_zone: TerrainSourceZone = TerrainSourceZone.ESA_DERIVED
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("cell_id", self.cell_id)
@@ -72,6 +74,7 @@ class RouteCell:
             raise RoutingError("color_class must be a ColorClass value.")
         _validate_score("shielding_stability_score", self.shielding_stability_score)
         _validate_score("overall_score", self.overall_score)
+        _validate_source_zone(self.source_zone)
 
 
 @dataclass(frozen=True)
@@ -87,6 +90,9 @@ class RouteCandidate:
     high_risk_cell_count: int
     route_cost: float
     reason: str
+    source_zone_summary: SourceZoneSummary = field(
+        default_factory=lambda: summarize_source_zones((TerrainSourceZone.ESA_DERIVED,))
+    )
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("route_id", self.route_id)
@@ -102,7 +108,11 @@ class RouteCandidate:
         _validate_non_negative_int("high_risk_cell_count", self.high_risk_cell_count)
         _validate_non_negative_finite("route_cost", self.route_cost)
         _validate_non_empty_string("reason", self.reason)
+        if not isinstance(self.source_zone_summary, SourceZoneSummary):
+            raise RoutingError("source_zone_summary must be a SourceZoneSummary instance.")
 
+
+# ... rest of module kept below
 
 def default_route_cost_weights(route_type: RouteCandidateType) -> RouteCostWeights:
     """Return default route cost weights for a route candidate type."""
@@ -234,6 +244,7 @@ def build_route_candidate(
         weights=resolved_weights,
         distance_normalizer_m=distance_normalizer_m,
     )
+    source_zone_summary = summarize_source_zones(tuple(cell.source_zone for cell in resolved_cells))
 
     return RouteCandidate(
         route_id=route_id,
@@ -250,6 +261,7 @@ def build_route_candidate(
             mean_shielding_stability_score=mean_shielding_stability_score,
             high_risk_cell_count=high_risk_cell_count,
         ),
+        source_zone_summary=source_zone_summary,
     )
 
 
@@ -312,6 +324,11 @@ def _validate_non_negative_int(field_name: str, value: int) -> None:
         raise RoutingError(f"{field_name} must be an integer.")
     if value < 0:
         raise RoutingError(f"{field_name} must be non-negative.")
+
+
+def _validate_source_zone(source_zone: TerrainSourceZone) -> None:
+    if not isinstance(source_zone, TerrainSourceZone):
+        raise RoutingError("source_zone must be a TerrainSourceZone value.")
 
 
 def _clamp(value: float, *, lower: float, upper: float) -> float:
