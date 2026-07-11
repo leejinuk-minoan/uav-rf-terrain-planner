@@ -25,3 +25,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260711-015 - candidate source-zone output metadata](EXP-20260711-015-candidate-source-zone-output-metadata.md)
 - [EXP-20260711-016 - candidate source-zone map metadata](EXP-20260711-016-candidate-source-zone-map-metadata.md)
 - [EXP-20260711-017 - map output candidate source-zone properties](EXP-20260711-017-map-output-source-zone-properties.md)
+- [EXP-20260711-018 - candidate display formatter scaffold](EXP-20260711-018-candidate-display-formatter.md)
