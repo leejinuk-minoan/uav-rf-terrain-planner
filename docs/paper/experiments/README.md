@@ -15,3 +15,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260710-005 - local DEM/DSM smoke and QGIS overlay check](EXP-20260710-005-local-dem-dsm-smoke-qgis.md)
 - [EXP-20260710-006 - manual QGIS overlay verification](EXP-20260710-006-manual-qgis-overlay-verification.md)
 - [EXP-20260710-007 - QGIS overlay follow-up verification](EXP-20260710-007-qgis-overlay-followup.md)
+- [EXP-20260710-008 - MCEE WMS landcover gap fill](EXP-20260710-008-mcee-wms-landcover-gap-fill.md)

@@ -1,28 +1,26 @@
-# Task 018D-Local QGIS Overlay Follow-up Verification
+# Task Handoff
 
-## Environment
+## 현재 Task
 
-- Windows local execution environment
-- QGIS 3.40.14 LTR
-- Repository base: PR #45 merge commit `27b8ea2`
-- Local evidence directory: ignored `.tmp/task-018d/`
+Task 018D-Local - QGIS Overlay Follow-up Verification
 
-## Local raster files checked
+## 현재 브랜치
 
-The following ignored local rasters under `METADATA_MAP/` were loaded without committing them:
+`agent/task-018d-qgis-overlay-followup`
 
-- Processed DEM mosaic
-- Temporary DSM proxy mosaic
-- Surface-delta proxy mosaic
-- Aligned landcover mosaic
+## 담당했던 에이전트
 
-All four layers loaded in QGIS with known `EPSG:5179` CRS. Distinct pseudocolor renderers and opacity were applied so the layers could be toggled and compared. Status: passed.
+Codex Local Execution Agent
 
-## Follow-up method
+## 작업한 내용
 
-QGIS map rendering was exercised with one nationwide overview and three representative zoom extents: a coastal/island area, an inland high-relief area, and an area crossing conspicuous rectangular source boundaries. Each extent was rendered with DEM, DSM, surface delta, and landcover visibility isolated, followed by a combined overlay. This produced 16 local PNG evidence files in the ignored temporary directory. No image or QGIS project is committed.
+- Windows 로컬 환경의 QGIS 3.40.14 LTR에서 처리된 DEM, 임시 DSM 프록시, surface-delta 프록시, 정렬된 landcover 모자이크를 확인했다.
+- 네 레이어를 `EPSG:5179` 프로젝트에 로드하고 서로 다른 pseudocolor와 투명도를 적용했다.
+- 전국 개요와 해안·도서, 내륙 고기복, 직사각형 원천 경계의 세 대표 확대 범위를 확인했다.
+- 각 확대 범위에서 DEM, DSM, surface delta, landcover를 개별 및 결합 상태로 비교했다.
+- 로컬 검증 증거는 ignored `.tmp/task-018d/`에만 생성했으며 이미지나 QGIS project는 커밋하지 않았다.
 
-## Results
+## 관찰 결과
 
 | Check | Result | Observation |
 |---|---|---|
@@ -36,19 +34,43 @@ QGIS map rendering was exercised with one nationwide overview and three represen
 | Suspicious zero or flat areas | partial | The visual review separates proxy coverage gaps from terrain relief, but it does not establish whether every zero or flat source cell is valid terrain, water, or missing source data. |
 | Landcover-to-DSM relationship | partial | Covered areas align visually and the surface-delta pattern follows landcover classes, but the landcover coverage gaps prevent a nationwide passed verdict. |
 
-## Overall status
+## 아직 미완성
 
-QGIS overlay status: **partial**.
+- Task 018D의 overall QGIS overlay status는 **partial**이다.
+- landcover와 surface-delta의 직사각형 및 십자형 coverage gap을 별도 후속 처리해야 한다.
+- 모든 zero 또는 flat source cell의 의미를 전국 단위로 분류하지 않았다.
+- Task 018E에서 환경공간정보서비스 WMS 기반 gap fill과 재검증을 수행한다.
 
-The follow-up closes the prior uncertainty about layer toggling, symbology, representative zoom checks, and systematic grid displacement. It also localizes the prominent rectangular artifacts to missing coverage in the landcover and surface-delta proxy layers. The proxy mosaic must be repaired or explicitly masked before it is treated as complete nationwide DSM-support coverage.
+## 실행한 명령
 
-## Limitations and next action
+- `python -m compileall src tests examples scripts`
+- `python -m pytest`
+- `python -m ruff check .`
+- `python -m mypy src`
+- `git diff --check`
+- QGIS 3.40.14 LTR local raster loading and render verification
 
-- The temporary DSM is a landcover-derived heuristic proxy, not measured building height or canopy height.
-- This visual review does not establish source accuracy, communication availability, flight feasibility, or field outcomes.
-- Quantify missing proxy coverage by source tile, repair or mask the gaps, rebuild the affected derived rasters, and repeat the same boundary renders.
-- Retain the local screenshots only as uncommitted verification evidence unless a separately sanitized figure is approved.
+## 현재 테스트 상태
 
-## Public repository sensitivity check
+- 통과: 네 레이어 로드, CRS 확인, 심볼·투명도·토글, 대표 범위 multi-zoom 정합, repository verification
+- 실패: 없음
+- 미완료: proxy coverage gap 해소 및 mixed-source 경계 검증
 
-No private absolute path, sensitive coordinate, screenshot, QGIS project, or GIS raster is committed. Only repository-relative dataset descriptions are recorded.
+## 다음 에이전트가 해야 할 일
+
+1. [Task 018E WMS landcover gap-fill handoff](task-018e-mcee-wms-landcover-gap-fill.md)를 검토한다.
+2. mixed-source 경계가 후속 분석에 미치는 영향을 정량화한다.
+3. 권위 있는 source class raster를 확보하면 styled WMS RGB 기반 휴리스틱 분류를 대체한다.
+
+## 논문 기록 필요사항
+
+- Task 018D는 QGIS 시각 검증 방법과 proxy coverage limitation의 근거다.
+- 실험 기록은 `EXP-20260710-007`에 있다.
+- 직사각형 coverage gap은 데이터 전처리 한계 및 후속 보정 필요사항으로 기록한다.
+- Task 018D 결과만으로 전국 landcover/DSM proxy completeness를 주장하지 않는다.
+
+## 주의사항
+
+- 임시 DSM은 landcover-derived heuristic proxy이며 측정된 건물고나 수고가 아니다.
+- 이 검증은 source accuracy, 통신 가능성, 실제 비행 가능성 또는 현장 결과를 보장하지 않는다.
+- private absolute path, 민감 좌표, screenshot, QGIS project, GIS raster를 공개 저장소에 커밋하지 않는다.
