@@ -27,3 +27,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260711-017 - map output candidate source-zone properties](EXP-20260711-017-map-output-source-zone-properties.md)
 - [EXP-20260711-018 - candidate display formatter scaffold](EXP-20260711-018-candidate-display-formatter.md)
 - [EXP-20260711-019 - candidate display preview scaffold](EXP-20260711-019-candidate-display-preview.md)
+- [EXP-20260711-020 - synthetic candidate display preview smoke](EXP-20260711-020-synthetic-candidate-preview-smoke.md)
