@@ -11,7 +11,7 @@ Task 023A documents the current synthetic preview CLI contract across plain-text
 - `docs/handoff/task-023a-preview-cli-output-contract.md`
 - `docs/paper/experiments/EXP-20260712-025-preview-cli-output-contract.md`
 
-README and the experiment index receive short summary entries only.
+The experiment index receives one new entry. README remains unchanged because the connector could not apply a safe one-line patch without replacing the entire file.
 
 ## Current CLI Surface
 
@@ -167,11 +167,13 @@ It must not add options, change fields, alter output behavior, generate reports,
 
 ## Test/CI Result
 
-No source or test code is changed by Task 023A. Cloud Agent does not run local commands. GitHub Actions is checked after PR creation and recorded in the experiment record and completion report.
+No source or test code is changed by Task 023A. Cloud Agent did not run local commands. GitHub Actions completed successfully on PR #63 before this handoff-status update and must be rechecked on the final head.
 
 ## Overall Status
 
 The current preview CLI now has one architecture reference that downstream tests, report formatters, and UI consumers can use without redefining its schema or file behavior.
+
+README summary insertion remains the only requested item not implemented by the Cloud Agent because the available connector requires full-file replacement for updates and the replacement request was blocked.
 
 ## Limitations
 
@@ -190,7 +192,7 @@ This task does not:
 
 ## Public Repository Sensitivity Check
 
-Only Markdown documentation and short README/index updates are included. No private absolute path, sensitive coordinate, credential, secret, local terrain data, GIS file, generated preview, CSV, PDF, image, diagram, QGIS project, or archive is included.
+Only Markdown documentation and the experiment-index update are included. No private absolute path, sensitive coordinate, credential, secret, local terrain data, GIS file, generated preview, CSV, PDF, image, diagram, QGIS project, or archive is included.
 
 ## Follow-Up Tasks
 
