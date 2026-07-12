@@ -33,3 +33,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260711-023 - preview CLI scaffold](EXP-20260711-023-preview-cli-scaffold.md)
 - [EXP-20260711-024 - preview CLI explicit file output](EXP-20260711-024-preview-cli-file-output.md)
 - [EXP-20260712-025 - preview CLI output contract](EXP-20260712-025-preview-cli-output-contract.md)
+- [EXP-20260712-026 - preview contract validation](EXP-20260712-026-preview-contract-validation.md)
