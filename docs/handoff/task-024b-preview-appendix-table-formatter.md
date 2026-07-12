@@ -24,7 +24,7 @@ Local focused tests, full pytest, compileall, Ruff, mypy, diff checks, protected
 
 ## Overall status
 
-**passed locally, pending CI at initial handoff creation**.
+**passed locally and in GitHub Actions CI for PR #66 on the checked head commit**.
 
 ## Limitations
 
