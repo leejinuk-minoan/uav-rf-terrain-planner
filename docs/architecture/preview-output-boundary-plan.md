@@ -4,6 +4,8 @@
 
 This document defines the boundary between the current MGRS-based candidate preview pipeline and later user-output implementation work. It narrows the next Local task to a minimal stdout preview scaffold and separates file writing, report generation, UI formatting, and map rendering into later tasks.
 
+> Current implementation note: This document records an earlier planning boundary. For the implemented preview artifact workflow, see `docs/architecture/preview-artifact-workflow.md`, `docs/usage/preview-artifact-workflow.md`, and `tests/test_preview_artifact_workflow_smoke.py`.
+
 ## Current Candidate Preview State
 
 The current in-memory pipeline is:

@@ -6,6 +6,8 @@ This document defines the boundary for transforming the reviewed preview JSON ou
 
 The immediate follow-up is a narrow Local task that may add one pure Python formatter returning a Markdown/plain-text table string while preserving the existing preview JSON contract.
 
+> Current implementation note: This document records an earlier planning boundary. For the implemented preview artifact workflow, see `docs/architecture/preview-artifact-workflow.md`, `docs/usage/preview-artifact-workflow.md`, and `tests/test_preview_artifact_workflow_smoke.py`.
+
 ## Current Input Contract
 
 The formatter input is the preview JSON dictionary already fixed by Tasks 023A and 023B. The same semantic dictionary may be supplied directly in memory or loaded by a caller from an existing JSON file produced by the reviewed preview CLI.
