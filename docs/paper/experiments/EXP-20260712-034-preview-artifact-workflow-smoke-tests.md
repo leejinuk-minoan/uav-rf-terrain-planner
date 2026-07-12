@@ -29,11 +29,11 @@ All focused and repository-wide tests passed locally. Runtime artifacts remained
 
 ## CI / Local Test Result
 
-Local compile, pytest, Ruff, mypy, diff, and policy checks are recorded in the Task 027B PR. CI is recorded after push.
+Local compile, pytest, Ruff, mypy, diff, and policy checks are recorded in the Task 027B PR. CI passed on the reviewed PR head.
 
 ## Limitations
 
-This verifies software workflow consistency, not real-terrain or field performance.
+This verifies software workflow consistency, not real-terrain behavior.
 
 ## Public Repository Sensitivity Check
 
