@@ -36,3 +36,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260712-026 - preview contract validation](EXP-20260712-026-preview-contract-validation.md)
 - [EXP-20260712-027 - preview appendix table boundary plan](EXP-20260712-027-preview-appendix-table-plan.md)
 - [EXP-20260712-028 - preview appendix table formatter](EXP-20260712-028-preview-appendix-table-formatter.md)
+- [EXP-20260712-029 - preview table output surface plan](EXP-20260712-029-preview-table-output-surface-plan.md)
