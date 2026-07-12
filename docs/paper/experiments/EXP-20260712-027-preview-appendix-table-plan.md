@@ -31,7 +31,7 @@ Review the Tasks 021G through 023B preview pipeline, CLI output contract, CLI im
 
 ## Actual Result
 
-Implemented on the Task 024A documentation branch. The architecture plan, Task 024B-Local prompt, handoff record, experiment record, README summary, and experiment index entry were prepared without changing source or test code.
+Implemented in PR #65. The architecture plan, Task 024B-Local prompt, handoff record, experiment record, README summary, and experiment index entry were added without changing source or test code.
 
 The plan separates a pure Python string formatter from existing CLI, file-output, report, UI, terrain, scoring, route, and waypoint behavior. It also preserves the validated Tasks 023A/023B JSON contract as an immutable input boundary for the next task.
 
@@ -56,7 +56,7 @@ The plan separates a pure Python string formatter from existing CLI, file-output
 
 ## CI / Local Test Result
 
-Local commands were not run by the Cloud Agent. GitHub Actions CI is checked after pull request creation, and this record is updated or interpreted against the final checked head before completion reporting.
+Local commands were not run by the Cloud Agent. GitHub Actions CI completed successfully for the initial PR #65 documentation head. CI is rechecked on the final experiment-status head before completion reporting.
 
 ## Interpretation
 
