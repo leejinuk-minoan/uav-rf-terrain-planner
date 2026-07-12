@@ -31,3 +31,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260711-021 - current candidate preview pipeline documentation](EXP-20260711-021-current-preview-pipeline-doc.md)
 - [EXP-20260711-022 - preview output boundary plan](EXP-20260711-022-preview-output-boundary-plan.md)
 - [EXP-20260711-023 - preview CLI scaffold](EXP-20260711-023-preview-cli-scaffold.md)
+- [EXP-20260711-024 - preview CLI explicit file output](EXP-20260711-024-preview-cli-file-output.md)

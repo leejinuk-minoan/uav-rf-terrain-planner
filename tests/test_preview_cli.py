@@ -101,14 +101,95 @@ def test_missing_synthetic_flag_returns_nonzero(
     assert "--synthetic" in capsys.readouterr().err
 
 
-def test_cli_module_has_no_file_or_gis_behavior() -> None:
+def test_json_file_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    output = tmp_path / "preview.json"
+    assert preview_cli.run_preview_cli(("--synthetic", "--output-json", str(output))) == 0
+    captured = capsys.readouterr()
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["external_coordinate_format"] == "MGRS"
+    assert all("candidate_cell_mgrs" in record for record in payload["records"])
+    assert all(set(record).isdisjoint(INTERNAL_COORDINATE_FIELD_NAMES) for record in payload["records"])
+    assert "preview saved:" in captured.out
+    assert "\"records\"" not in captured.out
+    assert captured.err == ""
+
+
+def test_text_file_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    output = tmp_path / "preview.txt"
+    assert preview_cli.run_preview_cli(("--synthetic", "--output-text", str(output))) == 0
+    text = output.read_text(encoding="utf-8")
+    assert "Candidate display preview" in text
+    assert "MGRS" in text
+    assert "candidate_cell_mgrs" in text
+    _assert_no_internal_fields_in_text(text)
+    assert "preview saved:" in capsys.readouterr().out
+
+
+def test_limited_text_file_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    output = tmp_path / "preview.txt"
+    args = ("--synthetic", "--max-records", "3", "--output-text", str(output))
+    assert preview_cli.run_preview_cli(args) == 0
+    capsys.readouterr()
+    text = output.read_text(encoding="utf-8")
+    assert sum(line.startswith("- candidate-") for line in text.splitlines()) == 3
+    assert "additional record(s) omitted" in text
+
+
+def test_existing_file_requires_force_and_preserves_content(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = tmp_path / "preview.txt"
+    output.write_text("preserve", encoding="utf-8")
+    assert preview_cli.run_preview_cli(("--synthetic", "--output-text", str(output))) == 3
+    captured = capsys.readouterr()
+    assert output.read_text(encoding="utf-8") == "preserve"
+    assert "already exists" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_force_overwrites_existing_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    output = tmp_path / "preview.txt"
+    output.write_text("old", encoding="utf-8")
+    args = ("--synthetic", "--output-text", str(output), "--force")
+    assert preview_cli.run_preview_cli(args) == 0
+    capsys.readouterr()
+    assert "Candidate display preview" in output.read_text(encoding="utf-8")
+
+
+def test_missing_parent_and_directory_path_fail(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    missing = tmp_path / "missing" / "preview.json"
+    assert preview_cli.run_preview_cli(("--synthetic", "--output-json", str(missing))) == 3
+    assert "parent directory" in capsys.readouterr().err
+    assert preview_cli.run_preview_cli(("--synthetic", "--output-text", str(tmp_path))) == 3
+    assert "is a directory" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "args",
+    (
+        ("--synthetic", "--output-json", "a.json", "--output-text", "a.txt"),
+        ("--synthetic", "--json", "--output-text", "a.txt"),
+        ("--synthetic", "--json", "--output-json", "a.json"),
+    ),
+)
+def test_conflicting_output_modes_return_parser_error(
+    args: tuple[str, ...], capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert preview_cli.run_preview_cli(args) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "cannot be used together" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_cli_module_has_no_gis_or_directory_creation_behavior() -> None:
     source = Path("src/uav_rf_terrain/preview_cli.py").read_text(encoding="utf-8").lower()
     blocked = (
         "ras" + "terio",
         "g" + "dal",
         "geo" + "pandas",
-        "open(" ,
-        "write_" + "text",
         "write_" + "bytes",
         "mkdir(",
     )

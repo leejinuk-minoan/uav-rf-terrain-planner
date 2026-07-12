@@ -1,11 +1,13 @@
-"""Minimal stdout CLI for the synthetic candidate display preview."""
+"""CLI for stdout or explicit file output of the synthetic candidate preview."""
 
 from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
 import json
+from pathlib import Path
 import sys
+from typing import Any
 
 from .candidate_display_preview import CandidateDisplayPreviewError
 from .synthetic_candidate_preview_smoke import (
@@ -49,14 +51,55 @@ def build_parser() -> argparse.ArgumentParser:
         dest="json_output",
         help="print the existing JSON-ready preview dictionary",
     )
+    parser.add_argument("--output-json", metavar="PATH")
+    parser.add_argument("--output-text", metavar="PATH")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite an existing explicitly selected output file",
+    )
     return parser
+
+
+def _validate_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    output_count = sum(value is not None for value in (args.output_json, args.output_text))
+    if output_count > 1:
+        parser.error("--output-json and --output-text cannot be used together")
+    if args.json_output and args.output_json is not None:
+        parser.error("--json and --output-json cannot be used together")
+    if args.json_output and args.output_text is not None:
+        parser.error("--json and --output-text cannot be used together")
+
+
+def _validate_output_path(path: Path, *, force: bool) -> None:
+    if not path.parent.is_dir():
+        raise OSError("parent directory does not exist")
+    if path.is_dir():
+        raise OSError("output path is a directory")
+    if path.exists() and not force:
+        raise OSError("output file already exists; use --force to overwrite")
+
+
+def _write_text_output(path: Path, text: str, *, force: bool) -> None:
+    _validate_output_path(path, force=force)
+    path.write_text(text.rstrip("\n") + "\n", encoding="utf-8")
+
+
+def _write_json_output(path: Path, payload: dict[str, Any], *, force: bool) -> None:
+    _write_text_output(
+        path,
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        force=force,
+    )
 
 
 def run_preview_cli(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a deterministic process status code."""
 
     try:
-        args = build_parser().parse_args(argv)
+        parser = build_parser()
+        args = parser.parse_args(argv)
+        _validate_arguments(args, parser)
     except SystemExit as exc:
         return exc.code if isinstance(exc.code, int) else 2
     try:
@@ -66,10 +109,20 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
     except (SyntheticCandidatePreviewSmokeError, CandidateDisplayPreviewError) as exc:
         print(f"preview error: {exc}", file=sys.stderr)
         return 1
-    if args.json_output:
-        print(json.dumps(result.preview_dict, ensure_ascii=False))
-    else:
-        print(result.preview_text)
+    try:
+        if args.output_json is not None:
+            _write_json_output(Path(args.output_json), result.preview_dict, force=args.force)
+            print(f"preview saved: {args.output_json}")
+        elif args.output_text is not None:
+            _write_text_output(Path(args.output_text), result.preview_text, force=args.force)
+            print(f"preview saved: {args.output_text}")
+        elif args.json_output:
+            print(json.dumps(result.preview_dict, ensure_ascii=False))
+        else:
+            print(result.preview_text)
+    except OSError as exc:
+        print(f"output error: {exc}", file=sys.stderr)
+        return 3
     return 0
 
 
