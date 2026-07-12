@@ -10,6 +10,10 @@ import sys
 from typing import Any
 
 from .candidate_display_preview import CandidateDisplayPreviewError
+from .preview_appendix_table import (
+    PreviewAppendixTableError,
+    format_preview_appendix_table,
+)
 from .synthetic_candidate_preview_smoke import (
     SyntheticCandidatePreviewSmokeError,
     build_synthetic_candidate_preview_smoke,
@@ -51,8 +55,15 @@ def build_parser() -> argparse.ArgumentParser:
         dest="json_output",
         help="print the existing JSON-ready preview dictionary",
     )
+    parser.add_argument(
+        "--table",
+        action="store_true",
+        dest="table_output",
+        help="print the existing preview as an appendix table",
+    )
     parser.add_argument("--output-json", metavar="PATH")
     parser.add_argument("--output-text", metavar="PATH")
+    parser.add_argument("--output-table", metavar="PATH")
     parser.add_argument(
         "--force",
         action="store_true",
@@ -62,13 +73,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _validate_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
-    output_count = sum(value is not None for value in (args.output_json, args.output_text))
+    selectors = (
+        args.json_output,
+        args.table_output,
+        args.output_json is not None,
+        args.output_text is not None,
+        args.output_table is not None,
+    )
+    output_count = sum(selectors)
     if output_count > 1:
-        parser.error("--output-json and --output-text cannot be used together")
-    if args.json_output and args.output_json is not None:
-        parser.error("--json and --output-json cannot be used together")
-    if args.json_output and args.output_text is not None:
-        parser.error("--json and --output-text cannot be used together")
+        parser.error("output selectors cannot be used together")
 
 
 def _validate_output_path(path: Path, *, force: bool) -> None:
@@ -109,6 +123,16 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
     except (SyntheticCandidatePreviewSmokeError, CandidateDisplayPreviewError) as exc:
         print(f"preview error: {exc}", file=sys.stderr)
         return 1
+    table_text: str | None = None
+    if args.table_output or args.output_table is not None:
+        try:
+            table_text = format_preview_appendix_table(
+                result.preview_dict,
+                max_rows=args.max_records,
+            )
+        except PreviewAppendixTableError as exc:
+            print(f"preview table error: {exc}", file=sys.stderr)
+            return 1
     try:
         if args.output_json is not None:
             _write_json_output(Path(args.output_json), result.preview_dict, force=args.force)
@@ -116,8 +140,15 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
         elif args.output_text is not None:
             _write_text_output(Path(args.output_text), result.preview_text, force=args.force)
             print(f"preview saved: {args.output_text}")
+        elif args.output_table is not None:
+            assert table_text is not None
+            _write_text_output(Path(args.output_table), table_text, force=args.force)
+            print(f"preview saved: {args.output_table}")
         elif args.json_output:
             print(json.dumps(result.preview_dict, ensure_ascii=False))
+        elif args.table_output:
+            assert table_text is not None
+            print(table_text)
         else:
             print(result.preview_text)
     except OSError as exc:
