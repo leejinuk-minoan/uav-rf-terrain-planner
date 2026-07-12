@@ -30,7 +30,7 @@ Focused and repository-wide tests passed locally. Manual temporary JSON-to-table
 
 ## CI / Local Test Result
 
-Local compile, pytest, Ruff, mypy, diff checks, and manual smoke are recorded in the Task 026B PR. CI is recorded after push.
+Local compile, pytest, Ruff, mypy, diff checks, and manual smoke are recorded in the Task 026B PR. GitHub Actions CI completed successfully for PR #70 on the checked head commit.
 
 ## Interpretation
 
