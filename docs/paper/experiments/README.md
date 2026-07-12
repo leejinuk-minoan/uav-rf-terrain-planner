@@ -38,3 +38,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260712-028 - preview appendix table formatter](EXP-20260712-028-preview-appendix-table-formatter.md)
 - [EXP-20260712-029 - preview table output surface plan](EXP-20260712-029-preview-table-output-surface-plan.md)
 - [EXP-20260712-030 - preview table CLI output](EXP-20260712-030-preview-table-cli-output.md)
+- [EXP-20260712-031 - preview JSON input boundary plan](EXP-20260712-031-preview-json-input-boundary-plan.md)
