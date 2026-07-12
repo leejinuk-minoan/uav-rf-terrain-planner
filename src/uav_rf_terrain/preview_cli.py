@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 import json
 from pathlib import Path
 import sys
-from typing import Any
 
 from .candidate_display_preview import CandidateDisplayPreviewError
 from .preview_appendix_table import (
@@ -18,6 +17,10 @@ from .synthetic_candidate_preview_smoke import (
     SyntheticCandidatePreviewSmokeError,
     build_synthetic_candidate_preview_smoke,
 )
+
+
+class PreviewJsonInputError(ValueError):
+    """Raised when an explicitly selected preview JSON input cannot be loaded."""
 
 
 def _positive_int(value: str) -> int:
@@ -40,9 +43,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--synthetic",
         action="store_true",
-        required=True,
         help="run the existing in-memory synthetic preview path",
     )
+    parser.add_argument("--input-json", metavar="PATH")
     parser.add_argument(
         "--max-records",
         type=_positive_int,
@@ -73,6 +76,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _validate_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    source_count = sum((args.synthetic, args.input_json is not None))
+    if source_count != 1:
+        parser.error("exactly one of --synthetic or --input-json is required")
     selectors = (
         args.json_output,
         args.table_output,
@@ -83,6 +89,22 @@ def _validate_arguments(args: argparse.Namespace, parser: argparse.ArgumentParse
     output_count = sum(selectors)
     if output_count > 1:
         parser.error("output selectors cannot be used together")
+    if args.input_json is not None and not (
+        args.table_output or args.output_table is not None
+    ):
+        parser.error("--input-json requires --table or --output-table")
+
+
+def _read_preview_json(path: Path) -> dict[str, object]:
+    if not path.is_file():
+        raise PreviewJsonInputError("input path must exist and be a file")
+    try:
+        decoded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PreviewJsonInputError("input file must contain valid UTF-8 JSON") from exc
+    if not isinstance(decoded, Mapping):
+        raise PreviewJsonInputError("input JSON top level must be an object")
+    return dict(decoded)
 
 
 def _validate_output_path(path: Path, *, force: bool) -> None:
@@ -99,7 +121,9 @@ def _write_text_output(path: Path, text: str, *, force: bool) -> None:
     path.write_text(text.rstrip("\n") + "\n", encoding="utf-8")
 
 
-def _write_json_output(path: Path, payload: dict[str, Any], *, force: bool) -> None:
+def _write_json_output(
+    path: Path, payload: Mapping[str, object], *, force: bool
+) -> None:
     _write_text_output(
         path,
         json.dumps(payload, ensure_ascii=False, indent=2),
@@ -116,18 +140,29 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
         _validate_arguments(args, parser)
     except SystemExit as exc:
         return exc.code if isinstance(exc.code, int) else 2
-    try:
-        result = build_synthetic_candidate_preview_smoke(
-            max_preview_records=args.max_records,
-        )
-    except (SyntheticCandidatePreviewSmokeError, CandidateDisplayPreviewError) as exc:
-        print(f"preview error: {exc}", file=sys.stderr)
-        return 1
+    preview_text: str | None = None
+    preview_dict: Mapping[str, object]
+    if args.input_json is not None:
+        try:
+            preview_dict = _read_preview_json(Path(args.input_json))
+        except PreviewJsonInputError as exc:
+            print(f"preview input error: {exc}", file=sys.stderr)
+            return 1
+    else:
+        try:
+            result = build_synthetic_candidate_preview_smoke(
+                max_preview_records=args.max_records,
+            )
+        except (SyntheticCandidatePreviewSmokeError, CandidateDisplayPreviewError) as exc:
+            print(f"preview error: {exc}", file=sys.stderr)
+            return 1
+        preview_dict = result.preview_dict
+        preview_text = result.preview_text
     table_text: str | None = None
     if args.table_output or args.output_table is not None:
         try:
             table_text = format_preview_appendix_table(
-                result.preview_dict,
+                preview_dict,
                 max_rows=args.max_records,
             )
         except PreviewAppendixTableError as exc:
@@ -135,10 +170,11 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
             return 1
     try:
         if args.output_json is not None:
-            _write_json_output(Path(args.output_json), result.preview_dict, force=args.force)
+            _write_json_output(Path(args.output_json), preview_dict, force=args.force)
             print(f"preview saved: {args.output_json}")
         elif args.output_text is not None:
-            _write_text_output(Path(args.output_text), result.preview_text, force=args.force)
+            assert preview_text is not None
+            _write_text_output(Path(args.output_text), preview_text, force=args.force)
             print(f"preview saved: {args.output_text}")
         elif args.output_table is not None:
             assert table_text is not None
@@ -150,7 +186,8 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
             assert table_text is not None
             print(table_text)
         else:
-            print(result.preview_text)
+            assert preview_text is not None
+            print(preview_text)
     except OSError as exc:
         print(f"output error: {exc}", file=sys.stderr)
         return 3
