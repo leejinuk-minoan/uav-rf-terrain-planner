@@ -6,6 +6,8 @@ This document defines the planned CLI and explicit file-output surface for the e
 
 Task 025A is documentation-only. It preserves the current synthetic preview CLI, preview JSON contract, plain-text preview behavior, appendix-table formatter behavior, file-output rules, terrain boundaries, and scoring boundaries.
 
+> Current implementation note: This document records an earlier planning boundary. For the implemented preview artifact workflow, see `docs/architecture/preview-artifact-workflow.md`, `docs/usage/preview-artifact-workflow.md`, and `tests/test_preview_artifact_workflow_smoke.py`.
+
 ## Current State
 
 The current implementation has two separate layers:

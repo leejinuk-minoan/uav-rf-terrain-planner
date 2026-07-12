@@ -6,6 +6,8 @@ This document defines the boundary for using a previously saved preview JSON fil
 
 Task 026A is documentation-only. It does not add a CLI option, read a JSON file, change the preview schema, change formatter behavior, or alter existing synthetic commands.
 
+> Current implementation note: This document records an earlier planning boundary. For the implemented preview artifact workflow, see `docs/architecture/preview-artifact-workflow.md`, `docs/usage/preview-artifact-workflow.md`, and `tests/test_preview_artifact_workflow_smoke.py`.
+
 ## Current State
 
 - `preview_cli.py` currently requires `--synthetic`.
