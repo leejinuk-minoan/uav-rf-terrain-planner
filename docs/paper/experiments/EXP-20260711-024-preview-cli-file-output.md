@@ -31,7 +31,7 @@ Focused automated tests and manual smoke commands passed locally. Generated smok
 
 ## CI / Local Test Result
 
-Local compile, full pytest, Ruff, mypy, diff checks, and manual file-output smoke are recorded in the Task 022C PR. CI is recorded separately after push.
+Local compile, full pytest, Ruff, mypy, diff checks, and manual file-output smoke are recorded in the Task 022C PR. GitHub Actions CI completed successfully for PR #62 on the checked head commit.
 
 ## Interpretation
 
