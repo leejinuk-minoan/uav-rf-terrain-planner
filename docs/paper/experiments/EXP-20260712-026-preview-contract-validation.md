@@ -30,7 +30,7 @@ The dedicated contract suite passed locally together with the full repository te
 
 ## CI / Local Test Result
 
-Local compile, full pytest, Ruff, mypy, diff checks, and manual CLI smoke are recorded in the Task 023B PR. CI is recorded after push.
+Local compile, full pytest, Ruff, mypy, diff checks, and manual CLI smoke are recorded in the Task 023B PR. GitHub Actions CI completed successfully for PR #64 on the checked head commit.
 
 ## Interpretation
 
@@ -42,4 +42,4 @@ This experiment does not validate MGRS geographic correctness, real terrain inte
 
 ## Public Repository Sensitivity Check
 
-Only tests and Markdown records are added. No private path, credential, terrain raster, generated preview, CSV, PDF, image, QGIS project, or archive is included.
+Only tests and Markdown records are added. No private path, terrain raster, generated preview, CSV, PDF, image, QGIS project, or archive is included.
