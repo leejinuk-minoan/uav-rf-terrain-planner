@@ -27,4 +27,4 @@ Focused and full tests, compileall, Ruff, mypy, diff checks, manual table stdout
 
 ## Overall status
 
-**passed locally, pending CI at initial handoff creation**.
+**passed locally and in GitHub Actions CI for PR #68 on the checked head commit**.
