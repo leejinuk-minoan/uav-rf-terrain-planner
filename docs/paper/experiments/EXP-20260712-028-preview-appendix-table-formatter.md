@@ -29,7 +29,7 @@ Focused and repository-wide tests passed locally. Direct in-memory formatting pr
 
 ## CI / Local Test Result
 
-Local compile, pytest, Ruff, mypy, diff checks, and direct smoke are recorded in the Task 024B PR. CI is recorded after push.
+Local compile, pytest, Ruff, mypy, diff checks, and direct smoke are recorded in the Task 024B PR. GitHub Actions CI completed successfully for PR #66 on the checked head commit.
 
 ## Interpretation
 
