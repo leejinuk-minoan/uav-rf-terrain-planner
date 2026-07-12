@@ -30,7 +30,7 @@ Focused and repository-wide tests passed locally. Manual table stdout and tempor
 
 ## CI / Local Test Result
 
-Local compile, pytest, Ruff, mypy, diff checks, and manual smoke are recorded in the Task 025B PR. CI is recorded after push.
+Local compile, pytest, Ruff, mypy, diff checks, and manual smoke are recorded in the Task 025B PR. GitHub Actions CI completed successfully for PR #68 on the checked head commit.
 
 ## Interpretation
 
