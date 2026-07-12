@@ -30,7 +30,7 @@ Local compile, full pytest, Ruff, mypy, diff checks, protected-path checks, and 
 
 ## Overall status
 
-**passed locally, pending CI at initial handoff creation**.
+**passed locally and in GitHub Actions CI for PR #64 on the checked head commit**.
 
 ## Limitations
 
