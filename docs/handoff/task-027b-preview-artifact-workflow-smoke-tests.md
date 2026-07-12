@@ -14,12 +14,12 @@ All runtime JSON and table artifacts use pytest `tmp_path`. No generated JSON, M
 
 ## Verification
 
-Focused smoke tests and the full local suite passed. Compileall, Ruff, mypy, diff, source-path, protected-path, GIS, `METADATA_MAP`, private-path, and generated-file checks were also run.
+Focused smoke tests and the full local suite passed. Compileall, Ruff, mypy, diff, source-path, protected-path, GIS, `METADATA_MAP`, private-path, and generated-file checks were also run. CI passed on the reviewed PR head.
 
 ## Overall status
 
-**passed locally, pending CI at initial handoff creation**.
+**passed locally and in CI on the reviewed PR head**.
 
 ## Limitations
 
-The smoke suite validates the current synthetic preview artifact workflow only. It does not assess MGRS geographic accuracy, real terrain, or field outcomes.
+The smoke suite validates the current synthetic preview artifact workflow only. It does not assess MGRS geographic accuracy or real terrain behavior.
