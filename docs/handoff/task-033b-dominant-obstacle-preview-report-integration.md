@@ -40,7 +40,7 @@ Local Execution Agent가 실행하고 확인한 결과:
 - `python -m mypy src`: success
 - `git diff --check`: success
 
-GitHub Actions에서 별도로 확인한 결과:
+GitHub Actions initial implementation-head evidence:
 
 - run: CI #770
 - reviewed head: `31ad2abcb27df940048dc0e7678888ff5e9c11a5`
@@ -48,7 +48,28 @@ GitHub Actions에서 별도로 확인한 결과:
 - conclusion: success
 - Python checks: install, syntax check, pytest, Ruff, mypy all success
 
-이 기록 시점에 PR #85는 Draft이며 병합되지 않았다. Review amendment commit으로 head가 변경되므로 새 head의 CI를 다시 확인해야 한다.
+GitHub Actions final PR-head evidence:
+
+- run: CI #772
+- final PR head: `db0b555f72b802c0ecc53cac3276e47815ae121c`
+- status: completed
+- conclusion: success
+- Python checks: install, syntax check, pytest, Ruff, mypy all success
+
+The local command results above are Local Execution Agent evidence. The Cloud Execution Agent did not rerun those commands during the post-merge reconciliation.
+
+## Final Completion State
+
+```text
+Issue #84: completed
+PR #85: merged
+PR head: db0b555f72b802c0ecc53cac3276e47815ae121c
+merge commit: 33f93f68cd22efde9a3d7b8ae1aae0713681860c
+merged at: 2026-07-13T13:04:38Z
+Task 033B: complete on main
+```
+
+CI #770 records the initial implementation reviewed head. CI #772 records the final PR head after the documentation amendment. Both runs completed successfully and are intentionally represented as distinct evidence.
 
 ## Limitations
 
@@ -60,4 +81,4 @@ Private path, generated output artifact, GIS data, credential 또는 internal co
 
 ## Follow-Up Tasks
 
-Diagnostic의 scoring 반영 또는 UI 시각화는 별도 검토 Task가 필요하다.
+Diagnostic의 scoring 반영, appendix-table 확장, UI 시각화 또는 field RF validation은 각각 별도 검토 Task가 필요하다.
