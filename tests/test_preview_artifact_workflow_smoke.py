@@ -107,3 +107,81 @@ def _assert_table_contract(table: str) -> None:
     assert "source_zone_reason" in table
     for name in INTERNAL_COORDINATE_FIELD_NAMES:
         assert f"| {name} |" not in table
+
+
+def test_documented_report_workflows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert preview_cli.run_preview_cli(("--synthetic", "--report")) == 0
+    report = capsys.readouterr().out
+    _assert_report_contract(report)
+
+    synthetic_file = tmp_path / "synthetic-report.md"
+    assert preview_cli.run_preview_cli(
+        ("--synthetic", "--output-report", str(synthetic_file))
+    ) == 0
+    assert capsys.readouterr().out == f"preview saved: {synthetic_file}\n"
+    assert synthetic_file.read_text(encoding="utf-8") == report
+
+    preview_json = tmp_path / "preview.json"
+    assert preview_cli.run_preview_cli(
+        ("--synthetic", "--output-json", str(preview_json))
+    ) == 0
+    capsys.readouterr()
+    assert preview_cli.run_preview_cli(
+        ("--input-json", str(preview_json), "--report")
+    ) == 0
+    assert capsys.readouterr().out == report
+
+    saved_file = tmp_path / "saved-report.md"
+    assert preview_cli.run_preview_cli(
+        ("--input-json", str(preview_json), "--output-report", str(saved_file))
+    ) == 0
+    capsys.readouterr()
+    assert saved_file.read_text(encoding="utf-8") == report
+
+
+def test_documented_report_error_and_overwrite_workflows(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = tmp_path / "report.md"
+    output.write_text("protected", encoding="utf-8")
+    args = ("--synthetic", "--output-report", str(output))
+    assert preview_cli.run_preview_cli(args) == 3
+    capsys.readouterr()
+    assert output.read_text(encoding="utf-8") == "protected"
+    assert preview_cli.run_preview_cli((*args, "--force")) == 0
+    capsys.readouterr()
+    replaced = output.read_text(encoding="utf-8")
+    _assert_report_contract(replaced)
+
+    assert preview_cli.run_preview_cli(
+        ("--synthetic", "--report", "--max-records", "3")
+    ) == 2
+    capsys.readouterr()
+    invalid = tmp_path / "invalid.json"
+    invalid.write_text("{invalid", encoding="utf-8")
+    before = output.read_text(encoding="utf-8")
+    invalid_args = (
+        "--input-json",
+        str(invalid),
+        "--output-report",
+        str(output),
+        "--force",
+    )
+    assert preview_cli.run_preview_cli(invalid_args) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert output.read_text(encoding="utf-8") == before
+
+
+def _assert_report_contract(report: str) -> None:
+    assert report.startswith("# Preview Candidate Report\n")
+    assert report.endswith("\n") and not report.endswith("\n\n")
+    for heading in ("## Summary", "## Candidate Overview", "## Appendix Table", "## Limitations"):
+        assert heading in report
+    assert "external_coordinate_format = MGRS" in report
+    assert "candidate_cell_mgrs" in report
+    assert "source_zone" in report
+    for name in INTERNAL_COORDINATE_FIELD_NAMES:
+        assert f"| {name} |" not in report

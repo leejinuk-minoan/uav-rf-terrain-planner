@@ -48,3 +48,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260712-038 - preview report CLI output boundary plan](EXP-20260712-038-preview-report-cli-output-boundary-plan.md)
 - [EXP-20260712-039 - preview report CLI output](EXP-20260712-039-preview-report-cli-output.md)
 - [EXP-20260712-040 - preview report CLI documentation reconciliation](EXP-20260712-040-preview-report-cli-documentation-reconciliation.md)
+- [EXP-20260712-041 - preview report artifact workflow smoke tests](EXP-20260712-041-preview-report-artifact-workflow-smoke-tests.md)
