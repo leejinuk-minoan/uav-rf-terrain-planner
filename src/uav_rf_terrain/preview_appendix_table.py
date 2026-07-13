@@ -11,6 +11,7 @@ from .coordinate_io_policy import (
 )
 from .fresnel_diagnostics import (
     CandidateFresnelDiagnosticsError,
+    DIAGNOSTIC_FIELD_ORDER,
     validate_flat_fresnel_diagnostics,
 )
 
@@ -67,17 +68,20 @@ _DIAGNOSTIC_TABLE_COLUMNS = (
     "candidate_id",
     "candidate_cell_mgrs",
     "diagnostic_status",
-    "average_fresnel_score",
-    "worst_obstacle_score",
-    "dominant_obstacle_distance_from_start_m",
-    "dominant_obstacle_dsm_msl",
-    "dominant_obstacle_los_msl",
-    "dominant_obstacle_clearance_m",
-    "dominant_obstacle_clearance_ratio",
-    "dominant_obstacle_fresnel_radius_m",
-    "dominant_obstacle_nu",
-    "dominant_obstacle_diffraction_loss_db",
+    *DIAGNOSTIC_FIELD_ORDER,
 )
+_DIAGNOSTIC_FIELD_DECIMAL_PLACES = {
+    "average_fresnel_score": 1,
+    "worst_obstacle_score": 1,
+    "dominant_obstacle_distance_from_start_m": 1,
+    "dominant_obstacle_dsm_msl": 1,
+    "dominant_obstacle_los_msl": 1,
+    "dominant_obstacle_clearance_m": 1,
+    "dominant_obstacle_clearance_ratio": 3,
+    "dominant_obstacle_fresnel_radius_m": 1,
+    "dominant_obstacle_nu": 3,
+    "dominant_obstacle_diffraction_loss_db": 1,
+}
 
 
 def format_preview_appendix_table(
@@ -138,28 +142,29 @@ def _diagnostic_row_values(
 ) -> tuple[object, ...]:
     identity = (row_no, record["candidate_id"], record["candidate_cell_mgrs"])
     if state == "legacy":
-        return (*identity, "unavailable", *("unavailable" for _ in range(10)))
-    average = _format_decimal(record["average_fresnel_score"], 1)
+        return (
+            *identity,
+            "unavailable",
+            *("unavailable" for _ in DIAGNOSTIC_FIELD_ORDER),
+        )
     if state == "no_eligible":
         return (
             *identity,
             "no-eligible-obstacle",
-            average,
-            *("not-applicable" for _ in range(9)),
+            *(
+                _format_decimal(record[field], _DIAGNOSTIC_FIELD_DECIMAL_PLACES[field])
+                if field == "average_fresnel_score"
+                else "not-applicable"
+                for field in DIAGNOSTIC_FIELD_ORDER
+            ),
         )
     return (
         *identity,
         "eligible",
-        average,
-        _format_decimal(record["worst_obstacle_score"], 1),
-        _format_decimal(record["dominant_obstacle_distance_from_start_m"], 1),
-        _format_decimal(record["dominant_obstacle_dsm_msl"], 1),
-        _format_decimal(record["dominant_obstacle_los_msl"], 1),
-        _format_decimal(record["dominant_obstacle_clearance_m"], 1),
-        _format_decimal(record["dominant_obstacle_clearance_ratio"], 3),
-        _format_decimal(record["dominant_obstacle_fresnel_radius_m"], 1),
-        _format_decimal(record["dominant_obstacle_nu"], 3),
-        _format_decimal(record["dominant_obstacle_diffraction_loss_db"], 1),
+        *(
+            _format_decimal(record[field], _DIAGNOSTIC_FIELD_DECIMAL_PLACES[field])
+            for field in DIAGNOSTIC_FIELD_ORDER
+        ),
     )
 
 

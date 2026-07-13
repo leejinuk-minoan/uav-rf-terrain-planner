@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from uav_rf_terrain.coordinate_io_policy import INTERNAL_COORDINATE_FIELD_NAMES
+from uav_rf_terrain.fresnel_diagnostics import DIAGNOSTIC_FIELD_ORDER
 from uav_rf_terrain.preview_appendix_table import (
     PreviewAppendixTableError,
     format_fresnel_diagnostics_appendix_table,
@@ -35,16 +36,7 @@ DIAGNOSTIC_COLUMNS = (
     "candidate_id",
     "candidate_cell_mgrs",
     "diagnostic_status",
-    "average_fresnel_score",
-    "worst_obstacle_score",
-    "dominant_obstacle_distance_from_start_m",
-    "dominant_obstacle_dsm_msl",
-    "dominant_obstacle_los_msl",
-    "dominant_obstacle_clearance_m",
-    "dominant_obstacle_clearance_ratio",
-    "dominant_obstacle_fresnel_radius_m",
-    "dominant_obstacle_nu",
-    "dominant_obstacle_diffraction_loss_db",
+    *DIAGNOSTIC_FIELD_ORDER,
 )
 
 DIAGNOSTIC_VALUES = {
@@ -207,11 +199,12 @@ def test_default_table_exact_output_ignores_malformed_diagnostic_extras() -> Non
 def test_diagnostic_table_has_exact_columns_and_legacy_state() -> None:
     preview = _preview()
     table = format_fresnel_diagnostics_appendix_table(preview)
+    assert DIAGNOSTIC_COLUMNS[4:] == DIAGNOSTIC_FIELD_ORDER
     assert table.splitlines()[0] == "| " + " | ".join(DIAGNOSTIC_COLUMNS) + " |"
     first = table.splitlines()[2]
     assert first == (
         "| 1 | candidate-green | 52S CG 00000 00000 | unavailable | "
-        + " | ".join(["unavailable"] * 10)
+        + " | ".join(["unavailable"] * len(DIAGNOSTIC_FIELD_ORDER))
         + " |"
     )
     assert "dominant_obstacle_sample_index" not in table
@@ -234,7 +227,7 @@ def test_diagnostic_table_formats_no_eligible_state() -> None:
     table = format_fresnel_diagnostics_appendix_table(preview)
     row = table.splitlines()[2]
     assert "| no-eligible-obstacle | 100.0 | " in row
-    assert row.count("not-applicable") == 9
+    assert row.count("not-applicable") == len(DIAGNOSTIC_FIELD_ORDER) - 1
 
 
 @pytest.mark.parametrize(
