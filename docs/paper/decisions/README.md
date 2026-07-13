@@ -10,3 +10,4 @@ Legacy accumulated decisions remain in `docs/paper/decision-log.md` as historica
 
 - [DEC-20260710-001 - DEM/DSM redistributable data policy](DEC-20260710-001-dem-dsm-redistributable-data-policy.md)
 - [DEC-20260713-002 - dominant obstacle diagnostic output policy](DEC-20260713-002-dominant-obstacle-diagnostic-output-policy.md)
+- [DEC-20260713-003 - dominant obstacle appendix-table policy](DEC-20260713-003-dominant-obstacle-appendix-table-policy.md)
