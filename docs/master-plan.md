@@ -588,3 +588,5 @@ frequency_hz
 ```
 
 Android/TMMR offline은 논문 핵심 기능이 아니라 제품화·배포 전략으로 분리한다. 해당 로드맵은 최종 빌드 이후 현장 사용자 접근성, 사전 탑재 데이터, 사전 산출 map-ready package 활용 가능성을 검토하는 별도 배포 Task로 관리한다.
+
+Task 032CD는 optional dominant Fresnel obstacle 진단값과 명시적 `average_fresnel_score`를 추가한다. 기존 `dsm_fresnel_score`, scoring, color, overall score, ranking은 평균 Fresnel 점수를 계속 사용하며, 새 값은 실제 통신 품질을 입증하지 않는 보조 분석 proxy다.

@@ -281,7 +281,115 @@ def test_dsm_fresnel_score_is_average_sample_score() -> None:
         sample.dsm_fresnel_sample_score for sample in analysis.samples
     ) / analysis.sample_count
     assert analysis.dsm_fresnel_score == pytest.approx(expected_average)
+    assert analysis.average_fresnel_score == analysis.dsm_fresnel_score
     assert analysis.dsm_fresnel_score == pytest.approx((100.0 + 0.0 + 100.0) / 3.0)
+
+
+def test_dominant_obstacle_excludes_endpoints_and_reports_worst_eligible_score() -> None:
+    los_analysis = _manual_los_analysis(
+        (
+            _los_sample(0, 0.0, 1000.0, -100.0),
+            _los_sample(1, 250.0, 750.0, 4.0),
+            _los_sample(2, 500.0, 500.0, 0.0),
+            _los_sample(3, 1000.0, 0.0, -100.0),
+        )
+    )
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.dominant_obstacle is not None
+    assert analysis.dominant_obstacle.sample_index == 2
+    assert analysis.worst_obstacle_score == 0.0
+    assert analysis.dominant_obstacle.clearance_m == 0.0
+    assert analysis.dominant_obstacle.nu == 0.0
+    assert analysis.dominant_obstacle.diffraction_loss_db == pytest.approx(6.03285, rel=1e-4)
+
+
+def test_dominant_obstacle_uses_lowest_index_to_break_clearance_ratio_tie() -> None:
+    frequency_hz = 2_400_000_000.0
+    radius_1 = first_fresnel_radius_m(
+        wavelength_m=wavelength_m(frequency_hz), d1_m=250.0, d2_m=750.0
+    )
+    radius_2 = first_fresnel_radius_m(
+        wavelength_m=wavelength_m(frequency_hz), d1_m=750.0, d2_m=250.0
+    )
+    los_analysis = _manual_los_analysis(
+        (
+            _los_sample(0, 0.0, 1000.0, 100.0),
+            _los_sample(7, 250.0, 750.0, radius_1 / 2.0),
+            _los_sample(3, 750.0, 250.0, radius_2 / 2.0),
+            _los_sample(9, 1000.0, 0.0, 100.0),
+        )
+    )
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=frequency_hz)
+
+    assert analysis.dominant_obstacle is not None
+    assert analysis.dominant_obstacle.sample_index == 3
+    assert analysis.dominant_obstacle.clearance_ratio == pytest.approx(0.5)
+    assert analysis.dominant_obstacle.nu == pytest.approx(
+        knife_edge_nu_from_clearance_ratio(analysis.dominant_obstacle.clearance_ratio)
+    )
+    assert analysis.dominant_obstacle.diffraction_loss_db == pytest.approx(
+        knife_edge_loss_db(analysis.dominant_obstacle.nu)
+    )
+
+
+def test_single_intrusion_preserves_high_average_and_identifies_zero_worst_score() -> None:
+    los_analysis = _manual_los_analysis(
+        tuple(
+            _los_sample(index, index * 100.0, (10 - index) * 100.0, 0.0 if index == 5 else 100.0)
+            for index in range(11)
+        )
+    )
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.average_fresnel_score > 90.0
+    assert analysis.worst_obstacle_score == 0.0
+    assert analysis.dominant_obstacle is not None
+    assert analysis.dominant_obstacle.sample_index == 5
+
+
+def test_dominant_obstacle_distinguishes_clear_intrusion_and_los_exceedance() -> None:
+    frequency_hz = 2_400_000_000.0
+    radius = first_fresnel_radius_m(
+        wavelength_m=wavelength_m(frequency_hz), d1_m=500.0, d2_m=500.0
+    )
+    clear_intrusion = analyze_dsm_fresnel(
+        _manual_los_analysis((_los_sample(1, 500.0, 500.0, radius / 2.0),)),
+        frequency_hz=frequency_hz,
+    )
+    los_exceedance = analyze_dsm_fresnel(
+        _manual_los_analysis((_los_sample(1, 500.0, 500.0, -1.0),)),
+        frequency_hz=frequency_hz,
+    )
+
+    assert clear_intrusion.samples[0].los_sample.is_blocked is False
+    assert clear_intrusion.dominant_obstacle is not None
+    assert 0.0 < clear_intrusion.dominant_obstacle.fresnel_sample_score < 100.0
+    assert los_exceedance.dominant_obstacle is not None
+    assert los_exceedance.dominant_obstacle.clearance_m < 0.0
+    assert los_exceedance.dominant_obstacle.nu > 0.0
+    assert (
+        los_exceedance.dominant_obstacle.diffraction_loss_db
+        > clear_intrusion.dominant_obstacle.diffraction_loss_db
+    )
+
+
+def test_no_eligible_sample_has_no_dominant_obstacle() -> None:
+    los_analysis = _manual_los_analysis(
+        (
+            _los_sample(0, 0.0, 1000.0, -50.0),
+            _los_sample(1, 1000.0, 0.0, -50.0),
+        )
+    )
+
+    analysis = analyze_dsm_fresnel(los_analysis, frequency_hz=2_400_000_000.0)
+
+    assert analysis.dominant_obstacle is None
+    assert analysis.worst_obstacle_score is None
+    assert analysis.average_fresnel_score == analysis.dsm_fresnel_score == 100.0
 
 
 def test_analysis_properties() -> None:

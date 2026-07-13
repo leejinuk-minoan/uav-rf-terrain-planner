@@ -388,3 +388,4 @@ Task 030A includes no:
 2. Preserve Task 029B's pure formatter contract while implementing CLI integration.
 3. Reconcile current workflow documentation after Task 030B is merged and tested.
 4. Keep UI, rendered artifacts, and real-terrain integration in separate reviewed tasks.
+5. Task 032CD makes no CLI/report output change; dominant-obstacle fields require a separate output-contract task.
