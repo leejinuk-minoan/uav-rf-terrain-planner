@@ -16,7 +16,17 @@ The approved output boundary is documented in:
 docs/architecture/dominant-obstacle-preview-report-output-boundary.md
 ```
 
-Task 033A does not implement that runtime projection. Task 033B is the separate implementation candidate.
+Task 033A does not implement that runtime projection. Draft PR #85 implements Task 033B through this path:
+
+```text
+FresnelAnalysis
+→ CandidateFresnelDiagnostics
+→ SyntheticCandidateRecord
+→ CandidateCellMapFeature
+→ CandidateDisplayRecord
+→ preview dictionary
+→ plain text / JSON / report
+```
 
 ## Data Model
 
@@ -57,9 +67,9 @@ Dominant-obstacle fields do not alter scoring, colors, overall score, ranking, r
 
 ## Output Boundary
 
-Current preview, report, CLI, map, and JSON outputs do not expose these fields.
+Draft PR #85 adds the optional ten-key flat projection to preview JSON, a concise average/worst/loss plain-text summary, and a deterministic `## Fresnel Diagnostics` report section. Legacy saved previews remain valid. The no-eligible state contains a finite average and nine null values; partial, mixed-null, bool, NaN, and infinity states are rejected by diagnostic-aware paths.
 
-The Task 033A boundary approves a future optional flat projection for JSON/plain-text/report consumers, preserves legacy saved previews, distinguishes unavailable diagnostics from an enriched no-eligible-obstacle result, and keeps appendix-table columns unchanged for Task 033B.
+Appendix table formatting ignores diagnostic extras and retains its existing columns. `CandidateCellMapFeature` carries the typed diagnostic object, but no map rendering or UI visualization is implemented. The CLI option surface is unchanged.
 
 `dominant_obstacle_sample_index` remains internal. Human-readable diffraction loss uses 0.1 dB precision; JSON retains the original float value.
 
@@ -74,7 +84,7 @@ The Task 033A boundary approves a future optional flat projection for JSON/plain
 
 ### Task 033B
 
-- optional diagnostic bridge across candidate/map/display/preview/report layers;
+- optional diagnostic bridge across candidate/map/display/preview/report layers implemented on Draft PR #85;
 - legacy preview compatibility;
 - all-or-none diagnostic key-set validation;
 - `## Fresnel Diagnostics` report section;
@@ -104,6 +114,6 @@ No private path, terrain raster, generated artifact, credential, operational com
 
 ## Follow-Up Tasks
 
-1. Task 033B may implement the reviewed optional preview/report projection.
+1. Merge status and final-head CI for Draft PR #85 require user and GPT Master review.
 2. Appendix-table extension requires a separate reviewed task.
-3. Any scoring use requires separate validation and explicit approval.
+3. Any scoring, color, ordering, route, or waypoint use requires separate validation and explicit approval.

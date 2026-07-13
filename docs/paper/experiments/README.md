@@ -52,3 +52,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260713-042 - knife-edge diffraction formula foundation](EXP-20260713-042-knife-edge-diffraction-formula-foundation.md)
 - [EXP-20260713-043 - Fresnel dominant obstacle integration](EXP-20260713-043-fresnel-dominant-obstacle-integration.md)
 - [EXP-20260713-044 - dominant obstacle output boundary review](EXP-20260713-044-dominant-obstacle-output-boundary-review.md)
+- [EXP-20260713-045 - dominant obstacle preview/report integration](EXP-20260713-045-dominant-obstacle-preview-report-integration.md)

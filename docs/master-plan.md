@@ -1,6 +1,6 @@
 # 드론 주파수 차폐 기반 발진기지 및 경로추천 프로그램 Master Plan 초안
 
-Task 032AB and Task 032CD are complete. Task 032CD integrated optional dominant-obstacle diagnostics into `FresnelAnalysis` while preserving the existing average Fresnel scoring contract. Task 033A defines the preview/report output boundary and reconciles documentation only; Task 033B is the separate future implementation task. Existing scoring, color, ranking, route cost, and waypoint cost remain unchanged.
+Task 032AB와 Task 032CD는 완료됐고, Task 033A의 output-boundary contract도 완료됐다. Task 033B candidate-to-preview/report diagnostic integration은 Draft PR #85에 구현되어 있으며 아직 `main`에 병합되지 않았다. Existing scoring, color, ranking, route cost, waypoint cost와 appendix-table columns는 변경되지 않았다.
 
 작성일: 2026-07-08  
 개정일: 2026-07-13  
@@ -419,7 +419,7 @@ frequency_hz
  - 경유점 표
 ```
 
-Task 033A는 runtime UI 또는 preview/report schema를 변경하지 않는다.
+Task 033A는 runtime을 변경하지 않았고, Draft PR #85의 Task 033B가 optional preview/report diagnostic bridge를 구현한다. Map feature는 typed diagnostic data를 전달하지만 map rendering 또는 UI visualization은 추가하지 않는다.
 
 ---
 
@@ -599,8 +599,8 @@ Task 상태:
 ```text
 Task 032AB: 완료
 Task 032CD: 완료
-Task 033A: output boundary 및 문서 정합성, runtime 변경 없음
-Task 033B: optional preview/report diagnostic 구현 별도 검토
+Task 033A: output-boundary contract 완료
+Task 033B: candidate-to-preview/report diagnostic integration을 Draft PR #85에 구현, 미병합
 ```
 
 ---
@@ -625,4 +625,4 @@ Task 033B: optional preview/report diagnostic 구현 별도 검토
 
 Android/TMMR offline은 논문 핵심 기능이 아니라 제품화·배포 전략으로 분리한다. 해당 로드맵은 최종 빌드 이후 현장 사용자 접근성, 사전 탑재 데이터, 사전 산출 map-ready package 활용 가능성을 검토하는 별도 배포 Task로 관리한다.
 
-Task 032CD의 새 진단값은 실제 통신 품질을 입증하지 않는 보조 분석 proxy다. Task 033A는 출력 계약만 정의하며, Task 033B가 구현되기 전에는 current preview/report runtime이 해당 필드를 제공한다고 표현하지 않는다.
+Task 032CD의 새 진단값은 실제 통신 품질을 입증하지 않는 보조 분석 proxy다. Draft PR #85의 Task 033B는 optional output projection을 구현하지만 scoring, appendix table, route, waypoint 경계를 변경하지 않으며, 병합 전에는 `main`의 current runtime으로 표현하지 않는다.

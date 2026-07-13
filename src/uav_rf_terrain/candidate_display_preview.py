@@ -20,11 +20,16 @@ from .coordinate_io_policy import (
     INTERNAL_COORDINATE_FIELD_NAMES,
     require_mgrs_external_coordinate_field,
 )
+from .fresnel_diagnostics import (
+    DIAGNOSTIC_FIELD_NAMES,
+    CandidateFresnelDiagnosticsError,
+    validate_flat_fresnel_diagnostics,
+)
 
 _USER_COORDINATE_FIELD = "candidate_cell_mgrs"
 _PREVIEW_TITLE = "Candidate display preview"
 
-PreviewRecord = dict[str, str | float | bool]
+PreviewRecord = dict[str, str | int | float | bool | None]
 PreviewSummary = dict[str, int | str]
 PreviewDictionary = dict[
     str,
@@ -147,9 +152,26 @@ def format_candidate_display_preview(
 
 
 def _format_record_line(record: CandidateDisplayRecord) -> str:
-    return (
+    line = (
         f"- {record.display_label} | score={record.overall_score} | "
         f"source_zone={record.source_zone}"
+    )
+    diagnostics = record.fresnel_diagnostics
+    if diagnostics is None:
+        return line
+    worst = (
+        f"{diagnostics.worst_obstacle_score:.1f}"
+        if diagnostics.worst_obstacle_score is not None
+        else "unavailable"
+    )
+    loss = (
+        f"{diagnostics.dominant_obstacle_diffraction_loss_db:.1f} dB"
+        if diagnostics.dominant_obstacle_diffraction_loss_db is not None
+        else "unavailable"
+    )
+    return (
+        f"{line} | fresnel_avg={diagnostics.average_fresnel_score:.1f} | "
+        f"fresnel_worst={worst} | diffraction_loss={loss}"
     )
 
 
@@ -172,7 +194,9 @@ def _ensure_preview_records(records: Sequence[PreviewRecord]) -> tuple[PreviewRe
     return resolved
 
 
-def _validate_preview_record(record: Mapping[str, str | float | bool]) -> None:
+def _validate_preview_record(
+    record: Mapping[str, str | int | float | bool | None],
+) -> None:
     if not isinstance(record, Mapping):
         raise CandidateDisplayPreviewError("preview records must be mappings.")
     blocked_keys = INTERNAL_COORDINATE_FIELD_NAMES.intersection(record.keys())
@@ -199,10 +223,22 @@ def _validate_preview_record(record: Mapping[str, str | float | bool]) -> None:
         raise CandidateDisplayPreviewError(
             "preview record source_sensitive must be a bool."
         )
+    try:
+        diagnostic_state = validate_flat_fresnel_diagnostics(record)
+    except CandidateFresnelDiagnosticsError as exc:
+        raise CandidateDisplayPreviewError(str(exc)) from exc
     for key, value in record.items():
         if not isinstance(key, str):
             raise CandidateDisplayPreviewError("preview record keys must be strings.")
         if isinstance(value, (str, float, bool)):
+            continue
+        if (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and key in DIAGNOSTIC_FIELD_NAMES
+        ):
+            continue
+        if value is None and diagnostic_state == "no_eligible" and key in DIAGNOSTIC_FIELD_NAMES:
             continue
         raise CandidateDisplayPreviewError(
             "preview record values must be JSON-ready primitive values."

@@ -17,6 +17,7 @@ from .coordinate_io_policy import (
     INTERNAL_COORDINATE_FIELD_NAMES,
     require_mgrs_external_coordinate_field,
 )
+from .fresnel_diagnostics import CandidateFresnelDiagnostics
 from .map_outputs import CandidateCellMapFeature
 from .schemas import ColorClass
 
@@ -54,6 +55,7 @@ class CandidateDisplayRecord:
     source_zone_reason: str
     candidate_reason: str
     display_label: str
+    fresnel_diagnostics: CandidateFresnelDiagnostics | None = None
 
     def __post_init__(self) -> None:
         require_mgrs_external_coordinate_field(_USER_COORDINATE_FIELD)
@@ -86,11 +88,17 @@ class CandidateDisplayRecord:
             raise CandidateDisplayOutputError(
                 "display_label must use candidate_id, candidate_cell_mgrs, and color class."
             )
+        if self.fresnel_diagnostics is not None and not isinstance(
+            self.fresnel_diagnostics, CandidateFresnelDiagnostics
+        ):
+            raise CandidateDisplayOutputError(
+                "fresnel_diagnostics must be CandidateFresnelDiagnostics or None."
+            )
 
-    def to_display_dict(self) -> dict[str, str | float | bool]:
+    def to_display_dict(self) -> dict[str, str | float | bool | None]:
         """Return primitive user-facing display properties without internal coordinates."""
 
-        return {
+        result: dict[str, str | float | bool | None] = {
             "candidate_id": self.candidate_id,
             "candidate_cell_mgrs": self.candidate_cell_mgrs,
             "external_coordinate_format": self.external_coordinate_format,
@@ -105,6 +113,9 @@ class CandidateDisplayRecord:
             "candidate_reason": self.candidate_reason,
             "display_label": self.display_label,
         }
+        if self.fresnel_diagnostics is not None:
+            result.update(self.fresnel_diagnostics.to_flat_dict())
+        return result
 
 
 @dataclass(frozen=True)
@@ -169,6 +180,7 @@ def build_candidate_display_records(
                     f"{feature.candidate_id} | {candidate_cell_mgrs} | "
                     f"{feature.color_class.value}"
                 ),
+                fresnel_diagnostics=feature.fresnel_diagnostics,
             )
         )
 
@@ -185,14 +197,16 @@ def build_candidate_display_records(
 
 def build_candidate_display_records_by_candidate_id(
     display_bundle: CandidateDisplayBundle,
-) -> dict[str, dict[str, str | float | bool]]:
+) -> dict[str, dict[str, str | float | bool | None]]:
     """Return display dictionaries keyed by candidate identifier."""
 
     if not isinstance(display_bundle, CandidateDisplayBundle):
         raise CandidateDisplayOutputError(
             "display_bundle must be a CandidateDisplayBundle value."
         )
-    records_by_candidate_id: dict[str, dict[str, str | float | bool]] = {}
+    records_by_candidate_id: dict[
+        str, dict[str, str | float | bool | None]
+    ] = {}
     for record in display_bundle.records:
         if record.candidate_id in records_by_candidate_id:
             raise CandidateDisplayOutputError(
