@@ -1,13 +1,30 @@
-# 드론 주파수 차폐 기반 발진기지 및 경로추천 프로그램 Master Plan 초안
-
-Task 032AB begins a knife-edge improvement sequence with pure formula helpers. Task 032CD may later integrate a dominant obstacle into `FresnelAnalysis`. Existing scoring, color, and overall score remain unchanged; this is not field RF validation or a communication-outcome guarantee.
+# 드론 주파수 차폐 기반 발진기지 및 경로추천 프로그램 Master Plan
 
 작성일: 2026-07-08  
-개정일: 2026-07-08  
-문서 성격: 연구·교육·시뮬레이션용 프로그램 기획 및 설계 초안  
+개정일: 2026-07-13  
+문서 성격: 연구·교육·시뮬레이션용 프로그램 기획 및 설계 문서  
 프로젝트명: UAV RF Terrain Planner
 
-> 본 문서는 실제 현장 운용 지시서가 아니라 프로그램 개발을 위한 마스터 플랜이다. 본 체계는 지형·전파 차폐 위험을 정량화하여 사용자의 비교 판단을 보조하는 연구·교육·시뮬레이션용 의사결정 지원 도구로 정의한다.
+> 본 문서는 실제 현장 운용 지시서가 아니라 프로그램 개발을 위한 마스터 플랜이다. 본 체계는 지형·전파 차폐 위험을 정량화하여 사용자의 비교 판단을 보조하는 연구·교육·시뮬레이션용 의사결정 지원 도구다.
+
+## Current Task Status
+
+Task 032AB and Task 032CD are complete.
+
+```text
+Task 032AB
+→ pure single knife-edge nu/loss helpers
+
+Task 032CD
+→ FresnelAnalysis.average_fresnel_score
+→ FresnelAnalysis.worst_obstacle_score
+→ FresnelAnalysis.dominant_obstacle
+→ dsm_fresnel_score == average_fresnel_score 유지
+```
+
+Task 033A defines the dominant-obstacle preview/report output boundary and reconciles documentation. Task 033A changes no runtime source, tests, schema, formatter, CLI behavior, scoring, color, ranking, route, or waypoint behavior.
+
+Task 033B is the separate future implementation candidate for the reviewed optional preview/report diagnostic projection.
 
 ---
 
@@ -15,42 +32,25 @@ Task 032AB begins a knife-edge improvement sequence with pure formula helpers. T
 
 ### 1.1 한 줄 정의
 
-사용자가 정찰목표지점 MGRS, 드론 운용반경, 허가 운용고도 AGL, 통신 주파수 대역을 입력하면 DEM/DSM 등 지형자료를 기반으로 주파수·지형 차폐 위험을 분석하고, **지도 평면상에서 드론 최대 운용거리를 고려한 발진 가능구역을 색상 레이어로 표시**한 뒤, 사용자가 선택한 발진기지에서 목표지점까지 차폐 위험이 낮은 비행경로 후보 3개를 제시하는 프로그램이다.
+사용자가 정찰목표지점 MGRS, 드론 운용반경, 허가 운용고도 AGL, 통신 주파수 대역을 입력하면 DEM/DSM 등 지형자료를 기반으로 주파수·지형 차폐 위험을 분석하고, **지도 평면상에서 드론 최대 운용거리를 고려한 발진 가능구역을 색상 레이어로 표시**한 뒤, 사용자가 선택한 발진기지에서 목표지점까지 차폐 위험이 낮은 경로 후보 3개를 제시하는 프로그램이다.
 
-### 1.2 핵심 정정 사항
+### 1.2 핵심 출력 원칙
 
-발진기지 출력의 기본 방식은 **Top 5 점 추천이 아니다.**
-
-기본 출력은 사용자가 제공한 예시 이미지처럼 지도 위에 색상으로 표시되는 **발진 가능구역 지도**다. 각 격자점 또는 셀은 드론 최대 운용거리, 목표지점과의 거리, LOS/Fresnel 차폐위험을 기준으로 평가되며, 그 결과가 색상 구역으로 표현된다.
+발진기지 출력의 기본 방식은 Top 5 점 추천이 아니다.
 
 ```text
 기본 출력:
 목표 주변 분석구역 → 격자화 → 운용반경/차폐위험 평가 → 색상 기반 발진 가능구역 표시
 
 보조 출력:
-점수 상위 후보점 목록은 디버깅·검증 또는 사용자 보조용으로만 제공 가능
+점수 상위 후보점 목록, preview/report diagnostics는 검토·설명용으로만 제공 가능
 ```
 
 ### 1.3 해결하려는 문제
 
-대대급 이하에서 사용하는 운용거리 5km 이하 소형 드론은 일반적으로 협조고도 이하, 예컨대 800ft 이하의 낮은 고도에서 운용된다. 이때 조종자와 드론 사이에 능선, 산악, 건물, 수목 등 장애물이 존재하면 직접 가시선이 유지되지 않거나 Fresnel Zone이 침범되어 통제·영상 링크 품질이 저하될 수 있다.
+운용자는 목표지점과 운용 위치 사이의 능선, 산악, 건물, 수목 등 지형·표면 장애물에 따른 LOS/Fresnel 위험을 정량적으로 비교하기 어렵다. 단순히 고도가 높은 위치가 항상 유리하지 않으므로 방향별 지형 단면과 주파수별 Fresnel 여유를 함께 분석한다.
 
-현 운용자는 목표지점과 운용 위치 사이의 지형 차폐를 정량적으로 분석할 수 있는 도구가 부족하므로, 경험적으로 고도가 높은 곳을 발진기지로 선정하는 경향이 있다. 그러나 단순히 고도가 높은 곳이 항상 통신상 유리한 것은 아니다. 특정 방향의 능선, 수목, 건물, 지형 단면에 따라 더 가까운 곳보다 먼 곳이 유리할 수도 있고, 높은 곳보다 낮지만 목표방향 가시선이 열린 곳이 더 유리할 수도 있다.
-
-또한 현장에서 여단급 이하 제대의 지휘소가 정찰목표에 대한 공역사용승인을 신청하거나 예하부대 드론 운용 고도를 조정할 때, 실제 정찰에 필요한 고도를 사전에 정량적으로 판단하기 어렵다. 따라서 본 프로그램은 후속 기능으로 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL과 직선 운용구간 내 최고 지표고 기준 AGL 변환값을 산출하여 공역사용승인 신청 고도 판단을 보조한다.
-
-본 프로그램은 이 문제를 정량 분석 문제로 전환한다.
-
-```text
-정찰목표 + 드론 운용반경 + 허가 운용고도 + 통신 주파수
-→ 목표 주변 평면 격자 생성
-→ 각 격자점의 운용반경 조건 평가
-→ 지형 단면 분석
-→ LOS/Fresnel 차폐위험 계산
-→ 발진 가능구역을 색상으로 지도 표시
-→ 사용자가 지도에서 발진기지 선택
-→ 선택 발진기지 기준 차폐 위험이 낮은 비행경로 3개 제시
-```
+후속 고도 판단 보조 기능은 DSM 기반 LOS/Fresnel clearance 조건을 만족하는 최소 요구 MSL과 최고 DEM 지표고 기준 AGL을 산출한다. 이 값은 실제 통신, 정찰, 비행 또는 공역승인 결과를 보장하지 않는다.
 
 ---
 
@@ -66,15 +66,11 @@ Task 032AB begins a knife-edge improvement sequence with pure formula helpers. T
 | 비행금지구역 | 본 체계에서는 미고려 |
 | 지형데이터 | DEM, DSM, 경사도, 산림/수목, 건물, 토지피복 등 포함 |
 | 드론 상승/하강 | 자유롭게 가능하다고 가정 |
-| 운용거리 개념 | 조종자 위치를 중심으로 한 3차원 구형 운용반경 |
-| 발진기지 평가요소 | 정찰목표와의 주파수/지형 차폐, 거리만 고려 |
-| 발진기지 기본 출력 | Top 5가 아니라 색상 기반 발진 가능구역 지도 |
-| 경로 추천 기준 | 사용자가 선택한 발진기지에서 차폐가 적은 경로를 우선 추천 |
-| 최소 요구 고도 산출 | DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL 및 최고 지표고 기준 AGL 변환 |
-
-### 2.1 운용거리의 해석
-
-운용거리 5km 드론은 지도상 평면 반경 5km만을 의미하지 않는다. 사용자가 차폐물이 없는 가상의 허공 중앙에 있다고 가정할 때 사용자를 중심으로 반경 5km의 구형 공간 안에서 운용할 수 있다는 의미로 해석한다.
+| 운용거리 개념 | 조종자 위치 중심 3차원 구형 운용반경 |
+| 발진기지 평가요소 | 정찰목표와의 지형·주파수 차폐, 거리 |
+| 발진기지 기본 출력 | 색상 기반 발진 가능구역 지도 |
+| 경로 추천 기준 | 선택 발진기지에서 차폐위험이 낮은 경로 우선 |
+| 최소 요구 고도 산출 | DSM LOS/Fresnel clearance 기반 최소 요구 MSL 및 AGL 변환 |
 
 후보 발진기지와 목표 또는 경로점 사이의 가능 여부는 3차원 거리로 계산한다.
 
@@ -82,31 +78,28 @@ Task 032AB begins a knife-edge improvement sequence with pure formula helpers. T
 3D 거리 = sqrt(Δx² + Δy² + Δz²)
 ```
 
-다만 발진 가능구역은 사용자가 지도 위에서 이해해야 하므로, 지도 평면상에는 드론 최대 운용거리와 차폐위험을 반영한 색상 레이어로 표시한다.
-
 ---
 
 ## 3. 사용자 입력값
 
-### 3.1 필수 입력값
-
 | 입력값 | 설명 |
 |---|---|
 | 정찰목표지점 | MGRS 좌표 |
-| 드론 운용반경 | 조종자 중심 3D 운용반경, 예: 5km |
-| 허가 운용고도 | AGL 기준 고도, 예: 800ft 또는 244m |
-| 드론 통신 주파수 대역 | Fresnel Zone 계산용, 예: 2.4GHz, 5.8GHz, 900MHz |
+| 드론 운용반경 | 조종자 중심 3D 운용반경 |
+| 허가 운용고도 | AGL 기준 고도 |
+| 드론 통신 주파수 대역 | Fresnel Zone 계산용 |
 
-### 3.2 입력값 처리
+입력 처리:
 
-1. MGRS 좌표를 위도·경도 좌표로 변환한다.
-2. 위도·경도를 거리 계산이 가능한 미터 단위 투영좌표계로 변환한다.
-3. 사용자가 입력한 AGL 고도는 각 경로점의 지형고도에 더해 MSL 고도로 변환한다.
-4. 사용자가 입력한 주파수 대역은 중심 주파수로 변환하여 Fresnel Zone 반경 계산에 사용한다.
+1. MGRS를 분석용 좌표계로 변환한다.
+2. AGL은 경로점 지형고도와 결합해 MSL로 해석한다.
+3. 주파수는 Fresnel 반경 계산에 사용한다.
 
 ```text
 비행고도 MSL = 해당 지점 지형고도 + 사용자 입력 AGL
 ```
+
+사용자-facing 좌표는 MGRS를 유지한다. WGS84, EPSG:5179, local x/y, raster row/col은 내부 계산용이다.
 
 ---
 
@@ -116,65 +109,58 @@ Task 032AB begins a knife-edge improvement sequence with pure formula helpers. T
 |---|---|---|
 | DEM | 지표면 고도 분석 | 필수 |
 | DSM | 건물·수목 포함 표면고도 분석 | 필수 권장 |
-| 경사도 | 지형 기복 분석, 후속 확장용 | 포함 |
+| 경사도 | 지형 기복 분석 | 포함 |
 | 토지피복도 | 산림·도심·수계 구분 | 포함 |
-| 산림/임상도 | 수목 차폐 보정 | 포함 |
-| 건물 높이/윤곽 | 도심 장애물 차폐 보정 | 포함 |
-| MGRS 변환 라이브러리 | 사용자 좌표 입력 처리 | 필수 |
-| WGS84 및 투영좌표계 | 지도 전시 및 거리 계산 | 필수 |
+| 산림/임상도 | 수목 차폐 해석 | 포함 |
+| 건물 높이/윤곽 | 도심 장애물 해석 | 포함 |
+| MGRS 변환 | 사용자 좌표 입력 처리 | 필수 |
+| WGS84/투영좌표계 | 지도 전시 및 거리 계산 | 필수 |
 
-DEM은 지표면 자체의 고도를 나타낸다. DSM은 지표면 위의 건물, 수목 등 표면 객체까지 포함한 높이를 나타낸다. 도심이나 산림 지역에서 실제 전파 차폐를 더 현실적으로 반영하려면 DSM이 필요하다.
+실제 DEM/DSM과 `METADATA_MAP` 자료는 저장소에 커밋하지 않는다. 실제 데이터 연결은 사용자 제공 로컬 경로와 별도 Local Task를 전제로 한다.
 
 ---
 
-## 5. 선행연구 반영 계획
+## 5. 전파·지형 분석 모델
 
-본 프로그램은 완전히 새로운 물리모델을 만드는 것이 아니라, 기존 전파·지형·UAV 경로계획 연구를 소형 드론 발진기지 및 경로추천 문제에 맞게 응용한다.
-
-### 5.1 LOS 분석
-
-LOS, 즉 Line of Sight는 조종자 위치와 드론 또는 목표방향 사이에 직접 가시선이 확보되는지를 판단하는 기본 모델이다. 발진기지 후보와 목표지점 또는 경로점 사이의 지형 단면을 추출하고, 중간 지형고도 또는 DSM 표면고도가 통신선 높이보다 높은지 확인한다.
+### 5.1 LOS
 
 ```text
-중간 장애물 높이 > 통신선 높이 → 직접 차폐
-중간 장애물 높이 ≤ 통신선 높이 → 직접 가시선 확보
+중간 DSM 높이 > 통신선 높이 → LOS 차단
+중간 DSM 높이 ≤ 통신선 높이 → LOS 확보
 ```
 
-### 5.2 Fresnel Zone 반영
-
-무선 전파는 수학적 직선 하나만을 따라 이동하지 않고, 송신점과 수신점을 잇는 경로 주변의 일정 공간을 함께 사용한다. 이 공간을 Fresnel Zone으로 볼 수 있다. 직접 가시선이 확보되더라도 제1 Fresnel Zone에 지형 또는 장애물이 침범하면 신호 품질이 저하될 수 있다.
-
-| 상태 | 판단 | 위험도 |
-|---|---|---|
-| LOS 직접 차단 | 지형/DSM 표면이 통신선을 초과 | 높음 |
-| LOS 확보, Fresnel 침범 | 직접선은 열려 있으나 Fresnel 여유 부족 | 중간 |
-| LOS 및 Fresnel 여유 확보 | 직접선과 Fresnel 여유 모두 확보 | 낮음 |
-
-### 5.3 ITU-R P.526 계열 반영
-
-ITU-R P.526 계열의 핵심은 장애물에 의한 회절과 Fresnel Zone 여유를 고려해 전파 경로의 손실을 해석하는 것이다. 본 프로그램의 1차 MVP에서는 P.526 전체 구현이 아니라 직접 가시선 차단 여부, 제1 Fresnel Zone 침범률, 장애물의 상대적 높이, 침범 구간의 길이 또는 비율을 차폐위험 점수로 반영한다.
-
-### 5.4 Longley-Rice / ITM 반영
-
-Longley-Rice 또는 ITM은 지형 프로파일을 이용하는 범용 전파모델이다. 1차 MVP에서는 구현 복잡도를 낮추기 위해 직접 구현하지 않고, 고도화 단계의 선택 모듈로 둔다.
-
-| 단계 | 반영 수준 |
-|---|---|
-| MVP | LOS + Fresnel 기반 경험적 차폐점수 |
-| 고도화 1 | 지형 단면 기반 감쇠 추정식 추가 |
-| 고도화 2 | ITM 라이브러리 또는 외부 모델 연결 |
-| 고도화 3 | 실제 링크상태 피드백으로 보정 |
-
-### 5.5 Radio Map 기반 UAV 경로계획 반영
-
-Radio map 기반 UAV 경로계획 연구는 공간 격자마다 통신품질 점수를 부여하고, 경로탐색 문제를 그래프 최단경로 문제로 변환한다. 본 프로그램에서는 실제 측정 기반 radio map이 없는 초기 단계에서 DEM/DSM 기반 차폐위험 지도를 임시 radio map처럼 사용한다.
+Strict LOS cap:
 
 ```text
-격자점별 차폐위험 점수
-→ 발진 가능구역 색상지도 및 경로탐색 비용지도
-→ A* 또는 Dijkstra 경로탐색
-→ 차폐 위험이 낮은 경로 후보 산출
+if dsm_los_score == 0:
+    shielding_stability_score = 0
 ```
+
+### 5.2 Fresnel Zone
+
+제1 Fresnel Zone 반경과 DSM clearance를 sample별로 계산하고, sample score의 산술평균을 `dsm_fresnel_score`로 사용한다.
+
+```text
+dsm_fresnel_score == average_fresnel_score
+```
+
+### 5.3 Dominant Fresnel obstacle
+
+Task 032CD는 eligible interior sample 중 clearance ratio가 가장 작은 sample을 dominant obstacle로 선택한다. 동률이면 낮은 sample index를 선택하며 endpoint와 zero-radius sample은 제외한다.
+
+```text
+average_fresnel_score
+worst_obstacle_score
+dominant_obstacle
+```
+
+Single knife-edge loss는 additional diffraction-loss proxy다. Full link budget, 측정 RF 결과, RSSI, SINR, packet loss 또는 통신 성공 예측이 아니다.
+
+Task 033A는 이 값을 preview/report 보조정보로 출력하는 계약을 정의한다. Task 033B 전에는 runtime preview/report가 해당 필드를 제공한다고 표현하지 않는다.
+
+### 5.4 ITM 및 고도화 모델
+
+Longley-Rice/ITM은 후속 선택 모듈이다. 현재 MVP의 필수 score 또는 dependency가 아니다.
 
 ---
 
@@ -185,132 +171,95 @@ Radio map 기반 UAV 경로계획 연구는 공간 격자마다 통신품질 점
 ```text
 입력: 목표 MGRS, 운용반경 R, 허가고도 H_AGL, 주파수 f, DEM/DSM
 
-1. 목표 MGRS를 분석좌표계로 변환
-2. 목표 주변 분석범위를 생성
-3. 분석범위를 일정 해상도 격자로 분할
-4. 각 격자점을 발진기지 후보 셀로 설정
-5. 각 셀에서 목표지점까지 3D 거리 계산
-6. 3D 거리 > R인 셀은 제외구역으로 분류
-7. 각 셀과 목표지점 사이 지형 단면 추출
-8. LOS 차폐 여부 계산
-9. Fresnel Zone 침범률 계산
-10. DSM 기반 장애물 침범률 계산
-11. 차폐안정성 점수 산출
-12. 거리점수 산출
-13. 종합점수 산출
-14. 각 셀을 색상 등급으로 분류
-15. 지도 위에 발진 가능구역 색상 레이어 표시
+1. 목표 좌표 변환
+2. 목표 주변 분석범위 생성
+3. 분석범위 격자화
+4. 후보 셀 생성
+5. 3D 거리 계산 및 운용반경 필터
+6. 지형 단면 추출
+7. DSM LOS 분석
+8. DSM Fresnel 분석
+9. 차폐안정성 점수 계산
+10. 거리점수 계산
+11. 종합점수 계산
+12. 색상 등급 분류
+13. 발진 가능구역 색상 레이어 생성
 ```
 
-### 6.2 발진 가능구역 종합점수
-
-이 점수는 상위 5개 점을 뽑기 위한 것이 아니라, 지도 평면의 각 격자/셀을 색상 등급으로 분류하기 위한 내부 점수다.
+### 6.2 현재 점수식
 
 ```text
-발진 가능구역 종합점수 = 차폐안정성 점수 × 0.80 + 거리점수 × 0.20
+차폐안정성 점수
+= dsm_los_score × 0.40
++ dsm_fresnel_score × 0.60
+
+발진 가능구역 종합점수
+= shielding_stability_score × 0.80
++ distance_score × 0.20
+
+거리점수
+= 100 × (1 - 목표까지 3D 거리 / 드론 운용반경)
 ```
 
-거리보다 차폐가 핵심이므로 차폐안정성 점수의 비중을 80%로 둔다.
+별도 DSM 장애물 또는 표면복잡도 점수는 현재 기본 score에 포함하지 않는다. DSM 표면장애물은 LOS/Fresnel 계산에 반영한다.
 
-### 6.3 차폐안정성 점수
+이 가중치는 field-validated performance value가 아니라 MVP heuristic weighting이다.
+
+### 6.3 불변 경계
+
+Dominant obstacle diagnostics는 다음을 변경하지 않는다.
 
 ```text
-차폐안정성 점수 = LOS 점수 × 0.50 + Fresnel 여유 점수 × 0.35 + DSM 장애물 점수 × 0.15
+shielding_stability_score
+overall_score
+strict LOS cap
+color thresholds
+candidate order/ranking
+route cost
+waypoint cost
 ```
-
-| 구성요소 | 의미 |
-|---|---|
-| LOS 점수 | 직접 가시선 차단 여부 |
-| Fresnel 여유 점수 | 주파수별 Fresnel Zone 침범률 |
-| DSM 장애물 점수 | 수목·건물·표면객체에 의한 추가 차폐 위험 |
-
-DSM 품질이 낮거나 특정 지역의 DSM을 확보하지 못한 경우에는 DSM 장애물 점수를 제외하고 LOS/Fresnel 중심으로 재정규화한다.
-
-### 6.4 거리점수
-
-```text
-거리점수 = 100 × (1 - 목표까지 3D 거리 / 드론 운용반경)
-```
-
-드론 운용반경을 초과하는 셀은 제외한다. 거리점수는 운용 여유도를 나타내는 보조 지표다.
-
-### 6.5 색상 등급 기본안
-
-| 색상 | 의미 | 기본 조건 예시 |
-|---|---|---|
-| 녹색 | 추천 가능구역 | 운용반경 내, 차폐위험 낮음, 거리 여유 양호 |
-| 노란색 | 제한적 가능구역 | 운용반경 내, 차폐위험 보통 또는 거리 여유 제한 |
-| 주황색/적색 | 비추천/위험구역 | 차폐위험 높음 또는 운용반경에 매우 근접 |
-| 회색/투명 | 제외구역 | 운용반경 초과 또는 계산 제외 |
-
-색상 임계값은 MVP에서는 경험적으로 설정하고, 검증 단계에서 조정한다.
 
 ---
 
 ## 7. 경로 추천 알고리즘
 
-### 7.1 경로 후보 3개
-
-사용자가 지도상에서 발진기지를 선택한 뒤, 최적경로는 단일 결과가 아니라 3개 후보로 제시한다.
+사용자가 지도상에서 발진기지를 선택한 뒤 3개 후보를 제시한다.
 
 | 후보 | 성격 | 목적 |
 |---|---|---|
-| 1안 | 차폐 최소 경로 | 통신 차폐 위험을 가장 낮게 유지 |
-| 2안 | 거리-차폐 균형 경로 | 비행거리와 차폐위험을 균형 있게 고려 |
-| 3안 | 우회 안정 경로 | 위험구간을 우회하여 안정성 확보 |
-
-### 7.2 경로 비용식
+| 1안 | 차폐 최소 | 차폐위험 최소화 |
+| 2안 | 거리-차폐 균형 | 거리와 위험 균형 |
+| 3안 | 우회 안정 | 고위험 영역 우회 |
 
 ```text
 경로비용 = 차폐위험 비용 × W_shield + 실 비행거리 비용 × W_dist + 위험구간 페널티
 ```
 
-| 후보 | 차폐위험 가중치 | 거리 가중치 | 추가 조건 |
-|---|---:|---:|---|
-| 1안 차폐 최소 | 0.90 | 0.10 | 차폐위험 최소화 |
-| 2안 균형 | 0.70 | 0.30 | 거리와 차폐 균형 |
-| 3안 우회 안정 | 0.85 | 0.15 | 고위험 격자 회피 페널티 강화 |
+| 후보 | W_shield | W_dist |
+|---|---:|---:|
+| 차폐 최소 | 0.90 | 0.10 |
+| 균형 | 0.70 | 0.30 |
+| 우회 안정 | 0.85 | 0.15 |
 
-### 7.3 경로탐색 방식
-
-1차 구현에서는 격자 기반 A* 또는 Dijkstra 알고리즘을 사용한다.
-
-1. 분석구역을 일정 간격 격자로 나눈다.
-2. 각 격자점에서 발진기지와의 3D 거리와 차폐위험을 계산한다.
-3. 운용반경을 초과하는 격자는 통과 불가 처리한다.
-4. 차폐위험이 높은 격자에는 높은 비용을 부여한다.
-5. 후보별 가중치를 달리하여 3개의 경로를 산출한다.
-6. 경로가 중복될 경우, 이미 선택된 경로 주변 격자에 중복 페널티를 부여하여 대안 경로를 생성한다.
+1차 구현은 격자 기반 A* 또는 Dijkstra를 사용한다. Dominant obstacle diagnostics는 현재 경로비용에 반영하지 않는다.
 
 ---
 
-## 8. 500m 단위 경유점 산출
+## 8. 경유점 및 최소 요구 고도
 
-사용자 요구에 따라 각 경로는 약 500m 단위로 경유점을 생성한다.
+경로는 약 500m 단위 경유점을 생성한다.
 
 | 항목 | 설명 |
 |---|---|
 | WP 번호 | WP-000, WP-001 등 |
-| 누적 실 비행거리 | 발진기지부터 해당 지점까지의 3D 거리 합 |
-| MGRS 좌표 | 해당 경유점 좌표 |
-| 지형고도 | DEM 또는 DSM 기반 지표/표면고도 |
-| AGL 고도 | 사용자가 입력한 허가 운용고도 |
-| 비행고도 MSL | 지형고도 + AGL |
-| 발진기지 기준 고도차 | 해당 경유점 비행고도 MSL - 발진기지 지형고도 |
-| 차폐위험 점수 | 발진기지와 해당 경유점 사이의 차폐 점수 |
+| 누적 실 비행거리 | 발진기지부터 해당 지점까지 3D 거리 합 |
+| MGRS 좌표 | 사용자-facing 경유점 좌표 |
+| 지형고도 | DEM/DSM 기반 고도 |
+| AGL / MSL | 사용자 고도와 지형고도의 결합 |
+| 발진기지 기준 고도차 | 경유점 비행 MSL - 발진기지 지형고도 |
+| 차폐위험 점수 | 발진기지와 해당 지점 사이 위험 proxy |
 
-```text
-구간거리 = sqrt(Δx² + Δy² + Δz²)
-실 비행거리 = 모든 구간거리의 합
-```
-
----
-
-## 8.1 최소 요구 MSL / AGL 산출
-
-후속 기능으로 공역사용승인 신청 고도 판단 보조를 위한 최소 요구 MSL / AGL 산출 기능을 둔다. 이 기능은 발진기지와 목표 또는 경로점 사이 직선 운용구간에서 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 계산하고, 같은 구간의 최고 DEM 지표고를 기준으로 required AGL을 환산한다.
-
-예상 출력 항목은 다음과 같다.
+최소 요구 고도 보조 출력 후보:
 
 ```text
 minimum_required_msl_m
@@ -320,238 +269,125 @@ clearance_condition
 frequency_hz
 ```
 
-이 산출값은 실제 정찰 성공, 실제 통신 가능, 실제 비행 가능, 또는 공역승인 최적고도 보장이 아니라 오프라인 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 의사결정 보조 값이다.
+이 값은 실제 통신·정찰·비행 또는 공역승인 결과를 보장하지 않는다.
 
 ---
 
 ## 9. 시스템 아키텍처
 
 ```text
-[사용자 입력 UI]
- - 목표 MGRS
- - 드론 운용반경
- - 허가 운용고도 AGL
- - 통신 주파수 대역
-
-        ↓
-
-[좌표 변환 모듈]
- - MGRS → WGS84
- - WGS84 → 미터 단위 투영좌표계
-
-        ↓
-
-[지형 데이터 로딩 모듈]
- - DEM
- - DSM
- - 경사도
- - 토지피복
- - 산림/수목
- - 건물 높이
-
-        ↓
-
-[발진 가능구역 생성 모듈]
- - 목표 주변 분석범위 생성
- - 분석범위 격자화
- - 각 격자점을 발진 후보 셀로 설정
-
-        ↓
-
-[운용반경 필터링 모듈]
- - 후보 셀과 목표/경로점 간 3D 거리 계산
- - 운용반경 초과 셀 제외
-
-        ↓
-
-[차폐 분석 모듈]
- - 지형 단면 추출
- - LOS 분석
- - Fresnel Zone 분석
- - DSM 장애물 분석
-
-        ↓
-
-[발진 가능구역 지도화 모듈]
- - 차폐점수
- - 거리점수
- - 종합점수
- - 색상 등급 분류
- - 지도 레이어 생성
-
-        ↓
-
-[사용자 발진기지 선택]
- - 지도상 가능구역에서 발진기지 클릭/선택
-
-        ↓
-
-[경로 추천 모듈]
- - A*/Dijkstra 경로탐색
- - 후보 3개 생성
- - 실 비행거리 산정
- - 500m 단위 경유점 생성
-
-        ↓
-
-[지도 시각화 UI]
- - 발진 가능구역 색상 지도
- - 차폐 위험지도
- - 경로 후보 3개
- - 경유점 표
+사용자 입력 UI
+→ 좌표 변환
+→ 지형 데이터 adapter
+→ 후보 격자 및 운용반경 필터
+→ 지형 단면
+→ DSM LOS/Fresnel 분석
+→ scoring / color classification
+→ 발진 가능구역 map-ready data
+→ 사용자 발진기지 선택
+→ 경로 후보 및 경유점
+→ preview/report/UI consumer
 ```
+
+Preview/report는 계산 엔진과 분리한다. 사용자-facing 출력은 MGRS를 유지하고 internal coordinate를 노출하지 않는다.
 
 ---
 
-## 10. 데이터베이스 구조
+## 10. 데이터 구조 방향
 
-### 10.1 mission_input
+### Candidate cell
 
-| 컬럼 | 설명 |
-|---|---|
-| mission_id | 임무 ID |
-| target_mgrs | 정찰목표 MGRS |
-| operation_radius_m | 드론 운용반경 |
-| allowed_agl_m | 허가 운용고도 AGL |
-| frequency_band | 통신 주파수 대역 |
-| frequency_center_mhz | 계산용 중심 주파수 |
+```text
+cell_id
+candidate_cell_mgrs
+within_operation_radius
+dsm_los_score
+dsm_fresnel_score
+shielding_stability_score
+distance_score
+overall_score
+color_class
+source-zone interpretation metadata
+optional dominant-obstacle diagnostics
+```
 
-### 10.2 launch_area_cell
+Task 033B의 optional diagnostic fields는 preview/report용 보조 projection이며 저장·표시 여부가 scoring을 변경하지 않는다.
 
-| 컬럼 | 설명 |
-|---|---|
-| cell_id | 발진 가능구역 격자 셀 ID |
-| mission_id | 임무 ID |
-| cell_mgrs | 셀 중심점 MGRS |
-| x, y | 분석 좌표계 좌표 |
-| ground_elevation_m | 셀 지형고도 |
-| distance_3d_to_target_m | 목표까지 3D 거리 |
-| within_operation_radius | 운용반경 충족 여부 |
-| los_score | 가시선 점수 |
-| fresnel_score | Fresnel 여유 점수 |
-| dsm_obstacle_score | DSM 장애물 점수 |
-| shielding_score | 종합 차폐점수 |
-| distance_score | 거리점수 |
-| total_score | 색상 등급 분류용 종합점수 |
-| color_class | green/yellow/orange/red/excluded 등 지도 표시 등급 |
+### Route and waypoint
 
-### 10.3 selected_launch_site
-
-| 컬럼 | 설명 |
-|---|---|
-| selected_site_id | 사용자가 지도에서 선택한 발진기지 ID |
-| mission_id | 임무 ID |
-| source_cell_id | 선택한 발진 가능구역 셀 ID |
-| selected_mgrs | 선택 지점 MGRS |
-| x, y | 분석 좌표계 좌표 |
-| ground_elevation_m | 발진기지 지형고도 |
-
-### 10.4 route_candidate
-
-| 컬럼 | 설명 |
-|---|---|
-| route_id | 경로 ID |
-| mission_id | 임무 ID |
-| selected_site_id | 선택 발진기지 ID |
-| route_rank | 1안/2안/3안 |
-| route_type | 차폐최소/균형/우회안정 |
-| actual_flight_distance_m | 실 비행거리 |
-| avg_shielding_score | 평균 차폐점수 |
-| min_shielding_score | 최저 차폐점수 |
-| total_route_score | 경로 종합점수 |
-
-### 10.5 route_waypoint
-
-| 컬럼 | 설명 |
-|---|---|
-| route_id | 경로 ID |
-| wp_no | 경유점 번호 |
-| cumulative_distance_m | 누적 실 비행거리 |
-| wp_mgrs | 경유점 MGRS |
-| terrain_elevation_m | 지형고도 |
-| agl_m | AGL 고도 |
-| flight_msl_m | 비행고도 MSL |
-| height_diff_from_launch_m | 발진기지 기준 고도차 |
-| shielding_score_from_launch | 해당 지점 차폐점수 |
+Route와 waypoint는 선택 발진기지, 경로 유형, 거리, 차폐위험, 경유점 고도와 MGRS를 보유한다. Dominant obstacle diagnostics는 현재 route/waypoint score 입력이 아니다.
 
 ---
 
 ## 11. MVP 범위
 
-### MVP-1: 발진 가능구역 색상 지도화
+### MVP-1
 
-포함 기능:
+- MGRS/운용반경/AGL/주파수 입력
+- DEM/DSM adapter
+- 후보 격자와 운용반경 필터
+- LOS/Fresnel 분석
+- 색상 기반 발진 가능구역 출력 데이터
 
-1. MGRS 입력
-2. 운용반경 입력
-3. 허가 운용고도 AGL 입력
-4. 통신 주파수 대역 입력
-5. DEM/DSM 로딩
-6. 목표 주변 분석범위 생성
-7. 분석범위 격자화
-8. 운용반경 필터링
-9. LOS/Fresnel 기반 차폐분석
-10. 발진 가능구역 색상 레이어 출력
-11. 지도상 차폐 위험 히트맵 표시
+### MVP-2
 
-제외 기능:
+- 사용자 발진기지 선택
+- 차폐 최소/균형/우회 안정 경로
+- 실 비행거리
+- 약 500m 경유점
+- 경유점별 AGL/MSL와 발진기지 기준 고도차
 
-1. 안전 여유율
-2. 비행금지구역
-3. 발진지역 제한
-4. 접근성 평가
-5. 실제 재밍 또는 전자전 상황 반영
+### Diagnostic output extension
 
-### MVP-2: 사용자가 선택한 발진기지 기준 경로 후보 3개 추천
+- Task 033A: contract and documentation only
+- Task 033B: optional preview/report field implementation candidate
+- appendix-table extension: separate reviewed task
+- scoring use: separate validation and decision required
 
-포함 기능:
+제외 범위:
 
-1. 사용자가 지도에서 발진기지를 선택
-2. 선택 발진기지 기준 차폐위험지도 생성
-3. 차폐 최소 경로 탐색
-4. 균형 경로 탐색
-5. 우회 안정 경로 탐색
-6. 경로별 실 비행거리 계산
-7. 약 500m 단위 경유점 생성
-8. 경유점별 AGL 고도와 발진기지 기준 고도차 출력
+- 실제 재밍/전자전 모델
+- 실제 드론 제어
+- autopilot/flight command
+- field communication guarantee
+- 대형 GIS 데이터 저장소 커밋
 
 ---
 
-## 12. 기술스택 제안
+## 12. 기술스택
 
 | 목적 | 기술 |
 |---|---|
-| 지형 래스터 처리 | Python, Rasterio, GDAL |
+| 지형 래스터 처리 | Python, optional Rasterio/GDAL |
 | 좌표 변환 | PyProj, mgrs |
 | 벡터 처리 | GeoPandas, Shapely |
 | 경로탐색 | NetworkX, NumPy, SciPy |
-| 웹 API | FastAPI |
-| 프로토타입 UI | Streamlit |
-| 지도 시각화 | Folium, Leaflet, MapLibre |
-| 데이터 저장 | SQLite, GeoPackage, Parquet |
+| 웹 API | FastAPI 후보 |
+| 프로토타입 UI | Streamlit 후보 |
+| 지도 시각화 | Folium, Leaflet, MapLibre 후보 |
+| 데이터 저장 | SQLite, GeoPackage, Parquet 후보 |
 
-초기 프로토타입은 Python + Streamlit + Folium + Rasterio + GeoPandas 조합으로 구축하고, 이후 FastAPI + 웹 지도 구조로 전환한다.
+GIS dependency와 UI는 기본 pure-Python CI 경계와 분리한다.
 
 ---
 
 ## 13. 검증 계획
 
-### 13.1 정량 검증
+### 정량·synthetic 검증
 
-1. 동일 목표지점에 대해 발진 가능구역 색상 분포 비교
-2. 직접 가시선 차단 여부를 수작업 지형 단면과 비교
-3. Fresnel Zone 침범률 변화에 따른 차폐점수 변화 확인
-4. 주파수 대역 변경 시 차폐위험 결과 변화 확인
-5. DEM만 사용한 결과와 DSM 포함 결과 비교
-6. 색상 등급 임계값 변화에 따른 지도 출력 민감도 분석
+1. LOS 차단/비차단 단면
+2. 주파수 변화에 따른 Fresnel 반경과 sample score
+3. 평균 Fresnel score 호환성
+4. dominant obstacle endpoint 제외와 tie-break
+5. no-eligible-obstacle optional state
+6. DEM-only와 DSM-primary 비교
+7. 색상 임계값 민감도
+8. 경로거리와 차폐위험 trade-off
+9. legacy/enriched preview backward compatibility
 
-### 13.2 시나리오 검증
+### 실제 데이터 검증 경계
 
-1. 목표가 능선 뒤에 있는 경우
-2. 고지대이나 목표방향에 중간 능선이 있는 경우
-3. 저지대이나 목표방향 개활지가 열린 경우
-4. 도심 건물 차폐가 있는 경우
-5. 산림 수목 차폐가 있는 경우
+실제 DEM/DSM, QGIS 시각 확인, rasterio/GDAL 설치, field RF 비교는 별도 Local Task다. 실행하지 않은 검증을 완료했다고 표현하지 않는다.
 
 ---
 
@@ -560,33 +396,42 @@ frequency_hz
 | 단계 | 목표 | 산출물 |
 |---|---|---|
 | Phase 0 | 프로젝트 구조화 | GitHub 문서, 마스터플랜 |
-| Phase 1 | 좌표변환/지형 로딩 | MGRS 입력 및 DEM/DSM 샘플 로딩 |
-| Phase 2 | 차폐분석 | LOS/Fresnel 분석 함수 |
+| Phase 1 | 좌표변환/지형 로딩 | MGRS와 DEM/DSM adapter |
+| Phase 2 | 차폐분석 | LOS/Fresnel 및 dominant diagnostic |
 | Phase 3 | 발진 가능구역 지도화 | 색상 기반 가능구역 레이어 |
-| Phase 4 | 발진기지 선택 및 경로추천 | 3개 경로 후보, 실 비행거리 |
-| Phase 5 | 경유점 출력 | 500m 단위 WP 표 |
-| Phase 6 | 검증 및 보정 | 시나리오 테스트, 점수 가중치 보정 |
-| Phase 7 | 최소 요구 고도 판단 보조 | DSM 기반 최소 요구 MSL 및 최고 지표고 기준 AGL 변환 |
-| Phase 8 | 제품화·배포 로드맵 | Android/TMMR offline 검토 |
+| Phase 4 | 발진기지 선택/경로추천 | 경로 후보 3개, 실 비행거리 |
+| Phase 5 | 경유점 출력 | 500m 단위 WP |
+| Phase 6 | 검증 및 보정 | 시나리오 테스트, 가중치 검토 |
+| Phase 7 | 최소 요구 고도 | 최소 요구 MSL/AGL 보조값 |
+| Phase 8 | 제품화·배포 | Android/TMMR offline 별도 검토 |
+
+Task status:
+
+```text
+Task 032AB: complete
+Task 032CD: complete
+Task 033A: documentation/output boundary
+Task 033B: proposed Local implementation
+```
 
 ---
 
 ## 15. 최종 개발 방향
 
-본 프로젝트의 1차 목표는 인공지능 모델을 먼저 붙이는 것이 아니라, 지형과 전파 차폐를 정량화하는 수치분석 엔진을 안정적으로 만드는 것이다. 이후 실제 링크상태나 시뮬레이션 결과가 축적되면 경험적 radio map을 구축하고, 점수 가중치를 보정하거나 학습 기반 추천 모델로 확장할 수 있다.
+1차 목표는 지형과 전파 차폐를 정량화하는 수치분석 엔진을 안정적으로 구축하는 것이다. 실제 링크 데이터가 축적되기 전에는 heuristic score와 진단 proxy를 실측 성능값으로 표현하지 않는다.
 
-최종적으로 본 프로그램은 다음 질문에 답해야 한다.
+본 프로그램은 다음 질문에 대한 비교 판단을 보조한다.
 
 ```text
-목표지점을 정찰하려면 지도상 어느 구역에서 드론을 운용하는 것이 지형·주파수 차폐 측면에서 유리한가?
+목표지점 주변 어느 구역이 지형·주파수 차폐 측면에서 상대적으로 유리한가?
 
-사용자가 선택한 발진기지에서 목표지점까지 어떤 경로가 통신 차폐 위험이 가장 낮은가?
+선택 발진기지에서 목표까지 어떤 경로 후보가 차폐위험과 거리 측면에서 비교 가능한가?
 
-각 경로의 실 비행거리는 얼마이며, 약 500m 단위 경유점의 고도와 발진기지 기준 고도차는 어떻게 되는가?
+각 경로의 실 비행거리와 경유점 고도는 어떻게 되는가?
 
-공역사용승인 신청 또는 예하부대 드론 운용 고도 조정 시 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL과 최고 지표고 기준 AGL은 얼마인가?
+DSM LOS/Fresnel clearance 조건을 만족하는 최소 요구 고도 proxy는 얼마인가?
+
+평균 Fresnel score와 dominant obstacle diagnostics는 경로의 어떤 제한 sample을 설명하는가?
 ```
 
-Android/TMMR offline은 논문 핵심 기능이 아니라 제품화·배포 전략으로 분리한다. 해당 로드맵은 최종 빌드 이후 현장 사용자 접근성, 사전 탑재 데이터, 사전 산출 map-ready package 활용 가능성을 검토하는 별도 배포 Task로 관리한다.
-
-Task 032CD는 optional dominant Fresnel obstacle 진단값과 명시적 `average_fresnel_score`를 추가한다. 기존 `dsm_fresnel_score`, scoring, color, overall score, ranking은 평균 Fresnel 점수를 계속 사용하며, 새 값은 실제 통신 품질을 입증하지 않는 보조 분석 proxy다.
+Android/TMMR offline은 논문 핵심 기능이 아니라 제품화·배포 전략으로 분리한다.
