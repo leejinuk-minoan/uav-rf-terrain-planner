@@ -472,3 +472,4 @@ Task 029A includes no:
 3. Task 030B-Local: implement report CLI/file output only after Task 030A approval.
 4. A later UI task may consume reviewed preview mappings or report strings without changing the pure formatter contract.
 5. Real-terrain integration remains a separate reviewed task requiring user-provided local data paths and Local verification.
+6. Task 032CD does not expose its nested `DominantFresnelObstacle` in reports; a future report task must define an optional flat projection and display precision.

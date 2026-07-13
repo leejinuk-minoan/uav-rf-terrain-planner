@@ -19,8 +19,8 @@ Non-finite and non-positive required inputs raise `FresnelAnalysisError`.
 ## Non-Goals
 No full P.526, Bullington, spherical-earth, multi-obstacle, rounded-ridge, UTD, ITM, scoring, or ranking work.
 ## Task 032CD Integration Boundary
-Dominant obstacle and `FresnelAnalysis` integration are deferred.
+Task 032CD integrates these helpers into `FresnelAnalysis` as an optional dominant-obstacle diagnostic. The formula helpers remain independent, and the integration does not change scoring, color, ranking, preview, or CLI behavior.
 ## Public Repository Sensitivity Check
 No data artifact.
 ## Follow-Up Tasks
-Task 032CD.
+Any output projection or scoring use requires a separate reviewed task.

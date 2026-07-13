@@ -37,6 +37,22 @@ class FresnelSample:
 
 
 @dataclass(frozen=True)
+class DominantFresnelObstacle:
+    """Most restrictive eligible Fresnel sample and knife-edge loss proxy."""
+
+    sample_index: int
+    distance_from_start_m: float
+    dsm_msl: float
+    los_msl: float
+    clearance_m: float
+    clearance_ratio: float
+    fresnel_radius_m: float
+    fresnel_sample_score: float
+    nu: float
+    diffraction_loss_db: float
+
+
+@dataclass(frozen=True)
 class FresnelAnalysis:
     """DSM Fresnel analysis over ordered LOS samples."""
 
@@ -45,6 +61,9 @@ class FresnelAnalysis:
     wavelength_m: float
     samples: tuple[FresnelSample, ...]
     dsm_fresnel_score: float
+    average_fresnel_score: float
+    worst_obstacle_score: float | None
+    dominant_obstacle: DominantFresnelObstacle | None
 
     @property
     def sample_count(self) -> int:
@@ -180,15 +199,53 @@ def analyze_dsm_fresnel(
             )
         )
 
-    dsm_fresnel_score = sum(
+    resolved_samples = tuple(fresnel_samples)
+    average_fresnel_score = sum(
         sample.dsm_fresnel_sample_score for sample in fresnel_samples
     ) / len(fresnel_samples)
+    dominant_obstacle = _find_dominant_fresnel_obstacle(resolved_samples)
     return FresnelAnalysis(
         scenario_name=los_analysis.scenario_name,
         frequency_hz=frequency_hz,
         wavelength_m=resolved_wavelength_m,
-        samples=tuple(fresnel_samples),
-        dsm_fresnel_score=dsm_fresnel_score,
+        samples=resolved_samples,
+        dsm_fresnel_score=average_fresnel_score,
+        average_fresnel_score=average_fresnel_score,
+        worst_obstacle_score=(
+            dominant_obstacle.fresnel_sample_score if dominant_obstacle is not None else None
+        ),
+        dominant_obstacle=dominant_obstacle,
+    )
+
+
+def _find_dominant_fresnel_obstacle(
+    samples: tuple[FresnelSample, ...],
+) -> DominantFresnelObstacle | None:
+    eligible_samples: list[FresnelSample] = []
+    for sample in samples:
+        values = (sample.clearance_ratio, sample.dsm_fresnel_sample_score)
+        if not all(isfinite(value) for value in values):
+            raise FresnelAnalysisError("dominant obstacle sample values must be finite.")
+        if sample.d1_m > 0.0 and sample.d2_m > 0.0 and sample.fresnel_radius_m > 0.0:
+            eligible_samples.append(sample)
+
+    if not eligible_samples:
+        return None
+
+    sample = min(eligible_samples, key=lambda item: (item.clearance_ratio, item.sample_index))
+    nu = knife_edge_nu_from_clearance_ratio(sample.clearance_ratio)
+    los_sample = sample.los_sample
+    return DominantFresnelObstacle(
+        sample_index=sample.sample_index,
+        distance_from_start_m=sample.d1_m,
+        dsm_msl=los_sample.terrain_sample.dsm_msl,
+        los_msl=los_sample.los_line_msl,
+        clearance_m=los_sample.dsm_clearance_m,
+        clearance_ratio=sample.clearance_ratio,
+        fresnel_radius_m=sample.fresnel_radius_m,
+        fresnel_sample_score=sample.dsm_fresnel_sample_score,
+        nu=nu,
+        diffraction_loss_db=knife_edge_loss_db(nu),
     )
 
 
