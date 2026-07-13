@@ -252,7 +252,7 @@ conclusion: success
 steps: install, syntax check, pytest, Ruff, mypy successful
 ```
 
-A new final-head CI run is required after this handoff-evidence amendment.
+The current PR body and Task completion report record the latest final-head GitHub Actions result. This durable handoff does not append a self-referential CI statement after each evidence-only amendment.
 
 ## Local Execution Claims
 
