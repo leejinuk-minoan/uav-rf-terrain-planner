@@ -9,6 +9,11 @@ from .coordinate_io_policy import (
     EXTERNAL_COORDINATE_FORMAT,
     INTERNAL_COORDINATE_FIELD_NAMES,
 )
+from .fresnel_diagnostics import (
+    CandidateFresnelDiagnosticsError,
+    DIAGNOSTIC_FIELD_ORDER,
+    validate_flat_fresnel_diagnostics,
+)
 
 
 class PreviewAppendixTableError(ValueError):
@@ -58,6 +63,25 @@ _TABLE_COLUMNS = (
     "source_zone_reason",
     "candidate_reason",
 )
+_DIAGNOSTIC_TABLE_COLUMNS = (
+    "row_no",
+    "candidate_id",
+    "candidate_cell_mgrs",
+    "diagnostic_status",
+    *DIAGNOSTIC_FIELD_ORDER,
+)
+_DIAGNOSTIC_FIELD_DECIMAL_PLACES = {
+    "average_fresnel_score": 1,
+    "worst_obstacle_score": 1,
+    "dominant_obstacle_distance_from_start_m": 1,
+    "dominant_obstacle_dsm_msl": 1,
+    "dominant_obstacle_los_msl": 1,
+    "dominant_obstacle_clearance_m": 1,
+    "dominant_obstacle_clearance_ratio": 3,
+    "dominant_obstacle_fresnel_radius_m": 1,
+    "dominant_obstacle_nu": 3,
+    "dominant_obstacle_diffraction_loss_db": 1,
+}
 
 
 def format_preview_appendix_table(
@@ -81,6 +105,73 @@ def format_preview_appendix_table(
     if omitted_count:
         lines.append(f"... {omitted_count} additional row(s) omitted.")
     return "\n".join(lines)
+
+
+def format_fresnel_diagnostics_appendix_table(
+    preview: Mapping[str, object],
+    *,
+    max_rows: int | None = None,
+) -> str:
+    """Return a separate deterministic Markdown table of Fresnel diagnostics."""
+
+    records = _validate_preview(preview)
+    resolved_limit = _validate_max_rows(max_rows)
+    try:
+        states = tuple(validate_flat_fresnel_diagnostics(record) for record in records)
+    except CandidateFresnelDiagnosticsError as exc:
+        raise PreviewAppendixTableError(f"invalid Fresnel diagnostics: {exc}") from exc
+
+    visible_count = len(records) if resolved_limit is None else resolved_limit
+    visible = tuple(zip(records, states, strict=True))[:visible_count]
+    lines = [
+        _table_row(_DIAGNOSTIC_TABLE_COLUMNS),
+        _table_row(tuple("---" for _ in _DIAGNOSTIC_TABLE_COLUMNS)),
+    ]
+    for row_no, (record, state) in enumerate(visible, start=1):
+        lines.append(_table_row(_diagnostic_row_values(row_no, record, state)))
+    omitted_count = len(records) - len(visible)
+    if omitted_count:
+        lines.append(f"... {omitted_count} additional row(s) omitted.")
+    return "\n".join(lines)
+
+
+def _diagnostic_row_values(
+    row_no: int,
+    record: Mapping[str, object],
+    state: str,
+) -> tuple[object, ...]:
+    identity = (row_no, record["candidate_id"], record["candidate_cell_mgrs"])
+    if state == "legacy":
+        return (
+            *identity,
+            "unavailable",
+            *("unavailable" for _ in DIAGNOSTIC_FIELD_ORDER),
+        )
+    if state == "no_eligible":
+        return (
+            *identity,
+            "no-eligible-obstacle",
+            *(
+                _format_decimal(record[field], _DIAGNOSTIC_FIELD_DECIMAL_PLACES[field])
+                if field == "average_fresnel_score"
+                else "not-applicable"
+                for field in DIAGNOSTIC_FIELD_ORDER
+            ),
+        )
+    return (
+        *identity,
+        "eligible",
+        *(
+            _format_decimal(record[field], _DIAGNOSTIC_FIELD_DECIMAL_PLACES[field])
+            for field in DIAGNOSTIC_FIELD_ORDER
+        ),
+    )
+
+
+def _format_decimal(value: object, places: int) -> str:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise PreviewAppendixTableError("diagnostic value must be numeric.")
+    return f"{float(value):.{places}f}"
 
 
 def _validate_preview(
