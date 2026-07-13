@@ -8,6 +8,7 @@ import pytest
 from uav_rf_terrain.coordinate_io_policy import INTERNAL_COORDINATE_FIELD_NAMES
 from uav_rf_terrain.preview_appendix_table import (
     PreviewAppendixTableError,
+    format_fresnel_diagnostics_appendix_table,
     format_preview_appendix_table,
 )
 from uav_rf_terrain.synthetic_candidate_preview_smoke import (
@@ -28,6 +29,36 @@ TABLE_COLUMNS = (
     "source_zone_reason",
     "candidate_reason",
 )
+
+DIAGNOSTIC_COLUMNS = (
+    "row_no",
+    "candidate_id",
+    "candidate_cell_mgrs",
+    "diagnostic_status",
+    "average_fresnel_score",
+    "worst_obstacle_score",
+    "dominant_obstacle_distance_from_start_m",
+    "dominant_obstacle_dsm_msl",
+    "dominant_obstacle_los_msl",
+    "dominant_obstacle_clearance_m",
+    "dominant_obstacle_clearance_ratio",
+    "dominant_obstacle_fresnel_radius_m",
+    "dominant_obstacle_nu",
+    "dominant_obstacle_diffraction_loss_db",
+)
+
+DIAGNOSTIC_VALUES = {
+    "average_fresnel_score": 95.123456,
+    "worst_obstacle_score": 32.149,
+    "dominant_obstacle_distance_from_start_m": 123.456,
+    "dominant_obstacle_dsm_msl": 87.654,
+    "dominant_obstacle_los_msl": 90.123,
+    "dominant_obstacle_clearance_m": 2.469,
+    "dominant_obstacle_clearance_ratio": 0.32149,
+    "dominant_obstacle_fresnel_radius_m": 7.681,
+    "dominant_obstacle_nu": -0.45419,
+    "dominant_obstacle_diffraction_loss_db": 1.23456,
+}
 
 
 def _preview() -> dict[str, object]:
@@ -164,6 +195,98 @@ def test_formatter_does_not_mutate_input_or_create_files(
     assert isinstance(format_preview_appendix_table(preview, max_rows=2), str)
     assert preview == original
     assert list(tmp_path.iterdir()) == []
+
+
+def test_default_table_exact_output_ignores_malformed_diagnostic_extras() -> None:
+    preview = _preview()
+    expected = format_preview_appendix_table(preview)
+    preview["records"][0]["average_fresnel_score"] = float("nan")
+    assert format_preview_appendix_table(preview) == expected
+
+
+def test_diagnostic_table_has_exact_columns_and_legacy_state() -> None:
+    preview = _preview()
+    table = format_fresnel_diagnostics_appendix_table(preview)
+    assert table.splitlines()[0] == "| " + " | ".join(DIAGNOSTIC_COLUMNS) + " |"
+    first = table.splitlines()[2]
+    assert first == (
+        "| 1 | candidate-green | 52S CG 00000 00000 | unavailable | "
+        + " | ".join(["unavailable"] * 10)
+        + " |"
+    )
+    assert "dominant_obstacle_sample_index" not in table
+
+
+def test_diagnostic_table_formats_eligible_values_with_required_precision() -> None:
+    preview = _preview()
+    preview["records"][0].update(DIAGNOSTIC_VALUES)
+    table = format_fresnel_diagnostics_appendix_table(preview)
+    row = table.splitlines()[2]
+    assert "| eligible | 95.1 | 32.1 | 123.5 | 87.7 | 90.1 | 2.5 | 0.321 | 7.7 | -0.454 | 1.2 |" in row
+
+
+def test_diagnostic_table_formats_no_eligible_state() -> None:
+    preview = _preview()
+    preview["records"][0].update(
+        {name: None for name in DIAGNOSTIC_VALUES}
+    )
+    preview["records"][0]["average_fresnel_score"] = 100.0
+    table = format_fresnel_diagnostics_appendix_table(preview)
+    row = table.splitlines()[2]
+    assert "| no-eligible-obstacle | 100.0 | " in row
+    assert row.count("not-applicable") == 9
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        {"average_fresnel_score": 10.0},
+        {**DIAGNOSTIC_VALUES, "dominant_obstacle_nu": None},
+        {**DIAGNOSTIC_VALUES, "dominant_obstacle_nu": True},
+        {**DIAGNOSTIC_VALUES, "dominant_obstacle_nu": float("nan")},
+        {**DIAGNOSTIC_VALUES, "dominant_obstacle_nu": float("inf")},
+        {**DIAGNOSTIC_VALUES, "dominant_obstacle_nu": float("-inf")},
+    ),
+)
+def test_diagnostic_table_rejects_invalid_states(mutation: dict[str, object]) -> None:
+    preview = _preview()
+    preview["records"][0].update(mutation)
+    with pytest.raises(PreviewAppendixTableError, match="diagnostic"):
+        format_fresnel_diagnostics_appendix_table(preview)
+
+
+def test_diagnostic_table_preserves_order_limit_escaping_and_immutability(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    preview = _preview()
+    preview["records"][0]["candidate_id"] = "candidate|green"
+    preview["records"][0]["dominant_obstacle_sample_index"] = 7
+    original = deepcopy(preview)
+    table = format_fresnel_diagnostics_appendix_table(preview, max_rows=2)
+    assert "candidate\\|green" in table
+    assert "| 2 | candidate-yellow |" in table
+    assert "| 3 |" not in table
+    assert table.endswith("... 3 additional row(s) omitted.")
+    assert "dominant_obstacle_sample_index" not in table
+    assert "| 7 |" not in table
+    assert preview == original
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("value", (0, -1, True, 1.5, "2"))
+def test_diagnostic_table_reuses_max_rows_validation(value: object) -> None:
+    with pytest.raises(PreviewAppendixTableError):
+        format_fresnel_diagnostics_appendix_table(
+            _preview(), max_rows=value  # type: ignore[arg-type]
+        )
+
+
+def test_diagnostic_table_rejects_internal_coordinate() -> None:
+    preview = _preview()
+    preview["records"][0]["raster_row"] = 3
+    with pytest.raises(PreviewAppendixTableError, match="internal coordinate"):
+        format_fresnel_diagnostics_appendix_table(preview)
 
 
 def test_module_has_no_gis_cli_rendering_or_file_writing_dependency() -> None:

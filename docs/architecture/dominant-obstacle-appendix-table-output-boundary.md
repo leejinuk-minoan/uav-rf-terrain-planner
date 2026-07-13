@@ -79,7 +79,7 @@ In particular, the default table continues to ignore diagnostic extras. Invalid 
 
 ## Selected API Boundary
 
-Task 034B may add this new pure formatter in `src/uav_rf_terrain/preview_appendix_table.py`:
+Task 034B implements this pure formatter in `src/uav_rf_terrain/preview_appendix_table.py`:
 
 ```python
 def format_fresnel_diagnostics_appendix_table(
@@ -89,6 +89,8 @@ def format_fresnel_diagnostics_appendix_table(
 ) -> str:
     ...
 ```
+
+The implementation reuses the existing preview, max-row, Markdown, and diagnostic-state validation boundaries. The default 11-column formatter remains unchanged, while the separate 14-column formatter implements the approved legacy, eligible, no-eligible, invalid-state, precision, ordering, and omission contracts. It adds no report composition, CLI, file-output, scoring, route, waypoint, map, or UI behavior.
 
 The function:
 
