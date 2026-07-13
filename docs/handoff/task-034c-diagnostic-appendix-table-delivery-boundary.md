@@ -25,11 +25,13 @@ Task 034B implementation and EXP-20260714-048 were verified on `main`.
 
 ```text
 branch: agent/task-034c-diagnostic-table-delivery-contract
-Draft PR: pending creation after documentation commit
+Draft PR: #93
 PR title: docs: define diagnostic table delivery boundary
+PR state: open / draft / unmerged
+initial documentation head: 4b4f6f5f8221ed5da2c5908775be879d5126e134
 ```
 
-The Draft PR must include `Closes #92` and remain Draft until explicit user approval.
+The Draft PR includes `Closes #92` and remains Draft until explicit user approval.
 
 ## Current Code Audit
 
@@ -238,11 +240,25 @@ JSON/plain text/default table unchanged
 scoring/routing/UI unchanged
 ```
 
+## GitHub Actions Evidence
+
+Initial Draft PR documentation head:
+
+```text
+run: CI #815
+head: 4b4f6f5f8221ed5da2c5908775be879d5126e134
+status: completed
+conclusion: success
+steps: install, syntax check, pytest, Ruff, mypy successful
+```
+
+A new final-head CI run is required after this handoff-evidence amendment.
+
 ## Local Execution Claims
 
 The Cloud Execution Agent did not execute compileall, pytest, Ruff, mypy, CLI commands, formatter output generation, rasterio, GDAL, or QGIS.
 
-Task 034B local results remain attributed to the Local Execution Agent. Task 034C reports GitHub Actions evidence only after the Draft PR runs.
+Task 034B local results remain attributed to the Local Execution Agent. Task 034C reports GitHub Actions evidence only.
 
 ## Limitations
 
