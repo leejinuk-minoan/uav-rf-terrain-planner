@@ -237,6 +237,10 @@ Task 027A documents the current preview artifact workflow from synthetic preview
 
 Task 028A adds a preview documentation reconciliation guide that separates current implemented workflow references from earlier planning documents.
 
+Task 032CD adds optional `average_fresnel_score`, `worst_obstacle_score`, and nested `dominant_obstacle` diagnostics while preserving `dsm_fresnel_score` as the average score and leaving scoring, color, overall score, ranking, route cost, and waypoint cost unchanged.
+
+Task 033A is a documentation-only contract audit that defines the future optional preview/report projection in `docs/architecture/dominant-obstacle-preview-report-output-boundary.md`. It does not change the runtime preview schema, formatter, CLI, or output behavior. Task 033B is the separate proposed implementation task; appendix-table expansion remains out of scope.
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
