@@ -2,67 +2,23 @@
 
 ## Purpose
 
-This document defines the reviewed output contract for exposing the dominant Fresnel obstacle diagnostics implemented by Task 032CD as optional preview and report information.
+This document records the reviewed preview, JSON, plain-text, report, and default appendix-table boundary for dominant Fresnel obstacle diagnostics.
 
-Task 033A is documentation and contract audit only. It does not change source code, tests, runtime preview schema, formatter behavior, CLI behavior, scoring, color classification, candidate ordering, route cost, or waypoint cost.
+Task 033A defined the optional output contract. Task 033B implemented the candidate-to-preview/report projection on `main` through PR #85. Task 034A defines a separate future diagnostic appendix-table contract without implementing it.
 
-## Current Implemented Analysis
-
-`src/uav_rf_terrain/fresnel.py` currently provides:
+## Current Implemented Path
 
 ```text
-FresnelAnalysis.average_fresnel_score
-FresnelAnalysis.worst_obstacle_score
-FresnelAnalysis.dominant_obstacle
-```
-
-`dsm_fresnel_score` retains its historical arithmetic-mean meaning and equals `average_fresnel_score`.
-
-`DominantFresnelObstacle` contains the selected eligible interior sample's path-relative geometry, clearance, sample score, knife-edge parameter, and additional single knife-edge diffraction-loss proxy.
-
-## Current Object Transfer Path and Gap Audit
-
-The currently implemented preview path is:
-
-```text
-build_synthetic_candidate_records()
+FresnelAnalysis
+→ CandidateFresnelDiagnostics
 → SyntheticCandidateRecord
-→ build_candidate_cell_map_features()
 → CandidateCellMapFeature
-→ build_candidate_display_records()
 → CandidateDisplayRecord
-→ build_candidate_display_preview_dict()
 → preview dictionary
-→ plain-text / JSON / appendix table / report
+→ plain text / JSON / report
 ```
 
-The Fresnel diagnostic analysis exists on a separate path:
-
-```text
-analyze_dsm_fresnel(...)
-→ FresnelAnalysis
-```
-
-There is currently no implemented bridge from `FresnelAnalysis` into the candidate preview path.
-
-| Stage | Current file and object/function | Diagnostic state | Task 033B minimum change point |
-|---|---|---|---|
-| Fresnel analysis | `src/uav_rf_terrain/fresnel.py`: `FresnelAnalysis`, `DominantFresnelObstacle`, `analyze_dsm_fresnel(...)` | Values exist | Preserve the nested analysis model; do not change scoring semantics |
-| Candidate/scenario | `src/uav_rf_terrain/scenario_outputs.py`: `SyntheticCandidateRecord`, `build_synthetic_candidate_records()` | Only scalar scoring inputs and `CandidateScore` are carried; no `FresnelAnalysis` or diagnostic projection | Add an optional diagnostic projection source for enriched synthetic/current candidate records, without requiring it for legacy records |
-| Map feature | `src/uav_rf_terrain/map_outputs.py`: `CandidateCellMapFeature`, `build_candidate_cell_map_features(...)` | Overall and shielding scores are copied; diagnostics are omitted | Add dedicated optional diagnostic fields or a dedicated diagnostic mapping; do not overload source-zone metadata |
-| Display record | `src/uav_rf_terrain/candidate_display_outputs.py`: `CandidateDisplayRecord`, `to_display_dict()`, `build_candidate_display_records(...)` | Fixed display fields only; diagnostics are omitted | Add the all-or-none optional flat diagnostic field set and validation |
-| Preview object/dictionary | `src/uav_rf_terrain/candidate_display_preview.py`: `CandidateDisplayPreview`, `build_candidate_display_preview_dict(...)` | Display dictionaries are copied; current primitive-value validation allows `str`, `float`, and `bool`, but not `None` | Expand the reviewed optional-value contract to permit diagnostic `None` only in the defined enriched no-obstacle state; reject partial sets |
-| Plain text | `format_candidate_display_preview(...)` | Current line contains candidate label, overall score, and source zone only | Add a concise diagnostic summary when enriched; keep legacy lines valid |
-| JSON stdout/file | `preview_cli.py` uses the preview dictionary | Diagnostics are absent | Serialize the optional flat field set unchanged, preserving float precision |
-| Appendix table | `preview_appendix_table.py`: `format_preview_appendix_table(...)` | Fixed columns; extra non-internal keys are not displayed | Do not add columns in Task 033B; retain current table contract |
-| Report | `preview_report.py`: `format_preview_report(...)` | Uses current preview/table validation and fixed sections; no diagnostic section | Add dedicated optional diagnostic validation and `## Fresnel Diagnostics`; legacy preview remains valid |
-| Report CLI/file | `preview_cli.py`: `--report`, `--output-report` | Both consume the same report formatter | No separate report content contract; both surfaces must remain identical |
-
-The primary gap is therefore not inside `FresnelAnalysis`; it is the absence of a reviewed optional projection across candidate, map, display, and preview records.
-
-## Optional Flat Projection
-
-Task 033B should project the nested analysis data into this exact optional user-facing record field set:
+The approved optional flat record fields are exactly:
 
 ```text
 average_fresnel_score
@@ -77,119 +33,142 @@ dominant_obstacle_nu
 dominant_obstacle_diffraction_loss_db
 ```
 
-`dominant_obstacle_sample_index` remains an internal diagnostic and is excluded from default user-facing preview and report records.
+`dominant_obstacle_sample_index` remains internal.
 
-The projection is flat so saved JSON remains straightforward to validate and downstream formatters do not need to reconstruct or serialize the nested dataclass.
+## Compatibility States
 
-## Backward Compatibility and Validation
-
-### Legacy or un-enriched preview
+### Legacy or un-enriched record
 
 ```text
-diagnostic field set entirely absent
+all diagnostic keys absent
 ```
 
-Policy:
+This remains valid. Absence means diagnostics are unavailable; it is not zero, a clear path, or a no-obstacle result.
 
-- existing saved JSON remains valid;
-- current table and report paths remain usable;
-- no diagnostic value is inferred;
-- report wording may state: `diagnostics unavailable in this preview record`.
-
-Absence means unavailable data, not a zero score or a clear path.
-
-### Enriched preview with an eligible dominant obstacle
+### Enriched record with eligible obstacle
 
 ```text
-all diagnostic fields present
-average_fresnel_score = finite numeric
-worst_obstacle_score = finite numeric
-dominant obstacle detail fields = finite numeric
+all ten diagnostic keys present
+all ten values finite numeric
 ```
 
-The values are copied from the existing analysis result. They do not trigger score or order changes.
-
-### Enriched preview with no eligible interior dominant obstacle
+### Enriched record with no eligible interior obstacle
 
 ```text
-all diagnostic fields present
-average_fresnel_score = finite numeric
-worst_obstacle_score = null
-all dominant obstacle detail fields = null
+all ten diagnostic keys present
+average_fresnel_score finite numeric
+remaining nine values null
 ```
 
-Recommended report wording:
+### Invalid record
+
+The following are rejected by diagnostic-aware paths:
 
 ```text
-no eligible interior dominant obstacle sample
+partial key set
+mixed numeric/null obstacle values
+boolean numeric value
+NaN
+positive or negative infinity
 ```
 
-This state is distinct from a legacy preview where the entire field set is absent.
+## JSON Boundary
 
-### Partial diagnostic field set
+JSON stdout and file output preserve original float precision. The valid no-eligible state uses JSON `null` for the nine obstacle-detail values.
 
-A record containing only some diagnostic keys is invalid.
+No human-readable rounding is applied to JSON values.
 
-Rationale:
+## Plain-Text Boundary
 
-- partial records cannot reliably distinguish missing data from a no-obstacle result;
-- report and JSON consumers would otherwise infer inconsistent meanings;
-- an all-or-none key-set rule preserves deterministic validation;
-- legacy records remain valid because the complete set may be absent.
-
-Task 033B should validate this policy before report/file output. The appendix table should continue to validate its existing required fields and ignore approved diagnostic extras rather than add new columns.
-
-## Output Surface Policy
-
-### JSON stdout and JSON file
-
-- include the optional flat fields when the record is enriched;
-- preserve the original Python float values through JSON serialization;
-- use JSON `null` for the reviewed no-eligible-obstacle state;
-- do not apply human-readable rounding;
-- do not add internal sample indices or internal coordinates.
-
-### Default plain-text preview
-
-Keep output concise. For enriched records, the recommended summary is:
+The default plain-text preview may show the concise diagnostic subset:
 
 ```text
-average_fresnel_score=<0.1>
-worst_obstacle_score=<0.1 or unavailable>
-diffraction_loss_db=<0.1 dB or unavailable>
+average Fresnel score
+worst obstacle score
+diffraction loss
 ```
 
-Legacy records remain unchanged or receive a concise unavailable marker only if that does not make the default output excessively verbose.
+Human-readable score and loss values use one decimal place. No-eligible values are described as unavailable in the existing concise preview surface.
 
-### Report stdout and report file
+## Report Boundary
 
-Add a deterministic section:
+The report includes a deterministic section:
 
 ```text
 ## Fresnel Diagnostics
 ```
 
-The section should:
+It preserves candidate order, identifies candidates by `candidate_id` and `candidate_cell_mgrs`, distinguishes legacy unavailable data from a valid no-eligible result, and uses the approved display precision.
 
-- preserve candidate record order;
-- identify each candidate by `candidate_id` and `candidate_cell_mgrs`;
-- distinguish legacy unavailable diagnostics from an enriched no-eligible-obstacle result;
-- display the reviewed diagnostic values with human-readable precision;
-- explain that the values are diagnostic proxies only.
+`--report` and `--output-report PATH` use the same report formatter content contract.
 
-`--report` and `--output-report PATH` use the same `format_preview_report(...)` contract and therefore must contain identical report content apart from destination handling.
+## Current Default Appendix Table Boundary
 
-### Appendix table
+The implemented default formatter remains:
 
-Task 033B should not change existing appendix table columns, order, row-limit behavior, or table formatter semantics.
+```python
+format_preview_appendix_table(
+    preview,
+    *,
+    max_rows=None,
+)
+```
 
-A future reviewed table-extension task may decide whether diagnostic columns belong in a separate table or an expanded appendix format.
+Its columns remain exactly:
+
+```text
+row_no
+candidate_id
+candidate_cell_mgrs
+color_class
+color_name
+overall_score
+shielding_stability_score
+source_zone
+source_sensitive
+source_zone_reason
+candidate_reason
+```
+
+Task 033B intentionally left these columns unchanged. The default formatter ignores diagnostic extra keys and does not become diagnostic-aware.
+
+Task 034A preserves this default output as byte-contract compatible.
+
+## Task 034A Diagnostic Appendix Contract
+
+Task 034A selects a separate future pure formatter rather than an opt-in flag or direct expansion of the default table.
+
+The detailed contract is defined in:
+
+```text
+docs/architecture/dominant-obstacle-appendix-table-output-boundary.md
+```
+
+Proposed future API:
+
+```python
+format_fresnel_diagnostics_appendix_table(
+    preview,
+    *,
+    max_rows=None,
+)
+```
+
+Task 034A does not implement this function. Task 034B remains a separate future Local implementation task.
+
+The proposed diagnostic table has its own exact 14-column schema, deterministic status strings, unavailable/null display strings, precision rules, and the same candidate subset and `max_rows` behavior as the default table.
+
+## Report and CLI Separation
+
+Task 034B must not automatically insert the diagnostic table into `format_preview_report(...)`.
+
+Task 034B must not add CLI options or file-output commands.
+
+Future report composition or CLI/file-output support requires another reviewed boundary because those changes affect output snapshots and public interfaces.
 
 ## Display Precision
 
-JSON retains original float precision.
-
-Plain-text and report surfaces use:
+Human-readable preview, report, and proposed diagnostic table formatting use:
 
 | Value | Display precision |
 |---|---|
@@ -199,18 +178,18 @@ Plain-text and report surfaces use:
 | knife-edge `nu` | 3 decimal places |
 | diffraction loss | 0.1 dB |
 
-These are display rules only and must not round stored or scored values.
+These rules do not alter stored values, JSON values, or scoring inputs.
 
-## Coordinate and Metadata Boundary
+## Coordinate Boundary
 
-User-facing candidate coordinates remain:
+The user-facing candidate coordinate remains:
 
 ```text
 candidate_cell_mgrs
 external_coordinate_format = MGRS
 ```
 
-The following remain internal and must not appear in preview/report records:
+The following remain internal and must not be exposed:
 
 ```text
 x_m
@@ -225,15 +204,14 @@ local_x_m
 local_y_m
 raster_row
 raster_col
+dominant_obstacle_sample_index
 ```
 
-`dominant_obstacle_distance_from_start_m` is a scalar distance along the analyzed path. It is not a map coordinate and must not be interpreted as a location independent of the candidate-to-target path.
-
-`source_zone`, `source_sensitive`, and `source_zone_reason` remain interpretation metadata. They do not modify dominant-obstacle selection, diffraction-loss calculation, candidate scoring, or ranking.
+`dominant_obstacle_distance_from_start_m` is a path-relative scalar, not an independent map coordinate.
 
 ## Scoring and Ordering Invariants
 
-Task 033B must not change:
+The output contracts do not change:
 
 ```text
 dsm_fresnel_score = average_fresnel_score
@@ -241,42 +219,36 @@ shielding_stability_score = dsm_los_score × 0.40 + dsm_fresnel_score × 0.60
 overall_score = shielding_stability_score × 0.80 + distance_score × 0.20
 strict LOS cap when dsm_los_score == 0
 color classification thresholds
-candidate record order or ranking
+candidate order or ranking
 route cost
 waypoint cost
 ```
 
-No separate DSM surface-complexity or obstacle score is part of the current default shielding score.
+No separate DSM surface-complexity score is part of the current default shielding score.
 
-The dominant obstacle and single knife-edge loss are additional terrain/surface diagnostic proxies. They are not a full link budget and do not predict RSSI, SINR, packet loss, communication success, reconnaissance success, or flight feasibility.
+## Interpretation Boundary
 
-## Task 033B Recommended Scope
+Dominant obstacle and single knife-edge loss values are terrain/surface diagnostic proxies only.
 
-A narrow Local implementation should review changes to:
+They are not:
 
 ```text
-src/uav_rf_terrain/scenario_outputs.py
-src/uav_rf_terrain/map_outputs.py
-src/uav_rf_terrain/candidate_display_outputs.py
-src/uav_rf_terrain/candidate_display_preview.py
-src/uav_rf_terrain/preview_report.py
-focused preview/report tests
+full link-budget reconstruction
+measured RF validation
+RSSI prediction
+SINR prediction
+packet-loss prediction
+communication-success prediction
+reconnaissance-success prediction
+flight-feasibility prediction
 ```
 
-`fresnel.py`, scoring, classification, routing, waypoint calculation, appendix-table columns, and CLI options should remain unchanged unless a verified integration blocker is reported before implementation.
+Map rendering and UI visualization remain outside these output contracts.
 
-Task 033B should add focused tests for legacy, enriched-with-obstacle, enriched-without-obstacle, partial-set rejection, JSON precision, plain-text precision, report section ordering, internal-coordinate exclusion, table compatibility, no mutation, and existing-mode regression.
+## Follow-Up Tasks
 
-## Non-Goals
-
-Task 033A and the proposed Task 033B boundary do not define:
-
-- full link-budget reconstruction;
-- measured RF validation;
-- RSSI, SINR, or packet-loss prediction;
-- communication or flight outcome guarantees;
-- MGRS conversion or geographic validation;
-- map, card, popup, HTML, or PDF rendering;
-- scoring, color, ranking, route, or waypoint changes;
-- real DEM/DSM or `METADATA_MAP` access;
-- external-device, autopilot, or flight-control output.
+1. Task 034B may implement only the separate pure diagnostic appendix formatter and focused tests.
+2. Report composition requires a separate reviewed task.
+3. CLI or explicit file-output support requires a separate reviewed task.
+4. Scoring, color, ranking, route, waypoint, map, or UI use requires separate validation and explicit approval.
+5. Field RF validation remains future research.
