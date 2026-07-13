@@ -16,7 +16,7 @@ The approved output boundary is documented in:
 docs/architecture/dominant-obstacle-preview-report-output-boundary.md
 ```
 
-Task 033A does not implement that runtime projection. Draft PR #85 implements Task 033B through this path:
+Task 033A does not implement that runtime projection. Task 033B is complete on `main` through merged PR #85 and implements this path:
 
 ```text
 FresnelAnalysis
@@ -67,9 +67,11 @@ Dominant-obstacle fields do not alter scoring, colors, overall score, ranking, r
 
 ## Output Boundary
 
-Draft PR #85 adds the optional ten-key flat projection to preview JSON, a concise average/worst/loss plain-text summary, and a deterministic `## Fresnel Diagnostics` report section. Legacy saved previews remain valid. The no-eligible state contains a finite average and nine null values; partial, mixed-null, bool, NaN, and infinity states are rejected by diagnostic-aware paths.
+Task 033B exposes the optional ten-key flat projection through preview JSON, a concise average/worst/loss plain-text summary, and a deterministic `## Fresnel Diagnostics` report section. Legacy saved previews remain valid.
 
-Appendix table formatting ignores diagnostic extras and retains its existing columns. `CandidateCellMapFeature` carries the typed diagnostic object, but no map rendering or UI visualization is implemented. The CLI option surface is unchanged.
+Eligible enriched records expose ten finite numeric diagnostic fields. The no-eligible state contains a finite `average_fresnel_score` and nine null values. Partial key sets, mixed-null states, boolean numeric values, NaN, and infinity are rejected by diagnostic-aware paths.
+
+Appendix table formatting ignores diagnostic extras and retains its existing columns. `CandidateCellMapFeature` carries the typed diagnostic object, but Task 033B did not add map rendering or UI visualization. The CLI option surface is unchanged.
 
 `dominant_obstacle_sample_index` remains internal. Human-readable diffraction loss uses 0.1 dB precision; JSON retains the original float value.
 
@@ -84,7 +86,7 @@ Appendix table formatting ignores diagnostic extras and retains its existing col
 
 ### Task 033B
 
-- optional diagnostic bridge across candidate/map/display/preview/report layers implemented on Draft PR #85;
+- optional diagnostic bridge across candidate/map/display/preview/report layers, complete on `main` through PR #85;
 - legacy preview compatibility;
 - all-or-none diagnostic key-set validation;
 - `## Fresnel Diagnostics` report section;
@@ -114,6 +116,6 @@ No private path, terrain raster, generated artifact, credential, operational com
 
 ## Follow-Up Tasks
 
-1. Merge status and final-head CI for Draft PR #85 require user and GPT Master review.
-2. Appendix-table extension requires a separate reviewed task.
-3. Any scoring, color, ordering, route, or waypoint use requires separate validation and explicit approval.
+1. Appendix-table extension requires a separate reviewed task.
+2. Any scoring, color, ordering, route, or waypoint use requires separate validation and explicit approval.
+3. Field RF validation remains future research and is not implied by the current synthetic integration evidence.
