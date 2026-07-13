@@ -44,3 +44,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260712-034 - preview artifact workflow smoke tests](EXP-20260712-034-preview-artifact-workflow-smoke-tests.md)
 - [EXP-20260712-035 - preview documentation reconciliation](EXP-20260712-035-preview-documentation-reconciliation.md)
 - [EXP-20260712-036 - preview report boundary plan](EXP-20260712-036-preview-report-boundary-plan.md)
+- [EXP-20260712-037 - preview report formatter](EXP-20260712-037-preview-report-formatter.md)
