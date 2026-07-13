@@ -239,7 +239,7 @@ Task 028A adds a preview documentation reconciliation guide that separates curre
 
 Task 032CD adds optional `average_fresnel_score`, `worst_obstacle_score`, and nested `dominant_obstacle` diagnostics while preserving `dsm_fresnel_score` as the average score and leaving scoring, color, overall score, ranking, route cost, and waypoint cost unchanged.
 
-Task 033A is a documentation-only contract audit that defines the future optional preview/report projection in `docs/architecture/dominant-obstacle-preview-report-output-boundary.md`. It does not change the runtime preview schema, formatter, CLI, or output behavior. Task 033B is the separate proposed implementation task; appendix-table expansion remains out of scope.
+Task 033A defines the optional preview/report contract, and Task 033B implements its typed candidate-to-preview diagnostic projection and deterministic report section while keeping appendix-table columns and scoring unchanged.
 
 ## 향후 고도 판단 보조 기능
 

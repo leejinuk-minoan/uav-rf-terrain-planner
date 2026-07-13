@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from .classification import evaluate_launch_area_cell
+from .fresnel_diagnostics import CandidateFresnelDiagnostics
 from .routing import (
     RouteCandidate,
     RouteCandidateType,
@@ -49,6 +50,7 @@ class SyntheticCandidateRecord:
     within_operation_radius: bool
     reason: str
     source_zone: TerrainSourceZone = TerrainSourceZone.ESA_DERIVED
+    fresnel_diagnostics: CandidateFresnelDiagnostics | None = None
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("candidate_id", self.candidate_id)
@@ -60,6 +62,12 @@ class SyntheticCandidateRecord:
             raise ScenarioOutputError("within_operation_radius must be a bool.")
         _validate_non_empty_string("reason", self.reason)
         _validate_source_zone(self.source_zone)
+        if self.fresnel_diagnostics is not None and not isinstance(
+            self.fresnel_diagnostics, CandidateFresnelDiagnostics
+        ):
+            raise ScenarioOutputError(
+                "fresnel_diagnostics must be CandidateFresnelDiagnostics or None."
+            )
 
 
 @dataclass(frozen=True)

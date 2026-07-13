@@ -9,6 +9,10 @@ from .preview_appendix_table import (
     PreviewAppendixTableError,
     format_preview_appendix_table,
 )
+from .fresnel_diagnostics import (
+    CandidateFresnelDiagnosticsError,
+    validate_flat_fresnel_diagnostics,
+)
 
 
 class PreviewReportError(ValueError):
@@ -29,6 +33,10 @@ def format_preview_report(
 
     records = preview["records"]
     assert isinstance(records, list)
+    try:
+        diagnostic_states = [validate_flat_fresnel_diagnostics(record) for record in records]
+    except CandidateFresnelDiagnosticsError as exc:
+        raise PreviewReportError(f"invalid preview report input: {exc}") from exc
     color_classes = Counter(str(record["color_class"]) for record in records)
     color_names = Counter(str(record["color_name"]) for record in records)
     source_zones = Counter(str(record["source_zone"]) for record in records)
@@ -54,6 +62,10 @@ def format_preview_report(
         f"- Overall score range: {min(overall_scores)} to {max(overall_scores)}",
         "- Shielding stability score range: "
         f"{min(shielding_scores)} to {max(shielding_scores)}",
+        "",
+        "## Fresnel Diagnostics",
+        *_format_fresnel_diagnostics(records, diagnostic_states),
+        "- Values are terrain/surface diagnostic proxies only; they do not constitute a full link budget or measured RF validation.",
         "",
         "## Source-Zone Interpretation",
         f"- Source-zone counts: {_format_counts(source_zones)}",
@@ -85,3 +97,34 @@ def format_preview_report(
 
 def _format_counts(counts: Counter[str]) -> str:
     return ", ".join(f"{name}={count}" for name, count in counts.items())
+
+
+def _format_fresnel_diagnostics(
+    records: list[object], states: list[str]
+) -> list[str]:
+    lines: list[str] = []
+    for record, state in zip(records, states, strict=True):
+        assert isinstance(record, Mapping)
+        identity = f"{record['candidate_id']} | {record['candidate_cell_mgrs']}"
+        if state == "legacy":
+            lines.append(f"- {identity}: diagnostics unavailable in this preview record")
+            continue
+        average = float(record["average_fresnel_score"])
+        if state == "no_eligible":
+            lines.append(
+                f"- {identity}: average={average:.1f}; no eligible interior dominant obstacle sample"
+            )
+            continue
+        lines.append(
+            f"- {identity}: average={average:.1f}; "
+            f"worst={float(record['worst_obstacle_score']):.1f}; "
+            f"distance={float(record['dominant_obstacle_distance_from_start_m']):.1f} m; "
+            f"DSM={float(record['dominant_obstacle_dsm_msl']):.1f} m; "
+            f"LOS={float(record['dominant_obstacle_los_msl']):.1f} m; "
+            f"clearance={float(record['dominant_obstacle_clearance_m']):.1f} m; "
+            f"clearance_ratio={float(record['dominant_obstacle_clearance_ratio']):.3f}; "
+            f"Fresnel radius={float(record['dominant_obstacle_fresnel_radius_m']):.1f} m; "
+            f"nu={float(record['dominant_obstacle_nu']):.3f}; "
+            f"diffraction_loss={float(record['dominant_obstacle_diffraction_loss_db']):.1f} dB"
+        )
+    return lines

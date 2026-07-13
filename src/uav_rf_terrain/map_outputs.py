@@ -18,6 +18,7 @@ from .coordinate_io_policy import (
     EXTERNAL_COORDINATE_FORMAT,
     require_mgrs_external_coordinate_field,
 )
+from .fresnel_diagnostics import CandidateFresnelDiagnostics
 from .routing import RouteCandidateType
 from .scenario_outputs import (
     SyntheticCandidateRecord,
@@ -108,6 +109,7 @@ class CandidateCellMapFeature:
     candidate_source_zone_map_properties: Mapping[str, str | bool] = field(
         default_factory=dict
     )
+    fresnel_diagnostics: CandidateFresnelDiagnostics | None = None
 
     def __post_init__(self) -> None:
         _validate_non_empty_string("feature_id", self.feature_id)
@@ -125,8 +127,12 @@ class CandidateCellMapFeature:
         _validate_candidate_source_zone_map_properties(
             self.candidate_source_zone_map_properties
         )
-
-
+        if self.fresnel_diagnostics is not None and not isinstance(
+            self.fresnel_diagnostics, CandidateFresnelDiagnostics
+        ):
+            raise MapOutputError(
+                "fresnel_diagnostics must be CandidateFresnelDiagnostics or None."
+            )
 @dataclass(frozen=True)
 class RouteMapFeature:
     """Map-ready route feature record for later UI consumption."""
@@ -296,6 +302,7 @@ def build_candidate_cell_map_features(
                 source_zone=candidate.source_zone,
                 source_sensitive=source_sensitive,
                 source_zone_reason=source_summary.reason,
+                fresnel_diagnostics=candidate.fresnel_diagnostics,
             )
         )
     return tuple(features)
