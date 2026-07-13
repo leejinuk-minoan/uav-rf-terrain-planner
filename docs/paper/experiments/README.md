@@ -49,3 +49,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260712-039 - preview report CLI output](EXP-20260712-039-preview-report-cli-output.md)
 - [EXP-20260712-040 - preview report CLI documentation reconciliation](EXP-20260712-040-preview-report-cli-documentation-reconciliation.md)
 - [EXP-20260712-041 - preview report artifact workflow smoke tests](EXP-20260712-041-preview-report-artifact-workflow-smoke-tests.md)
+- [EXP-20260713-042 - knife-edge diffraction formula foundation](EXP-20260713-042-knife-edge-diffraction-formula-foundation.md)

@@ -1,5 +1,7 @@
 # 드론 주파수 차폐 기반 발진기지 및 경로추천 프로그램 Master Plan 초안
 
+Task 032AB begins a knife-edge improvement sequence with pure formula helpers. Task 032CD may later integrate a dominant obstacle into `FresnelAnalysis`. Existing scoring, color, and overall score remain unchanged; this is not field RF validation or a communication-outcome guarantee.
+
 작성일: 2026-07-08  
 개정일: 2026-07-08  
 문서 성격: 연구·교육·시뮬레이션용 프로그램 기획 및 설계 초안  

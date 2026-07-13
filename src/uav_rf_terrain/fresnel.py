@@ -9,7 +9,7 @@ map layers, real DEM/DSM loading, or real communication-quality validation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import isfinite, sqrt
+from math import isfinite, log10, sqrt
 
 from .los import LineOfSightAnalysis, LineOfSightSample
 
@@ -109,6 +109,32 @@ def first_fresnel_radius_m(
         return 0.0
 
     return sqrt(wavelength_m * d1_m * d2_m / total_distance_m)
+
+
+def knife_edge_nu_from_clearance_ratio(clearance_ratio: float) -> float:
+    if not isfinite(clearance_ratio):
+        raise FresnelAnalysisError("clearance_ratio must be finite.")
+    return -sqrt(2.0) * clearance_ratio
+
+
+def knife_edge_nu_from_height(*, h_m: float, wavelength_m: float, d1_m: float, d2_m: float) -> float:
+    if not isfinite(h_m):
+        raise FresnelAnalysisError("h_m must be finite.")
+    for name, value in (("wavelength_m", wavelength_m), ("d1_m", d1_m), ("d2_m", d2_m)):
+        if not isfinite(value) or value <= 0:
+            raise FresnelAnalysisError(f"{name} must be finite and positive.")
+    return h_m * sqrt(2.0 * (d1_m + d2_m) / (wavelength_m * d1_m * d2_m))
+
+
+def knife_edge_loss_db(nu: float) -> float:
+    if not isfinite(nu):
+        raise FresnelAnalysisError("nu must be finite.")
+    if nu <= -0.78:
+        return 0.0
+    loss_db = 6.9 + 20.0 * log10(sqrt((nu - 0.1) ** 2 + 1.0) + nu - 0.1)
+    if not isfinite(loss_db):
+        raise FresnelAnalysisError("knife-edge loss result must be finite.")
+    return max(0.0, loss_db)
 
 
 def analyze_dsm_fresnel(
