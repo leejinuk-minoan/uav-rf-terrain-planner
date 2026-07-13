@@ -11,7 +11,7 @@ Two source selectors are available:
 --input-json PATH
 ```
 
-Exactly one source is required. Synthetic mode supports all current output projections. Saved JSON mode supports appendix-table stdout and explicit appendix-table file output only.
+Exactly one source is required. Synthetic mode supports all current output projections. Saved JSON mode supports table and report stdout/file output.
 
 ## Quick Commands
 
@@ -23,6 +23,10 @@ python -m uav_rf_terrain.preview_cli --synthetic --table
 python -m uav_rf_terrain.preview_cli --synthetic --output-table <TABLE_MD>
 python -m uav_rf_terrain.preview_cli --input-json <PREVIEW_JSON> --table
 python -m uav_rf_terrain.preview_cli --input-json <PREVIEW_JSON> --output-table <TABLE_MD>
+python -m uav_rf_terrain.preview_cli --synthetic --report
+python -m uav_rf_terrain.preview_cli --synthetic --output-report <REPORT_MD>
+python -m uav_rf_terrain.preview_cli --input-json <PREVIEW_JSON> --report
+python -m uav_rf_terrain.preview_cli --input-json <PREVIEW_JSON> --output-report <REPORT_MD>
 ```
 
 Use actual user-selected paths in place of `<PREVIEW_JSON>` and `<TABLE_MD>`. The CLI does not create missing parent directories.
@@ -126,7 +130,7 @@ Typical status-2 cases:
 
 - neither source or both sources are selected;
 - more than one output selector is active;
-- saved JSON is used without `--table` or `--output-table`;
+- saved JSON is used without a supported table or report selector;
 - `--max-records` is not a positive integer.
 
 Typical status-3 cases:
@@ -147,7 +151,7 @@ This workflow does not:
 - reconstruct plain-text preview output from saved JSON;
 - copy or re-emit saved JSON;
 - render an interactive table, card, popup, map, or HTML page;
-- generate a report;
+- generate HTML, PDF, image, or interactive report rendering;
 - access real DEM, DSM, landcover, or `METADATA_MAP`;
 - add GIS processing;
 - convert MGRS coordinates or assess supplied MGRS accuracy;
@@ -156,4 +160,6 @@ This workflow does not:
 - change route or waypoint calculations;
 - produce vehicle-control or autopilot output.
 
-Generated runtime JSON, text, and table files should remain outside the repository. Use temporary or explicitly disposable paths for smoke checks.
+Generated runtime JSON, text, table, and report files should remain outside the repository. Use temporary or explicitly disposable paths for smoke checks.
+
+Reports use `format_preview_report(...)`, include the appendix table by default, and reject `--max-records` with status 2. Report files use explicit UTF-8 paths, create no parent directory, protect existing files unless `--force` is supplied, and print `preview saved: <PATH>` on success.

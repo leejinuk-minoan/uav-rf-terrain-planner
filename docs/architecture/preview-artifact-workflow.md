@@ -48,9 +48,11 @@ Source policy:
 ```text
 --json
 --table
+--report
 --output-json PATH
 --output-text PATH
 --output-table PATH
+--output-report PATH
 ```
 
 Output policy:
@@ -59,16 +61,16 @@ Output policy:
 - output-selector conflicts are parser/argument errors;
 - `--max-records` and `--force` are modifiers, not output selectors;
 - the synthetic source supports all current projections;
-- the saved JSON source supports only `--table` and `--output-table PATH`;
+- the saved JSON source supports `--table`, `--output-table PATH`, `--report`, and `--output-report PATH`;
 - synthetic source with no output selector retains the default plain-text stdout behavior;
-- saved JSON with no table selector is not supported.
+- saved JSON without a supported table or report selector is not supported.
 
 Source/output compatibility:
 
-| Source | Default text stdout | JSON stdout | JSON file | Text file | Table stdout | Table file |
-|---|---:|---:|---:|---:|---:|---:|
-| `--synthetic` | Yes | Yes | Yes | Yes | Yes | Yes |
-| `--input-json PATH` | No | No | No | No | Yes | Yes |
+| Source | Default text stdout | JSON stdout | JSON file | Text file | Table stdout | Table file | Report stdout | Report file |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `--synthetic` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| `--input-json PATH` | No | No | No | No | Yes | Yes | Yes | Yes |
 
 ## End-to-End Workflows
 
@@ -179,10 +181,10 @@ The saved-input source follows this path:
 → JSON decode
 → top-level object check
 → existing appendix-table formatter validation
-→ table stdout or explicit table file
+→ table or report stdout, or explicit table/report file
 ```
 
-Saved input is table-only. It does not reconstruct the existing human-readable preview text, re-emit JSON, copy the selected JSON file, discover inputs automatically, or invoke the synthetic helper.
+Saved input supports table and report projections. It does not reconstruct the existing human-readable preview text, re-emit JSON, copy the selected JSON file, discover inputs automatically, or invoke the synthetic helper.
 
 Handled input failures include a missing or directory path, unreadable input, invalid UTF-8, invalid JSON, non-object top level, preview schema violations, invalid MGRS contract, internal/debug coordinate keys, record-count mismatch, and invalid documented field types.
 
@@ -291,7 +293,7 @@ Task 027A includes:
 - no JSON schema or preview field changes;
 - no file-output behavior changes;
 - no generated sample JSON, table, or text files;
-- no report generator;
+- no additional report generator beyond the implemented pure preview report formatter and CLI projection;
 - no UI table, card, popup, map, or HTML rendering;
 - no real DEM, DSM, or landcover access;
 - no `METADATA_MAP` access;
@@ -305,7 +307,7 @@ Task 027A includes:
 
 - The synthetic source uses placeholder MGRS values.
 - Saved input must follow the current reviewed preview JSON contract.
-- Saved input supports only table stdout and table file projections.
+- Saved input supports table and report stdout/file projections.
 - The workflow does not reconstruct plain-text preview output from saved JSON.
 - The workflow does not re-emit or copy saved JSON.
 - Input and output paths are explicit; there is no path discovery.

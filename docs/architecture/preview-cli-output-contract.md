@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the current user-facing contract of the synthetic candidate preview CLI after Tasks 022B and 022C. It fixes the supported output modes, JSON and plain-text shapes, process status codes, explicit file policy, MGRS boundary, and internal-coordinate exclusion before any later report or UI work begins.
+This document records the current user-facing preview CLI contract, including JSON, plain text, table, and report stdout/file modes.
 
 ## Current CLI Surface
 
@@ -12,13 +12,17 @@ The current module supports:
 python -m uav_rf_terrain.preview_cli --synthetic
 python -m uav_rf_terrain.preview_cli --synthetic --max-records 3
 python -m uav_rf_terrain.preview_cli --synthetic --json
+python -m uav_rf_terrain.preview_cli --synthetic --report
+python -m uav_rf_terrain.preview_cli --synthetic --output-report PATH
+python -m uav_rf_terrain.preview_cli --input-json PATH --report
+python -m uav_rf_terrain.preview_cli --input-json PATH --output-report PATH
 python -m uav_rf_terrain.preview_cli --synthetic --output-json PATH
 python -m uav_rf_terrain.preview_cli --synthetic --output-text PATH
 python -m uav_rf_terrain.preview_cli --synthetic --output-json PATH --force
 python -m uav_rf_terrain.preview_cli --synthetic --output-text PATH --force
 ```
 
-`--synthetic` is required. `--max-records` accepts a positive integer. `--json`, `--output-json`, and `--output-text` select mutually exclusive output modes. `--force` is relevant only when an explicit file target already exists.
+Exactly one of `--synthetic` or `--input-json PATH` is required. All output selectors are mutually exclusive. `--max-records` applies to plain text and table output, but is rejected with report output. `--force` is relevant only when an explicit file target already exists.
 
 ## Output Modes
 
@@ -26,10 +30,12 @@ python -m uav_rf_terrain.preview_cli --synthetic --output-text PATH --force
 |---|---|---|---|---|---|---|---|---|
 | Plain-text stdout | default after `--synthetic` | stdout | `SyntheticCandidatePreviewSmokeResult.preview_text` | Yes | No; human-readable projection only | None | Human CLI inspection | Contract regression in Task 023B |
 | JSON stdout | `--json` | stdout | `SyntheticCandidatePreviewSmokeResult.preview_dict` | No | Yes | None | Machine parser and structured inspection | Contract regression in Task 023B |
-| JSON file | `--output-json PATH` | User-selected file | Complete `preview_dict` serialized as UTF-8 indented JSON | No | Yes | Creates or overwrites only the selected file according to policy | Machine parser and later formatter | Contract regression in Task 023B; later report task may consume it |
+| JSON file | `--output-json PATH` | User-selected file | Complete `preview_dict` serialized as UTF-8 indented JSON | No | Yes | Creates or overwrites only the selected file according to policy | Machine parser and implemented formatters | Contract regression in Task 023B; implemented report output may consume it |
 | Plain-text file | `--output-text PATH` | User-selected file | Existing `preview_text` | Yes | No; human-readable projection only | Creates or overwrites only the selected file according to policy | Human review and saved smoke record | Contract regression in Task 023B |
+| Report stdout | `--report` | stdout | `format_preview_report(preview_dict)` | No | Human-readable report with appendix table | None | Human review/report draft | Implemented |
+| Report file | `--output-report PATH` | User-selected file | `format_preview_report(preview_dict)` | No | Human-readable report with appendix table | Explicit UTF-8 file policy | Human review/report draft | Implemented |
 
-`--max-records` changes only the plain-text formatter. JSON stdout and JSON file output continue to contain the complete preview dictionary.
+`--max-records` changes plain-text and table visibility. JSON modes remain complete, while report modes reject the option with status 2.
 
 ## JSON Stdout Contract
 
@@ -129,9 +135,9 @@ On success, the selected file contains the preview text and stdout contains a sh
 
 | Status | Meaning | Current trigger |
 |---:|---|---|
-| 0 | Success | Plain-text stdout, JSON stdout, or explicit file output completes |
-| 1 | Expected preview generation error | Existing preview or synthetic smoke helper raises a handled preview error |
-| 2 | Parser or argument error | Missing `--synthetic`, invalid `--max-records`, or conflicting output modes |
+| 0 | Success | Plain-text, JSON, table, or report stdout/file output completes |
+| 1 | Handled preview/input/formatter error | Preview input, table formatter, or `PreviewReportError` is handled |
+| 2 | Parser or argument error | Missing/conflicting source, invalid/conflicting output, or report plus `--max-records` |
 | 3 | File-output error | Missing parent directory, directory target, protected existing file, or another handled write error |
 
 Expected errors are reported concisely to stderr without a traceback.
@@ -146,13 +152,12 @@ The current explicit file policy is:
 - fail when the selected target is a directory
 - preserve an existing file and return status 3 when `--force` is absent
 - allow overwrite when `--force` is present
-- do not use JSON file and plain-text file modes together
-- do not combine JSON stdout mode with either file-output mode
+- activate at most one stdout/file output selector
 - use UTF-8 text output
-- do not commit generated preview files to the repository
+- do not commit generated preview, table, or report files to the repository
 - use `tmp_path` or another temporary directory for tests and local smoke work
 
-`--output-json` and `--output-text` select one explicit target. Successful file output prints only the save confirmation to stdout.
+`--output-json`, `--output-text`, `--output-table`, and `--output-report` select one explicit target. Successful file output prints only the save confirmation to stdout. Report files contain the deterministic `format_preview_report(...)` result, including its appendix table by default.
 
 ## MGRS External Coordinate Boundary
 
@@ -274,6 +279,8 @@ Task 023B is acceptable when:
 ## Follow-Up Tasks
 
 1. Task 023B-Local: add focused contract regression tests only.
-2. A later report task may transform reviewed JSON files into appendix tables.
+2. Implemented table and report output may transform reviewed preview mappings without changing their schema.
 3. A later UI task may consume the JSON-ready dictionary or record list.
 4. Real-terrain CLI integration, if required, must be a separate task with its own data and coordinate review.
+
+Report output uses `format_preview_report(...)`, includes the appendix table by default, has no row-limit option, and preserves one trailing newline. `PreviewReportError` maps to status 1; report plus `--max-records` maps to status 2; output path/write/protection errors map to status 3.

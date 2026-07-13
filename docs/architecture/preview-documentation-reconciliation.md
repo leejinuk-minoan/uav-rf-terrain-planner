@@ -16,6 +16,7 @@ The primary current implementation references are:
 docs/architecture/preview-artifact-workflow.md
 docs/usage/preview-artifact-workflow.md
 tests/test_preview_artifact_workflow_smoke.py
+tests/test_preview_report_cli_output.py
 ```
 
 Their roles are:
@@ -113,9 +114,11 @@ Current output selectors:
 ```text
 --json
 --table
+--report
 --output-json PATH
 --output-text PATH
 --output-table PATH
+--output-report PATH
 ```
 
 Current policy:
@@ -124,16 +127,16 @@ Current policy:
 - at most one output selector may be active;
 - `--max-records` and `--force` are modifiers rather than output selectors;
 - synthetic input supports all current projections;
-- saved preview JSON supports table stdout and explicit table-file output only;
+- saved preview JSON supports table and report stdout/file output;
 - synthetic input with no output selector retains plain-text stdout as the default;
-- saved input without a table selector is an argument error.
+- saved input without a supported table or report selector is an argument error.
 
 Source/output compatibility:
 
-| Source | Default text stdout | JSON stdout | JSON file | Text file | Table stdout | Table file |
-|---|---:|---:|---:|---:|---:|---:|
-| `--synthetic` | Yes | Yes | Yes | Yes | Yes | Yes |
-| `--input-json PATH` | No | No | No | No | Yes | Yes |
+| Source | Default text stdout | JSON stdout | JSON file | Text file | Table stdout | Table file | Report stdout | Report file |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `--synthetic` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| `--input-json PATH` | No | No | No | No | Yes | Yes | Yes | Yes |
 
 ## Current Artifact Workflow Contract
 
@@ -259,4 +262,4 @@ Task 028A does not:
 
 1. Future preview work should cite the current implementation references before relying on historical planning statements.
 2. A later task may add a concise preview documentation index if the preview document family grows further.
-3. Plain-text reconstruction from saved JSON, report formatting, interactive consumption, and real-terrain integration remain separate reviewed tasks.
+3. Plain-text reconstruction from saved JSON, interactive consumption, and real-terrain integration remain separate reviewed tasks. Report formatting and report stdout/file CLI surfaces are implemented.
