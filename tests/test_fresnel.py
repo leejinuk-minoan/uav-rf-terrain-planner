@@ -1,16 +1,49 @@
 import pytest
 
 from uav_rf_terrain.coordinates import LocalPoint
+from uav_rf_terrain.los import LineOfSightAnalysis, LineOfSightSample, analyze_dsm_los
+from uav_rf_terrain.profile import TerrainProfile, TerrainProfileSample
 from uav_rf_terrain.fresnel import (
     SPEED_OF_LIGHT_MPS,
     FresnelAnalysis,
     FresnelAnalysisError,
     analyze_dsm_fresnel,
     first_fresnel_radius_m,
+    knife_edge_loss_db,
+    knife_edge_nu_from_clearance_ratio,
+    knife_edge_nu_from_height,
     wavelength_m,
 )
-from uav_rf_terrain.los import LineOfSightAnalysis, LineOfSightSample, analyze_dsm_los
-from uav_rf_terrain.profile import TerrainProfile, TerrainProfileSample
+
+
+def test_knife_edge_formula_foundation() -> None:
+    assert knife_edge_nu_from_clearance_ratio(0.0) == 0.0
+    assert knife_edge_nu_from_clearance_ratio(1.0) < 0.0
+    assert knife_edge_nu_from_clearance_ratio(-1.0) > 0.0
+    radius = first_fresnel_radius_m(wavelength_m=0.3, d1_m=100.0, d2_m=200.0)
+    assert knife_edge_nu_from_height(h_m=2.5, wavelength_m=0.3, d1_m=100.0, d2_m=200.0) == pytest.approx(knife_edge_nu_from_clearance_ratio(-2.5 / radius))
+    assert knife_edge_loss_db(-1.0) == 0.0
+    assert knife_edge_loss_db(-0.78) == 0.0
+    assert knife_edge_loss_db(0.0) == pytest.approx(6.03285, rel=1e-4)
+    assert knife_edge_loss_db(1.0) > knife_edge_loss_db(0.0)
+
+
+@pytest.mark.parametrize("value", (float("nan"), float("inf"), float("-inf")))
+def test_knife_edge_helpers_reject_non_finite(value: float) -> None:
+    with pytest.raises(FresnelAnalysisError):
+        knife_edge_nu_from_clearance_ratio(value)
+    with pytest.raises(FresnelAnalysisError):
+        knife_edge_nu_from_height(h_m=value, wavelength_m=1.0, d1_m=1.0, d2_m=1.0)
+    with pytest.raises(FresnelAnalysisError):
+        knife_edge_loss_db(value)
+
+
+@pytest.mark.parametrize("field", ("wavelength_m", "d1_m", "d2_m"))
+def test_knife_edge_height_rejects_zero(field: str) -> None:
+    values = {"h_m": 1.0, "wavelength_m": 1.0, "d1_m": 1.0, "d2_m": 1.0}
+    values[field] = 0.0
+    with pytest.raises(FresnelAnalysisError):
+        knife_edge_nu_from_height(**values)
 
 
 def _terrain_sample(
