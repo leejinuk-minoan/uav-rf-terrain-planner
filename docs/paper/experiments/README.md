@@ -46,3 +46,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260712-036 - preview report boundary plan](EXP-20260712-036-preview-report-boundary-plan.md)
 - [EXP-20260712-037 - preview report formatter](EXP-20260712-037-preview-report-formatter.md)
 - [EXP-20260712-038 - preview report CLI output boundary plan](EXP-20260712-038-preview-report-cli-output-boundary-plan.md)
+- [EXP-20260712-039 - preview report CLI output](EXP-20260712-039-preview-report-cli-output.md)
