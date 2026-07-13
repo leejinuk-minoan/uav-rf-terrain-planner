@@ -191,14 +191,21 @@ GPT Master는 다음을 추적·관리한다.
 
 ### 6.3 점수식 검증 책임
 
-다음 점수식은 MVP 초기 설계 가정이다.
+현재 구현된 MVP 점수식은 다음과 같다.
 
 ```text
+차폐안정성 점수 = DSM LOS 점수 × 0.40 + DSM Fresnel 평균점수 × 0.60
 발진 가능구역 종합점수 = 차폐안정성 점수 × 0.80 + 거리점수 × 0.20
-차폐안정성 점수 = LOS 점수 × 0.50 + Fresnel 여유 점수 × 0.35 + DSM 장애물 점수 × 0.15
+
+if dsm_los_score == 0:
+    shielding_stability_score = 0
 ```
 
-GPT Master는 선행연구와 표준을 확인하여 점수식의 근거를 검토하고, 필요 시 보완방안을 제시한다. 검증 전에는 이 가중치를 성능이 입증된 값으로 표현하지 않고, `heuristic weighting`, `초기 설계 가정`, `synthetic 검증 대상`으로 기록한다.
+`dsm_fresnel_score`는 경로 sample의 산술평균이며 `average_fresnel_score`와 같다. Task 032CD의 `worst_obstacle_score`, `dominant_obstacle`, single knife-edge diffraction loss는 보조 진단 proxy이며 현재 점수식, 색상 임계값, 후보 순위, route cost, waypoint cost에 반영하지 않는다.
+
+별도 DSM 장애물 또는 표면복잡도 점수는 현재 기본 차폐안정성 점수에 포함되지 않는다. DSM 표면장애물 영향은 DSM 기반 LOS와 Fresnel 계산을 통해 반영한다.
+
+GPT Master는 선행연구와 표준을 확인하여 점수식의 근거를 검토하고, 필요 시 보완방안을 제시한다. 실제 데이터 검증 전에는 이 가중치를 성능이 입증된 값으로 표현하지 않고, `heuristic weighting`, `초기 설계 가정`, `synthetic 검증 대상`으로 기록한다.
 
 ### 6.4 Codex와 Claude Code 투입 기준
 
