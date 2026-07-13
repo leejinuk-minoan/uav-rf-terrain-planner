@@ -20,21 +20,34 @@ Legacy, complete eligible, complete no-eligible, invalid partial/mixed/non-finit
 
 Plain text는 average/worst/loss 요약을 표시한다. Report는 candidate id와 MGRS를 식별자로 사용해 전체 approved diagnostic을 지정 정밀도로 표시한다. Generated output은 커밋하지 않았다.
 
+검증 결과 JSON의 float/null 상태, plain-text 정밀도, deterministic report section과 candidate 순서가 유지됐다. Appendix table은 diagnostic extra key를 무시하고 기존 column과 row-limit contract를 유지했다. Input mapping은 변경되지 않았고 user-facing output에는 internal coordinate가 추가되지 않았다.
+
 ## Scoring Invariants
 
 기존 candidate score, shielding score, color와 record order를 유지하며 diagnostic 값을 scoring에 입력하지 않는다.
 
 ## Tests Executed
 
-Focused tests와 전체 `pytest`, compileall, Ruff, mypy를 실행하며 실제 결과는 completion report와 PR에 기록한다.
+Local Execution Agent 실행 결과:
+
+- `python -m compileall src`: success
+- focused tests: 140 passed
+- `python -m pytest`: 740 passed
+- `python -m ruff check .`: success
+- `python -m mypy src`: success
+- `git diff --check`: success
 
 ## CI Result
 
-Draft PR 생성 후 final head의 GitHub Actions 결과를 기록한다.
+GitHub Actions CI #770은 reviewed head `31ad2abcb27df940048dc0e7678888ff5e9c11a5`에서 `completed / success`였다. Install, syntax check, pytest, Ruff, mypy 단계가 성공했다.
+
+CI #770은 review amendment 이전 head의 결과다. Amendment commit으로 생성되는 최종 head는 새 GitHub Actions run 결과를 별도로 확인해야 하며, 이 문서는 CI #770을 amendment head의 결과로 소급 표현하지 않는다.
 
 ## Interpretation
 
 사용자는 average Fresnel score와 localized worst obstacle proxy를 구분해 검토할 수 있다.
+
+이 결과는 offline synthetic integration evidence다. Field RF evidence는 수집하거나 검증하지 않았다.
 
 ## Limitations
 
