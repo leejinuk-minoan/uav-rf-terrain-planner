@@ -13,6 +13,7 @@ from .preview_appendix_table import (
     PreviewAppendixTableError,
     format_preview_appendix_table,
 )
+from .preview_report import PreviewReportError, format_preview_report
 from .synthetic_candidate_preview_smoke import (
     SyntheticCandidatePreviewSmokeError,
     build_synthetic_candidate_preview_smoke,
@@ -64,9 +65,11 @@ def build_parser() -> argparse.ArgumentParser:
         dest="table_output",
         help="print the existing preview as an appendix table",
     )
+    parser.add_argument("--report", action="store_true", dest="report_output")
     parser.add_argument("--output-json", metavar="PATH")
     parser.add_argument("--output-text", metavar="PATH")
     parser.add_argument("--output-table", metavar="PATH")
+    parser.add_argument("--output-report", metavar="PATH")
     parser.add_argument(
         "--force",
         action="store_true",
@@ -82,17 +85,26 @@ def _validate_arguments(args: argparse.Namespace, parser: argparse.ArgumentParse
     selectors = (
         args.json_output,
         args.table_output,
+        args.report_output,
         args.output_json is not None,
         args.output_text is not None,
         args.output_table is not None,
+        args.output_report is not None,
     )
     output_count = sum(selectors)
     if output_count > 1:
         parser.error("output selectors cannot be used together")
     if args.input_json is not None and not (
-        args.table_output or args.output_table is not None
+        args.table_output
+        or args.output_table is not None
+        or args.report_output
+        or args.output_report is not None
     ):
-        parser.error("--input-json requires --table or --output-table")
+        parser.error("--input-json requires table or report output")
+    if args.max_records is not None and (
+        args.report_output or args.output_report is not None
+    ):
+        parser.error("--max-records cannot be used with report output")
 
 
 def _read_preview_json(path: Path) -> dict[str, object]:
@@ -168,6 +180,13 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
         except PreviewAppendixTableError as exc:
             print(f"preview table error: {exc}", file=sys.stderr)
             return 1
+    report_text: str | None = None
+    if args.report_output or args.output_report is not None:
+        try:
+            report_text = format_preview_report(preview_dict)
+        except PreviewReportError as exc:
+            print(f"preview report error: {exc}", file=sys.stderr)
+            return 1
     try:
         if args.output_json is not None:
             _write_json_output(Path(args.output_json), preview_dict, force=args.force)
@@ -180,11 +199,18 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
             assert table_text is not None
             _write_text_output(Path(args.output_table), table_text, force=args.force)
             print(f"preview saved: {args.output_table}")
+        elif args.output_report is not None:
+            assert report_text is not None
+            _write_text_output(Path(args.output_report), report_text, force=args.force)
+            print(f"preview saved: {args.output_report}")
         elif args.json_output:
             print(json.dumps(result.preview_dict, ensure_ascii=False))
         elif args.table_output:
             assert table_text is not None
             print(table_text)
+        elif args.report_output:
+            assert report_text is not None
+            print(report_text, end="")
         else:
             assert preview_text is not None
             print(preview_text)
