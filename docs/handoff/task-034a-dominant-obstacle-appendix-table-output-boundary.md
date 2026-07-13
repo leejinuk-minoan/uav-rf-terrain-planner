@@ -23,11 +23,13 @@ related open appendix-diagnostic issue: #88 only
 
 ```text
 branch: agent/task-034a-diagnostic-appendix-table-contract
-Draft PR: pending creation after initial documentation commit
+Draft PR: #89
 PR title: docs: define diagnostic appendix table boundary
+PR state at initial verification: open / draft / unmerged
+initial documentation head: be5b11573b60b5b294fac1bea36883fa729c8bf8
 ```
 
-The PR must remain Draft and include `Closes #88`.
+The PR includes `Closes #88` and remains Draft.
 
 ## Audit Scope
 
@@ -158,7 +160,17 @@ It does not implement a formatter, CLI option, report section, scoring change, c
 
 ## CI Evidence
 
-Initial Draft PR CI evidence will be added after the PR is created and the standard GitHub Actions workflow completes.
+Initial Draft PR CI:
+
+```text
+run: CI #797
+head: be5b11573b60b5b294fac1bea36883fa729c8bf8
+status: completed
+conclusion: success
+Python checks: install, syntax check, pytest, Ruff, mypy successful
+```
+
+This run verifies the initial documentation head before this final handoff-evidence amendment. The final amended PR head requires a separate GitHub Actions result and is recorded in the PR completion report and PR body.
 
 The Cloud Execution Agent does not claim local execution of compileall, pytest, Ruff, mypy, CLI, report generation, rasterio, GDAL, or QGIS.
 
