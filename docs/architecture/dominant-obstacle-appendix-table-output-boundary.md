@@ -2,36 +2,56 @@
 
 ## Purpose
 
-This document defines the reviewed contract for an optional Markdown appendix table that exposes the dominant Fresnel obstacle diagnostic fields already available in candidate preview records.
+This document records the implemented contract for the optional 14-column dominant-obstacle diagnostic Markdown table and its relationship to the default appendix table.
 
-Task 034A is a documentation and code-contract audit only. It does not implement or change source code, tests, runtime formatters, CLI behavior, report composition, scoring, color classification, candidate ranking, route cost, waypoint cost, map rendering, or UI behavior.
-
-## Live Baseline
-
-Task 034A started after the required gate was verified:
+The user-facing delivery decision is defined separately in:
 
 ```text
-PR #87: merged
-PR #87 merge commit: 740d3a5ee5e8edec2c3de3cff9e83265ee740dc5
-Issue #86: closed / completed
-Task 033C: complete
-Issue #88: open
-base main SHA: 740d3a5ee5e8edec2c3de3cff9e83265ee740dc5
+docs/architecture/diagnostic-appendix-table-delivery-boundary.md
 ```
 
-## Current Default Appendix Table
+## Current Implementation State
 
-The implemented default API is:
+Task 034B is complete on `main` through PR #91.
+
+```text
+PR #91: merged
+merge commit: 566de7de1eca2dc0e4771eca8e158772569d3d3d
+Issue #90: closed / completed
+```
+
+Implemented API:
 
 ```python
-format_preview_appendix_table(
+def format_fresnel_diagnostics_appendix_table(
     preview: Mapping[str, object],
     *,
     max_rows: int | None = None,
-) -> str
+) -> str:
+    ...
 ```
 
-Its exact columns are:
+Implementation location:
+
+```text
+src/uav_rf_terrain/preview_appendix_table.py
+```
+
+The formatter is a pure Python API. It returns Markdown text, creates no file, performs no coordinate conversion, and does not change scoring or candidate ordering.
+
+## Default Appendix Table Compatibility
+
+The existing default API remains:
+
+```python
+format_preview_appendix_table(
+    preview,
+    *,
+    max_rows=None,
+)
+```
+
+Its exact 11 columns remain:
 
 ```text
 row_no
@@ -47,66 +67,26 @@ source_zone_reason
 candidate_reason
 ```
 
-The current formatter:
+The default formatter continues to preserve:
 
-- preserves candidate input order;
-- assigns one-based deterministic `row_no` values to visible rows;
-- validates `max_rows` as `None` or a positive non-boolean integer;
-- uses `... N additional row(s) omitted.` when rows are omitted;
-- rejects empty preview records;
-- requires MGRS as the external coordinate format;
-- rejects internal coordinate keys;
-- does not mutate the input;
-- does not create files;
-- ignores non-internal diagnostic extra keys.
-
-## Compatibility Decision
-
-The default formatter remains byte-contract compatible.
-
-Task 034B must not change the signature, columns, column order, cell formatting, validation sequence, row numbering, omission wording, input mutation behavior, or file-persistence behavior of `format_preview_appendix_table(...)`.
-
-In particular, the default table continues to ignore diagnostic extras. Invalid diagnostic extras do not become a new failure mode for the default table. Diagnostic-aware validation belongs only to the new opt-in diagnostic formatter.
-
-## Alternatives Compared
-
-| Alternative | Compatibility | API clarity | Table readability | Validation/test complexity | Decision |
-|---|---|---|---|---|---|
-| A. Separate diagnostic appendix formatter | Preserves the default table exactly | Explicit intent and output contract | Wide table is isolated from the normal appendix | Reuses existing preview and diagnostic validators with focused tests | Selected |
-| B. Opt-in flag on the existing formatter | Default can remain unchanged, but one function owns two incompatible schemas | Mode-dependent signature and branching | Caller must know which header contract applies | Larger regression surface and ambiguous downstream snapshots | Rejected |
-| C. Directly expand the default table | Breaks existing header and downstream byte contract | Simple call surface | Makes every appendix table excessively wide | Existing tests, snapshots, docs, and callers change | Rejected |
-| D. Do not expose diagnostics in appendix tables | No implementation risk | No new API | Report remains readable | Loses row-wise paper traceability and structured comparison value | Rejected |
-
-## Selected API Boundary
-
-Task 034B implements this pure formatter in `src/uav_rf_terrain/preview_appendix_table.py`:
-
-```python
-def format_fresnel_diagnostics_appendix_table(
-    preview: Mapping[str, object],
-    *,
-    max_rows: int | None = None,
-) -> str:
-    ...
+```text
+signature
+columns and column order
+cell formatting
+candidate input order
+one-based row numbering
+max_rows validation
+... N additional row(s) omitted.
+input immutability
+no-file behavior
+diagnostic extras ignored
 ```
 
-The implementation reuses the existing preview, max-row, Markdown, and diagnostic-state validation boundaries. The default 11-column formatter remains unchanged, while the separate 14-column formatter implements the approved legacy, eligible, no-eligible, invalid-state, precision, ordering, and omission contracts. It adds no report composition, CLI, file-output, scoring, route, waypoint, map, or UI behavior.
+Malformed diagnostic extras do not become a new failure mode for the default formatter.
 
-The function:
+## Diagnostic Table Columns
 
-- returns a Markdown table string;
-- performs no file I/O;
-- performs no coordinate conversion;
-- performs no scoring or ordering changes;
-- raises `PreviewAppendixTableError` for invalid preview or diagnostic states;
-- reuses the existing base preview validation and `max_rows` contract;
-- reuses `validate_flat_fresnel_diagnostics(...)` and `DIAGNOSTIC_FIELD_ORDER` from `fresnel_diagnostics.py`.
-
-No new public error class is required.
-
-## Exact Diagnostic Table Columns
-
-The exact columns and order are:
+The separate diagnostic formatter uses exactly these 14 columns:
 
 ```text
 row_no
@@ -125,29 +105,11 @@ dominant_obstacle_nu
 dominant_obstacle_diffraction_loss_db
 ```
 
-All ten approved diagnostic values remain in one detailed table. The DSM MSL and LOS MSL fields are retained because the formatter is explicitly a diagnostic appendix, not the concise default table. Splitting them into a second detail table would introduce another schema, another row-subset contract, and extra composition complexity without adding information.
-
-`dominant_obstacle_sample_index` is not included.
-
-## Units and Precision
-
-Units are encoded in the column names through `_m` and `_db` suffixes. Numeric cells contain values only; they do not append `m` or `dB` strings.
-
-Human-readable formatting is:
-
-| Field group | Cell format |
-|---|---|
-| `average_fresnel_score`, `worst_obstacle_score` | one decimal place |
-| distance, DSM MSL, LOS MSL, clearance, Fresnel radius | one decimal place |
-| clearance ratio | three decimal places |
-| `nu` | three decimal places |
-| diffraction loss | one decimal place |
-
-This formatting affects only the returned Markdown string. Stored preview values, JSON values, analysis values, and scoring values remain unchanged.
+`dominant_obstacle_sample_index` remains internal and is not included.
 
 ## Diagnostic State Contract
 
-The exact status strings are:
+Exact output status strings:
 
 ```text
 unavailable
@@ -170,9 +132,9 @@ diagnostic_status = unavailable
 all ten diagnostic value cells = unavailable
 ```
 
-Absence is not interpreted as zero, clear path, or no obstacle.
+Absence is not interpreted as zero, a clear path, or no obstacle.
 
-### Enriched record with eligible obstacle
+### Eligible record
 
 Condition:
 
@@ -185,10 +147,10 @@ Output:
 
 ```text
 diagnostic_status = eligible
-all ten value cells use the approved precision
+all ten cells formatted with approved precision
 ```
 
-### Enriched record with no eligible interior obstacle
+### No-eligible record
 
 Condition:
 
@@ -206,37 +168,50 @@ average_fresnel_score = formatted numeric
 remaining nine cells = not-applicable
 ```
 
-`not-applicable` is distinct from legacy `unavailable`. Neither state uses numeric zero.
+`not-applicable` is distinct from legacy `unavailable`.
 
 ### Invalid states
 
-The following produce `PreviewAppendixTableError` before any table is returned:
+The formatter raises `PreviewAppendixTableError` and returns no table for:
 
 ```text
-partial diagnostic key set
-mixed numeric/null obstacle values
-boolean numeric value
+partial diagnostic field set
+mixed numeric/null values
+boolean numeric values
 NaN
 positive infinity
 negative infinity
 ```
 
-Invalid states do not receive status labels or output rows.
+The implementation reuses `validate_flat_fresnel_diagnostics(...)` and translates its diagnostic error into the appendix-table error boundary.
 
-## Ordering and `max_rows`
+## Precision Contract
 
-The diagnostic formatter follows the default table contract:
+| Field group | Markdown cell precision |
+|---|---|
+| average/worst score | one decimal place |
+| distance, DSM MSL, LOS MSL, clearance, Fresnel radius | one decimal place |
+| clearance ratio | three decimal places |
+| `nu` | three decimal places |
+| diffraction loss | one decimal place |
 
-- input candidate order is preserved;
-- visible rows are the first `max_rows` records, or all records when `max_rows is None`;
-- `row_no` starts at 1 for the visible subset;
-- invalid `max_rows` values are rejected;
-- omitted rows use the exact suffix `... N additional row(s) omitted.`;
-- empty record input is rejected;
-- input is not mutated;
-- no file is created.
+Units remain in the field names. Stored values, JSON values, analysis values, and scoring values are not rounded or changed.
 
-When callers invoke the default and diagnostic formatters with the same preview and the same `max_rows`, both tables represent the same candidate subset in the same order.
+## Ordering and Row Limit
+
+The diagnostic formatter:
+
+- preserves input candidate order;
+- uses all records when `max_rows is None`;
+- accepts only a positive non-boolean integer otherwise;
+- displays the first `max_rows` records;
+- numbers visible rows from 1;
+- uses the exact omission sentence `... N additional row(s) omitted.`;
+- rejects empty records;
+- does not mutate input;
+- creates no file.
+
+For the same preview and limit, the default and diagnostic tables represent the same candidate subset in the same order.
 
 ## Coordinate Boundary
 
@@ -247,7 +222,7 @@ candidate_cell_mgrs
 external_coordinate_format = MGRS
 ```
 
-The formatter must reject or exclude:
+The output excludes:
 
 ```text
 x_m
@@ -261,113 +236,107 @@ WGS84/internal conversion fields
 dominant_obstacle_sample_index
 ```
 
-`dominant_obstacle_distance_from_start_m` is a scalar distance along the analyzed candidate-to-target path. It is not an independent map coordinate.
+`dominant_obstacle_distance_from_start_m` is a path-relative scalar, not an independent map coordinate.
 
-## Validation Reuse
+## Current Report Relationship
 
-Task 034B should avoid a second diagnostic state machine.
-
-Recommended reuse:
+The report contains:
 
 ```text
-preview_appendix_table.py
-- existing base preview validation
-- existing max_rows validation
-- existing Markdown escaping helpers
-
-fresnel_diagnostics.py
-- DIAGNOSTIC_FIELD_ORDER
-- validate_flat_fresnel_diagnostics(record)
+## Fresnel Diagnostics
+## Appendix Table
 ```
 
-The new formatter should translate `CandidateFresnelDiagnosticsError` into `PreviewAppendixTableError` with the existing appendix-table error boundary.
+The first is narrative diagnostic output. The second remains the default 11-column table.
 
-`candidate_display_preview.py` and `preview_report.py` should not be refactored merely to implement this table. A shared formatting helper should be extracted only if a verified duplication defect appears during Task 034B review.
+The 14-column diagnostic table is not currently inserted into reports.
 
-## Report Relationship
+## Current CLI Relationship
 
-The current report already provides a deterministic `## Fresnel Diagnostics` narrative section and includes the existing default appendix table.
+The diagnostic formatter is not currently exposed as a CLI output selector or file-output command.
 
-Task 034B does not automatically insert the new diagnostic table into reports and does not change `format_preview_report(...)`.
+Task 034C selects a staged delivery contract:
 
-Any future report composition option requires a separate reviewed task because it changes report length, section content, and output snapshots.
+```text
+Task 034D: opt-in diagnostic-table stdout and explicit file output
+later reviewed task: report composition, if needed
+```
 
-## CLI Relationship
+Proposed Task 034D selectors:
 
-Task 034B does not add or change CLI options.
+```text
+--diagnostic-table
+--output-diagnostic-table PATH
+```
 
-The proposed formatter is a pure Python API. A future CLI or explicit file-output surface for the diagnostic table requires a separate boundary and implementation task.
+These options are contract proposals only until Task 034D is implemented and reviewed.
+
+## Saved JSON Compatibility
+
+The formatter accepts the existing preview dictionary contract. Saved preview JSON can represent:
+
+```text
+legacy/unavailable
+eligible
+no-eligible-obstacle
+```
+
+Invalid diagnostic states remain errors. The preview JSON schema is not changed by the formatter or Task 034C.
 
 ## Scoring and Product Invariants
 
-The contract does not change:
+The diagnostic table does not change:
 
 ```text
 dsm_fresnel_score == average_fresnel_score
 shielding_stability_score = dsm_los_score * 0.40 + dsm_fresnel_score * 0.60
 overall_score = shielding_stability_score * 0.80 + distance_score * 0.20
-strict LOS cap when dsm_los_score == 0
+strict LOS cap
 color thresholds
 candidate order or ranking
 route cost
 waypoint cost
+map rendering or UI
 ```
 
-Diagnostics remain offline terrain/surface support information. They are not a full link budget, RSSI prediction, SINR prediction, packet-loss prediction, communication-success prediction, reconnaissance-success prediction, flight-feasibility prediction, or field RF validation.
+Diagnostics remain offline terrain/surface support information. They are not a full link budget, RF field validation, RSSI prediction, SINR prediction, packet-loss prediction, communication-success prediction, reconnaissance-success prediction, or flight-feasibility prediction.
 
-Map rendering and UI visualization remain out of scope.
+## Task 034B Verification Record
 
-## Task 034B Candidate Scope
-
-Likely source change:
+Implementation evidence is recorded in:
 
 ```text
-src/uav_rf_terrain/preview_appendix_table.py
+docs/handoff/task-034b-dominant-obstacle-diagnostic-appendix-table-implementation.md
+docs/paper/experiments/EXP-20260714-048-dominant-obstacle-diagnostic-appendix-table-implementation.md
 ```
 
-Likely focused tests:
+Task 034C does not rerun or reclassify that local evidence.
+
+## Task 034D Boundary
+
+Expected source scope:
 
 ```text
-tests/test_preview_appendix_table.py
-tests/test_dominant_obstacle_preview_integration.py
+src/uav_rf_terrain/preview_cli.py
 ```
 
-`preview_report.py`, `candidate_display_preview.py`, and `fresnel_diagnostics.py` should remain unchanged unless a concrete integration blocker is demonstrated before expanding scope.
-
-The Task 034B test matrix must cover:
+Preferred focused test:
 
 ```text
-default table exact regression
-legacy diagnostic table
-eligible diagnostic table
-no-eligible diagnostic table
-partial-key rejection
-mixed-null rejection
-bool rejection
-NaN/infinity rejection
-exact columns and order
-precision
-unavailable/not-applicable strings
-candidate order
-max_rows and omission wording
-input immutability
-internal-coordinate rejection
-sample-index non-exposure
-no file creation
-saved JSON compatibility
-score/color/rank/route/waypoint invariance
+tests/test_diagnostic_appendix_cli_output.py
 ```
+
+Task 034D should not modify the formatter, report, preview schema, scoring, routing, waypoint, map, or UI modules unless a concrete blocker is demonstrated and reviewed before scope expansion.
 
 ## Non-Goals
 
-Task 034A and the proposed Task 034B contract do not authorize:
+This contract does not authorize:
 
-- modifying the default appendix table;
-- adding a CLI option;
-- adding a report section or automatic report table;
-- changing preview JSON schema;
+- changing either table schema;
+- changing report content in Task 034D;
+- changing JSON or plain-text preview output;
 - changing scoring, color, ranking, route, or waypoint behavior;
 - adding map or UI rendering;
 - accessing real DEM/DSM, GIS, QGIS, or `METADATA_MAP` data;
-- committing generated JSON, report, table, image, PDF, CSV, or archive artifacts;
-- producing external-device, autopilot, vehicle-control, or flight-control output.
+- committing generated output artifacts;
+- adding external-device, autopilot, vehicle-control, or flight-control output.
