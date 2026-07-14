@@ -2,7 +2,9 @@
 
 ## Purpose
 
-Provide the implementation handoff for Task 035B after auditing the current real-terrain, synthetic, source-zone, and map-output contracts.
+Provide the reviewed implementation handoff for Task 035B after auditing the current GeoTIFF, terrain-profile, LOS/Fresnel, scoring/classification, source-zone, synthetic-output, and map-output contracts.
+
+Task 035A is documentation/code-contract audit work only. It does not implement or execute the real-terrain pipeline.
 
 ## Start Gate
 
@@ -24,11 +26,12 @@ related open real-terrain pipeline issue: #96
 
 ```text
 branch: agent/task-035a-real-terrain-launch-area-pipeline-contract
-Draft PR: pending creation after documentation commit
+Draft PR: #97
 PR title: docs: define real-terrain launch-area pipeline boundary
+PR state: open / draft / unmerged
 ```
 
-The Draft PR must include `Closes #96` and remain Draft until explicit user approval.
+The Draft PR includes `Closes #96` and remains Draft until explicit user approval.
 
 ## Agent Selection
 
@@ -36,111 +39,73 @@ The Draft PR must include `Closes #96` and remain Draft until explicit user appr
 Cloud Execution Agent
 ```
 
-Reason: GitHub source/test/document audit and contract documentation only. No rasterio/GDAL/QGIS execution or local DEM/DSM path is required.
-
-## Files Audited
-
-Governance and roadmap:
-
-```text
-AGENTS.md
-CLAUDE.md
-README.md
-docs/master-plan.md
-docs/research/research-index.md
-docs/data/terrain-data-policy.md
-docs/architecture/mgrs-external-io-policy.md
-.github/workflows/ci.yml
-```
-
-Historical real-terrain/source records:
-
-```text
-docs/handoff/task-018b-local-dem-dsm-smoke-qgis-checkpoint.md
-docs/handoff/task-018c-manual-qgis-overlay-verification.md
-docs/handoff/task-018d-qgis-overlay-followup.md
-docs/handoff/task-018e-mcee-wms-landcover-gap-fill.md
-docs/handoff/task-018f-mixed-source-boundary-quantification.md
-docs/handoff/task-020b-local-source-zone-raster-classifier.md
-```
-
-Runtime source:
-
-```text
-coordinates.py
-grid.py
-terrain_data.py
-geotiff_terrain_data.py
-profile.py
-los.py
-fresnel.py
-fresnel_diagnostics.py
-scoring.py
-classification.py
-source_zones.py
-source_zone_raster.py
-candidate_source_zones.py
-scenario_outputs.py
-map_outputs.py
-candidate_display_outputs.py
-candidate_display_preview.py
-examples/local_geotiff_adapter_smoke.py
-```
-
-Relevant current tests were inspected for candidate-grid order, profiles, GeoTIFF alignment/NoData, LOS, scoring, map outputs, source-zone assignment, and existing synthetic/output regressions.
+Reason: the task requires GitHub source/test/document inspection, code-contract design, documentation, Draft PR creation, and CI observation. It does not require a local GIS environment.
 
 ## Current Audit Summary
 
 ### GeoTIFF adapter
 
-- validates aligned DEM/DSM metadata and values;
-- lazy-loads rasterio;
-- keeps runtime paths out of public metadata;
-- currently revalidates/reopens rasters for value calls;
-- requires a session path before candidate-grid scale use.
+The current `LocalGeoTiffTerrainDataAdapter`:
 
-### Profile
+- validates DEM/DSM CRS, bounds, dimensions, resolution, NoData, and finite cell values;
+- imports rasterio lazily;
+- excludes private paths from public metadata;
+- currently revalidates and reopens rasters for individual value calls;
+- is suitable for a small smoke boundary but not a candidate/profile loop without a session path.
 
-- includes endpoints;
-- uses deterministic straight-line sampling;
-- current adapter path performs repeated DEM/DSM/delta calls;
-- generic metadata rounding is not the authoritative real-GeoTIFF point-to-cell rule.
+### Terrain profile
 
-### Grid
+The current adapter profile:
 
-- deterministic `ix` then `iy` order;
-- stable cell IDs;
-- current 3D distance is pre-terrain and must be recomputed after endpoint altitudes are known.
+- includes start and end samples;
+- uses deterministic straight-line fractions;
+- can repeat sampled cells when spacing is finer than raster resolution;
+- currently performs separate DEM, DSM, and surface-delta calls per sample;
+- uses a generic metadata-rounding helper that must not be the authoritative real-GeoTIFF sampler.
 
-### LOS/Fresnel
+### Candidate grid
 
-- LOS uses `DSM >= line` and currently includes endpoints;
-- strict LOS cap remains required;
-- real pipeline needs an occupied-endpoint policy without changing standalone LOS defaults;
-- Fresnel average and dominant-obstacle diagnostics are reusable unchanged.
+The grid contract is reusable for:
 
-### Scoring/classification
+```text
+deterministic ix then iy order
+stable candidate IDs
+square window generation
+horizontal precheck
+```
 
-- existing weights, strict cap, and thresholds are reused exactly;
-- invalid terrain states are exclusions, not zero scores.
+Its current `distance_3d_m` is not authoritative for real terrain because candidate and target MSL values have not yet been sampled.
+
+### LOS and Fresnel
+
+- standalone LOS treats `DSM >= LOS line` as blocked and includes endpoints;
+- strict LOS cap remains unchanged;
+- Task 035B needs a pipeline-only occupied-endpoint policy after endpoint surface validation;
+- standalone LOS behavior and tests remain unchanged;
+- Fresnel average, dominant-obstacle selection, and diagnostic projection are reused unchanged.
+
+### Scoring and classification
+
+The existing score formulas, strict LOS cap, and color thresholds remain authoritative. Raster/data failures become exclusions and are not represented as score zero.
 
 ### Source zone
 
-- local raster classifier already has an efficient batch open session;
-- existing generic assignment is per-point and fatal on provider error;
-- first real pipeline uses an optional batch provider and explicit unavailable states.
+- the local raster classifier already supports batch sampling with one open session;
+- the generic assignment scaffold is per-point and treats provider failure as fatal;
+- Task 035B uses an optional batch provider and explicit availability states;
+- unavailable source-zone data never defaults to ESA-derived and never changes score or color.
 
-### Map output
+### Synthetic and map output
 
-- current `CandidateCellMapFeature` can hold projected geometry but its builder accepts synthetic records and creates placeholder x/y;
-- Task 035B introduces a separate production-neutral record and feature in the new module;
-- existing synthetic builder remains unchanged.
+`SyntheticCandidateRecord` remains synthetic. The current candidate map builder creates placeholder geometry and is retained only for synthetic regression.
+
+Task 035B introduces a production-neutral record and actual projected rendering-independent feature rather than modifying the synthetic record or placeholder builder.
 
 ## Selected Pipeline Boundary
 
 ```text
 EPSG:5179 target LocalPoint
-+ frozen analysis config
++ frozen analysis configuration
 + TerrainDataAdapter
 → one terrain analysis session
 → deterministic candidate grid
@@ -148,27 +113,26 @@ EPSG:5179 target LocalPoint
 → DSM LOS/Fresnel/diagnostics
 → existing score/color
 → optional source-zone batch attachment
-→ candidate records
+→ production-neutral candidate records
 → actual projected rendering-independent candidate features
-→ summary and warnings
+→ deterministic summary and warnings
 ```
 
-Excluded:
+Excluded from Task 035B:
 
 ```text
-MGRS wrapper
+MGRS conversion wrapper
 rendered map
-click selection
-route search
-route alternatives
+map click selection
+route search and alternatives
 waypoints
-minimum altitude
-UI
+minimum-required-altitude integration
+Streamlit/Folium/MapLibre UI
 Android/TMMR
 field RF validation
 ```
 
-## Task 035B API
+## Task 035B Public API
 
 Create:
 
@@ -187,40 +151,84 @@ analyze_real_terrain_launch_area(
 ) -> RealTerrainLaunchAreaResult
 ```
 
-The architecture document contains the exact configuration, record, feature, result, source-zone, session, and error fields.
+The function is deterministic, does not mutate its inputs, writes no file, and renders no map.
 
-## Key Implementation Rules
+## Configuration Contract
 
-### Coordinates
-
-- Task 035B input is projected EPSG:5179 only.
-- `target_point.z_m` must be zero; altitude is separate.
-- real GeoTIFF point sampling uses the open affine transform, not metadata rounding;
-- map feature x/y is internal renderer geometry;
-- MGRS remains future user-facing wrapper work.
-
-### Altitudes
+Required frozen configuration fields:
 
 ```text
-launch ground = candidate DEM
-launch antenna = candidate DEM + launch antenna AGL
-target flight = target DEM + allowed AGL
-DSM = obstruction surface
+scenario_name
+target_point: LocalPoint
+operating_radius_m
+candidate_spacing_m
+allowed_agl_m
+frequency_hz
+profile_sample_spacing_m = None
+launch_antenna_height_agl_m = 0.0
+include_center = false
+include_out_of_radius = true
+max_candidate_count = 2500
+max_profile_samples_per_candidate = 512
+max_total_profile_samples = 250000
 ```
 
-Default launch antenna AGL is 0.0. A candidate with DSM above the antenna is excluded. The target DSM above target flight altitude is fatal.
+All numeric values must be finite. Distances, spacing, AGL, frequency, and limits must be positive except launch antenna AGL, which may be zero. `target_point.z_m` must be zero because altitude is configured separately.
 
-### Endpoint LOS
+## Coordinate Contract
 
-Preserve `analyze_dsm_los(...)` default behavior and tests. The new pipeline must apply a narrow occupied-endpoint normalization so only interior blocked samples trigger the strict cap after endpoint surface prechecks.
+Task 035B input:
 
-### Radius
+```text
+EPSG:5179 LocalPoint
+```
 
-- horizontal distance is an early precheck;
-- authoritative 3D distance uses launch antenna MSL and target flight MSL;
-- grid `CandidateCell.distance_3d_m` is not the final real-terrain distance.
+MGRS remains the default project user-facing coordinate policy, but conversion is deferred to a wrapper task.
 
-### States
+Real GeoTIFF sampling rules:
+
+```text
+open-raster affine/index semantics
+left and bottom bounds inclusive
+right and top bounds exclusive
+requested candidate point retained as feature geometry
+sampled cell center retained as internal diagnostic geometry
+```
+
+Task 035B feature coordinate fields:
+
+```text
+x_m/y_m = actual projected renderer geometry
+geometry_crs = EPSG:5179
+candidate_cell_mgrs = None
+coordinate_display_state = projected_only
+```
+
+Projected and raster coordinates are internal, not default user-facing coordinate fields.
+
+## Altitude and Distance Contract
+
+```text
+launch_ground_msl = candidate DEM MSL
+launch_surface_msl = candidate DSM MSL
+launch_antenna_msl = launch_ground_msl + launch_antenna_height_agl_m
+
+target_ground_msl = target DEM MSL
+target_surface_msl = target DSM MSL
+target_flight_msl = target_ground_msl + allowed_agl_m
+```
+
+Policy:
+
+- DEM is the AGL reference surface;
+- DSM is the obstruction surface;
+- candidate DSM above launch antenna MSL produces `launch_surface_obstructed`;
+- target DSM above target flight MSL is fatal;
+- equality at an occupied endpoint is permitted;
+- only interior blocked samples trigger the strict LOS cap;
+- authoritative 3D distance uses launch-antenna and target-flight MSL values.
+
+## Candidate States
 
 ```text
 valid_scored
@@ -233,38 +241,114 @@ profile_unavailable
 analysis_invalid
 ```
 
-Only `valid_scored` has a score and non-excluded color.
+Only `valid_scored` contains a `CandidateScore` and non-excluded color. Other states use `ColorClass.EXCLUDED`, `None` score values, and explicit reasons.
 
-### Partial results
+A valid LOS-blocked candidate remains `valid_scored`; it receives the existing LOS score zero, strict shielding cap, and existing color classification.
 
-Zero valid scores are allowed as a deterministic result with warning. Do not discard exclusion evidence.
+## Fatal versus Candidate-Level Failure
 
-### Source zone
-
-- optional one-batch provider;
-- omitted: `not_requested`;
-- provider/raster failure: `unavailable` plus warning;
-- bounds/NoData candidate: `not_applicable`;
-- never default unavailable to ESA;
-- never alter score or color.
-
-### Performance
+Fatal:
 
 ```text
-one metadata validation per session
-one DEM open per session
-one DSM open per session
-no full nationwide raster preload required
-no candidate/sample reopen loop
+invalid configuration, target, frequency, or limits
+rasterio unavailable for a selected local adapter
+DEM/DSM metadata mismatch
+non-EPSG:5179 dataset
+unsupported rotated/sheared transform
+target outside raster
+target NoData or non-finite
+target DSM above target flight MSL
+analysis-session failure
+candidate/sample guard exceeded
+unexpected non-domain implementation exception
 ```
 
-Default guards:
+Candidate-level:
 
 ```text
-2,500 candidates
+2D or authoritative 3D radius exceeded
+candidate outside raster
+candidate NoData or non-finite
+candidate DSM above launch antenna
+coincident target when center explicitly included
+profile outside raster or profile NoData
+candidate-specific LOS/Fresnel/scoring/classification domain error
+```
+
+Source-zone provider failure does not change the core candidate state.
+
+Partial results are permitted, including zero valid candidates. Zero-valid output includes:
+
+```text
+no valid scored candidates were produced
+```
+
+## Source-Zone Contract
+
+Availability states:
+
+```text
+available
+not_requested
+unavailable
+not_applicable
+```
+
+Policy:
+
+- provider is optional;
+- eligible projected points are sent in one ordered batch;
+- count/order mismatch is invalid provider output;
+- provider exception or missing landcover marks source zone unavailable and adds one warning;
+- terrain-bounds/NoData exclusions use not-applicable;
+- unavailable is never converted to ESA-derived;
+- source zone does not change scoring, color, ordering, or candidate state.
+
+## Performance Contract
+
+Required first implementation behavior:
+
+```text
+metadata validation once per analysis session
+DEM opened once per analysis session
+DSM opened once per analysis session
+profile reads reuse the open handles
+optional source-zone rasters use one batch session
+full nationwide raster preload not required
+```
+
+Default limits:
+
+```text
+2500 candidates
 512 samples per candidate
-250,000 total profile samples
+250000 total profile samples
 ```
+
+First optional local smoke boundary:
+
+```text
+operating radius <= 900m
+candidate spacing >= 180m
+profile spacing >= 90m
+include center = false
+include out of radius = true
+candidate square <= 121
+profile samples <= 11 per valid candidate
+```
+
+## Result Contract
+
+Return frozen:
+
+```text
+CandidateAnalysisRecord
+CandidateAnalysisMapFeature
+RealTerrainLaunchAreaSummary
+RealTerrainLaunchAreaResult
+```
+
+Records and features have the same length and order. State, color, and source-zone count summaries use deterministic enum declaration order. Full profile/LOS/Fresnel sample arrays are not retained in every result record.
 
 ## Task 035B Candidate Files
 
@@ -284,79 +368,69 @@ tests/test_real_terrain_candidate_analysis.py
 tests/test_geotiff_terrain_analysis_session.py
 ```
 
-Run existing grid/profile/LOS/Fresnel/scoring/classification/source-zone/map-output/synthetic/output regressions.
+Run existing grid, profile, LOS, Fresnel, scoring, classification, source-zone, map-output, synthetic, preview, report, and CLI regressions.
 
-## Task 035B Test Matrix
+## Test Matrix
 
 ```text
-config and performance guards
-projected coordinate and affine cell mapping
-candidate deterministic order and IDs
-flat, ridge, building/canopy
+configuration and performance guards
+EPSG:5179 target validation
+affine point-to-cell mapping
+candidate order and IDs
+flat, ridge, building/canopy scenarios
 frequency sensitivity
-2D vs 3D radius
-lower-inclusive / upper-exclusive raster bounds
+2D versus 3D radius
+raster lower-inclusive / upper-exclusive edges
 candidate NoData exclusion
 target NoData fatal
 profile NoData exclusion
-launch-surface exclusion
+launch-surface obstruction
 target surface fatal
-occupied endpoint equality
+occupied-endpoint equality
 interior strict LOS cap
-exact existing score/color regression
-dominant diagnostics
+existing score/color exact regression
+dominant-obstacle projection
 source-zone not requested/available/unavailable
-batch provider order/length
-actual geometry and no placeholder values
-record/feature parity
+source-zone batch order and count
+actual candidate geometry and no placeholder values
+record/feature order parity
 zero-valid warning
 input immutability
 session open counts
 no file creation
-synthetic/preview/report/CLI regressions
+existing synthetic/output regressions
 ```
 
-## Optional Local GIS Smoke
+## Optional Local GIS Verification
 
-Local Execution Agent only, after implementation and user data confirmation:
+Local Execution Agent only, after Task 035B implementation and user data confirmation:
 
 ```text
-radius <= 900m
-candidate spacing >= 180m
-profile spacing >= 90m
-include center = false
-include out of radius = true
-candidate square <= 121
-profile samples <= 11 per valid candidate
+rasterio availability
+user DEM/DSM paths
+bounded smoke configuration
+aggregate state/color/source-zone summary
+one-session open behavior
+no committed generated output
 ```
 
-Validate:
-
-```text
-rasterio available
-DEM/DSM metadata aligned
-aggregate state/color counts
-single-session open behavior
-no committed output
-```
-
-Optional QGIS manual review:
+Optional manual QGIS checks:
 
 ```text
 candidate point overlay
-sampled cell spot check
-profile spot check
-color distribution sanity check
-source-zone boundary spot check
+sampled-cell spot checks
+candidate-to-target profile spot checks
+color distribution sanity review
+source-zone boundary spot checks
 ```
 
-Task 035A did not run these commands or access these files.
+Task 035A did not execute any of these checks.
 
-## Protected Paths and Behavior
+## Protected Paths and Invariants
 
 Task 035A changes no source, tests, workflow, dependency, lock file, GIS data, or generated output.
 
-Task 035B should not modify the following without a demonstrated blocker and scope review:
+Task 035B should not modify without a demonstrated blocker:
 
 ```text
 scenario_outputs.py
@@ -369,19 +443,34 @@ routing.py
 waypoints.py
 ```
 
-Unchanged behavior:
+Unchanged:
 
 ```text
-Fresnel average meaning
-score formulas
+dsm_fresnel_score == average_fresnel_score
+DSM LOS 0.40 + DSM Fresnel 0.60
+shielding 0.80 + distance 0.20
 strict LOS cap
 color thresholds
 candidate ranking
 route cost
 waypoint cost
 preview/report/CLI contracts
-synthetic scenario and placeholder builder regression
+synthetic scenario and placeholder-builder regression
 ```
+
+## GitHub Actions Evidence
+
+Initial Draft PR documentation head:
+
+```text
+run: CI #834
+head: aab2ec9a572af4f9f23a0786c700984630ed392b
+status: completed
+conclusion: success
+steps: install, syntax check, pytest, Ruff, mypy successful
+```
+
+The final-head CI result is recorded in the Draft PR body and Task 035A completion report after the final documentation commit.
 
 ## Local Execution Claims
 
@@ -392,21 +481,19 @@ compileall
 pytest
 Ruff
 mypy
-GeoTIFF or candidate analysis
+GeoTIFF candidate analysis
 rasterio
 GDAL
 QGIS
 map rendering
 ```
 
-GitHub Actions evidence will be added after Draft PR creation and final-head completion.
-
 ## Limitations
 
 - This handoff is a code/document contract, not implementation evidence.
-- Historical DSM is a landcover-derived proxy and source-boundary sensitivity remains material.
+- Historical DSM is a landcover-derived proxy and mixed-source sensitivity remains material.
 - No terrain accuracy, RF link, communication, reconnaissance, or flight outcome is validated.
-- No actual coordinate or private path is recorded.
+- No actual candidate coordinate or private path is recorded.
 
 ## Public Repository Sensitivity Check
 
