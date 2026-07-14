@@ -64,6 +64,10 @@ No GeoTIFF, DEM, DSM, landcover raster, QGIS project, `METADATA_MAP` file, or ge
 - current candidate feature builder creates placeholder coordinates;
 - existing source-zone assignment is per-point, fatal-on-provider-error, and has no unavailable state.
 
+### Raster-edge contract correction
+
+The Task 035B contract supports only north-up GeoTIFF transforms where `a > 0`, `e < 0`, `b == 0`, and `d == 0`. The authoritative point-to-cell operation is `dataset.index(x, y)`, followed by `0 <= row < height` and `0 <= col < width`. A directional precheck is secondary and uses `left <= x < right` and `bottom < y <= top`: left and top are inclusive, while right and bottom are exclusive. Other transform signs, rotation, or shear are fatal `RealTerrainLaunchAreaAnalysisError` conditions.
+
 ## Alternatives Evaluated
 
 | Scope | Result |
@@ -148,6 +152,8 @@ candidate-specific domain analysis invalid
 
 Source-zone failure produces an unavailable metadata state and warning without changing the core candidate score.
 
+Source-zone provider eligibility requires `sampled_cell_center is not None` and excludes `outside_operating_radius`, `outside_raster_extent`, and `terrain_nodata`. The eligible provider batch preserves filtered input candidate order and requires an equal-length, same-order response. `valid_scored`, `launch_surface_obstructed`, `coincident_with_target`, `profile_unavailable`, and `analysis_invalid` use `not_requested` when omitted, `available` when successful, and `unavailable` when the provider fails. The three excluded states use `not_applicable` in all provider cases. A provider failure leaves eligible core state and score unchanged and produces one deterministic warning.
+
 ## Performance Audit Result
 
 The current local adapter method pattern is unsuitable for a candidate grid because it can reopen DEM/DSM several times per profile sample. Task 035B must introduce a one-session access path:
@@ -171,11 +177,13 @@ flat/ridge/building synthetic adapters
 frequency changes
 2D/3D radius boundaries
 raster edge and NoData behavior
+exact left/right/top/bottom edges with inside/outside epsilons
+unsupported transform signs, rotation, and shear fatal behavior
 target fatal versus candidate exclusion
 endpoint occupancy policy
 strict LOS and exact scoring/color regression
 dominant diagnostics
-optional source-zone states
+source-zone membership, input order, response count, and omitted/success/failure availability for every candidate state
 actual feature geometry and placeholder exclusion
 input immutability and deterministic ordering
 session open-count behavior

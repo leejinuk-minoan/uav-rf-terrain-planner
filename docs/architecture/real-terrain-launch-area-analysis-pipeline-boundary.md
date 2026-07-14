@@ -54,12 +54,15 @@ The current generic metadata helper converts a point to an index by rounding fro
 Task 035B real-GeoTIFF rules are:
 
 ```text
-left / bottom bound: inclusive
-right / top bound: exclusive
-point-to-cell: open-raster affine transform
+supported transform: a > 0, e < 0, b == 0, d == 0
+point-to-cell authority: dataset.index(x, y)
+in-bounds authority: 0 <= row < height and 0 <= col < width
+directional precheck only: left <= x < right and bottom < y <= top
 candidate geometry: requested projected point
 sample cell: raster cell containing that point
 ```
+
+Unsupported transform signs, rotation, or shear are fatal `RealTerrainLaunchAreaAnalysisError` conditions. The directional precheck is secondary to `dataset.index(x, y)` and the row/column range check. Therefore the exact edge policy is left inclusive, right exclusive, top inclusive, and bottom exclusive.
 
 The metadata-rounding helper remains valid for current synthetic/in-memory tests but is not the authoritative real-GeoTIFF point sampler.
 
@@ -455,14 +458,26 @@ class SourceZoneBatchProvider(Protocol):
 Policy:
 
 - provider is optional;
-- omitted provider yields `not_requested` and no source-zone enum;
-- outside-raster and terrain-NoData candidates yield `not_applicable`;
-- provider is invoked once for the eligible projected point batch;
+- provider eligibility requires `sampled_cell_center is not None` and a candidate state other than `outside_operating_radius`, `outside_raster_extent`, or `terrain_nodata`;
+- provider is invoked once for the eligible projected-point batch in filtered input candidate order;
 - return order and count must match input order;
 - a provider exception, malformed result, or unavailable landcover raster does not invalidate DEM/DSM scores;
-- affected records become `unavailable` with one result warning;
+- provider failure leaves eligible core scores and candidate states unchanged, marks each eligible record `unavailable`, and adds one deterministic result warning;
 - unavailable source zones are never replaced with `ESA_DERIVED`;
 - source zone never changes score, color, candidate order, or inclusion state.
+
+The batch return has exactly the same count and order as the eligible input points. Source-zone availability is assigned per candidate state as follows:
+
+| Candidate state | Included in provider batch | Provider omitted | Provider success | Provider failure |
+|---|---|---|---|---|
+| `valid_scored` | yes, when `sampled_cell_center` exists | `not_requested` | `available` | `unavailable` |
+| `launch_surface_obstructed` | yes, when `sampled_cell_center` exists | `not_requested` | `available` | `unavailable` |
+| `coincident_with_target` | yes, when `sampled_cell_center` exists | `not_requested` | `available` | `unavailable` |
+| `profile_unavailable` | yes, when `sampled_cell_center` exists | `not_requested` | `available` | `unavailable` |
+| `analysis_invalid` | yes, when `sampled_cell_center` exists | `not_requested` | `available` | `unavailable` |
+| `outside_operating_radius` | no | `not_applicable` | `not_applicable` | `not_applicable` |
+| `outside_raster_extent` | no | `not_applicable` | `not_applicable` | `not_applicable` |
+| `terrain_nodata` | no | `not_applicable` | `not_applicable` | `not_applicable` |
 
 A wrapper around `LocalSourceZoneRasterClassifier.sample_points(...)` is the preferred local provider because it opens its three rasters once.
 
@@ -567,7 +582,7 @@ Fatal conditions:
 | rasterio unavailable for the selected local adapter | yes |
 | DEM/DSM metadata mismatch | yes |
 | dataset CRS not EPSG:5179 | yes |
-| unsupported rotated/sheared transform | yes |
+| transform other than `a > 0`, `e < 0`, `b == 0`, `d == 0` | yes |
 | target outside raster extent | yes |
 | target DEM/DSM NoData or non-finite | yes |
 | target DSM above target flight MSL | yes |
@@ -639,7 +654,9 @@ ridge LOS blocking
 DSM building/canopy obstacle
 frequency sensitivity
 2D versus authoritative 3D radius boundary
-raster lower-inclusive / upper-exclusive edges
+supported north-up transform (`a > 0`, `e < 0`, `b == 0`, `d == 0`)
+left/right/top/bottom exact edges and inside/outside epsilon cases
+unsupported transform signs, rotation, or shear fatal
 candidate outside raster exclusion
 target outside raster fatal
 candidate NoData exclusion
@@ -651,8 +668,8 @@ strict LOS interior cap
 existing score/color exact regression
 dominant diagnostic projection
 coincident-center exclusion
-source-zone omitted / available / unavailable
-source-zone batch order and length checks
+source-zone membership, order, and count for every candidate state
+source-zone omitted / available / unavailable / not-applicable mapping for every candidate state
 actual candidate geometry and no placeholder coordinates
 record/feature order parity
 zero-valid partial result warning

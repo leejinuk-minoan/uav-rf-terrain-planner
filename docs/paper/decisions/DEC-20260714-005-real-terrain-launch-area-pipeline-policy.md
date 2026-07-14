@@ -80,7 +80,7 @@ MGRS remains the project default user-facing coordinate, but the MGRS-to-WGS84-t
 
 Internal feature x/y values are renderer geometry. They are not default user-facing coordinate fields.
 
-Real GeoTIFF point sampling uses the open raster affine transform with lower bounds inclusive and upper bounds exclusive. The current metadata-rounding helper is not the authoritative real-GeoTIFF point sampler.
+Real GeoTIFF point sampling supports only north-up transforms with `a > 0`, `e < 0`, `b == 0`, and `d == 0`. `dataset.index(x, y)` followed by `0 <= row < height` and `0 <= col < width` is authoritative. A directional precheck may use `left <= x < right` and `bottom < y <= top`, but it is secondary. Thus the exact edge policy is left inclusive, right exclusive, top inclusive, and bottom exclusive. Unsupported transform signs, rotation, or shear are fatal `RealTerrainLaunchAreaAnalysisError` conditions. The current metadata-rounding helper is not the authoritative real-GeoTIFF point sampler.
 
 ## Altitude Decision
 
@@ -153,6 +153,21 @@ not_applicable
 ```
 
 Missing or failed source-zone data does not invalidate DEM/DSM scores and is never defaulted to ESA-derived. Source-zone metadata does not change scoring, color, ordering, or candidate state.
+
+Provider eligibility requires `sampled_cell_center is not None` and excludes only `outside_operating_radius`, `outside_raster_extent`, and `terrain_nodata`. Eligible points preserve filtered input candidate order and must receive a same-count, same-order batch response.
+
+| Candidate state | Omitted provider | Successful provider | Failed provider |
+|---|---|---|---|
+| `valid_scored` | `not_requested` | `available` | `unavailable` |
+| `launch_surface_obstructed` | `not_requested` | `available` | `unavailable` |
+| `coincident_with_target` | `not_requested` | `available` | `unavailable` |
+| `profile_unavailable` | `not_requested` | `available` | `unavailable` |
+| `analysis_invalid` | `not_requested` | `available` | `unavailable` |
+| `outside_operating_radius` | `not_applicable` | `not_applicable` | `not_applicable` |
+| `outside_raster_extent` | `not_applicable` | `not_applicable` | `not_applicable` |
+| `terrain_nodata` | `not_applicable` | `not_applicable` | `not_applicable` |
+
+Provider failure leaves eligible core scores and candidate states unchanged and adds one deterministic warning.
 
 ## Performance Decision
 

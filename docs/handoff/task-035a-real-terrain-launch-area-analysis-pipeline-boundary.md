@@ -188,12 +188,15 @@ MGRS remains the default project user-facing coordinate policy, but conversion i
 Real GeoTIFF sampling rules:
 
 ```text
-open-raster affine/index semantics
-left and bottom bounds inclusive
-right and top bounds exclusive
+supported transform: a > 0, e < 0, b == 0, d == 0
+point-to-cell authority: dataset.index(x, y)
+in-bounds authority: 0 <= row < height and 0 <= col < width
+directional precheck only: left <= x < right and bottom < y <= top
 requested candidate point retained as feature geometry
 sampled cell center retained as internal diagnostic geometry
 ```
+
+Unsupported transform signs, rotation, or shear are fatal `RealTerrainLaunchAreaAnalysisError` conditions. The directional precheck is secondary; the index result and row/column range determine whether a point is sampleable. The exact policy is left inclusive, right exclusive, top inclusive, and bottom exclusive.
 
 Task 035B feature coordinate fields:
 
@@ -254,7 +257,7 @@ invalid configuration, target, frequency, or limits
 rasterio unavailable for a selected local adapter
 DEM/DSM metadata mismatch
 non-EPSG:5179 dataset
-unsupported rotated/sheared transform
+transform other than a > 0, e < 0, b == 0, d == 0
 target outside raster
 target NoData or non-finite
 target DSM above target flight MSL
@@ -297,12 +300,23 @@ not_applicable
 Policy:
 
 - provider is optional;
-- eligible projected points are sent in one ordered batch;
+- provider eligibility requires `sampled_cell_center is not None` and a state other than `outside_operating_radius`, `outside_raster_extent`, or `terrain_nodata`;
+- eligible projected points are sent in one batch in filtered input candidate order;
 - count/order mismatch is invalid provider output;
-- provider exception or missing landcover marks source zone unavailable and adds one warning;
-- terrain-bounds/NoData exclusions use not-applicable;
+- provider exception or missing landcover leaves eligible core scores and candidate states unchanged, marks eligible source zones unavailable, and adds one deterministic warning;
 - unavailable is never converted to ESA-derived;
 - source zone does not change scoring, color, ordering, or candidate state.
+
+| Candidate state | Provider batch | Omitted | Success | Failure |
+|---|---|---|---|---|
+| `valid_scored` | included when sampled cell exists | `not_requested` | `available` | `unavailable` |
+| `launch_surface_obstructed` | included when sampled cell exists | `not_requested` | `available` | `unavailable` |
+| `coincident_with_target` | included when sampled cell exists | `not_requested` | `available` | `unavailable` |
+| `profile_unavailable` | included when sampled cell exists | `not_requested` | `available` | `unavailable` |
+| `analysis_invalid` | included when sampled cell exists | `not_requested` | `available` | `unavailable` |
+| `outside_operating_radius` | excluded | `not_applicable` | `not_applicable` | `not_applicable` |
+| `outside_raster_extent` | excluded | `not_applicable` | `not_applicable` | `not_applicable` |
+| `terrain_nodata` | excluded | `not_applicable` | `not_applicable` | `not_applicable` |
 
 ## Performance Contract
 
@@ -380,7 +394,9 @@ candidate order and IDs
 flat, ridge, building/canopy scenarios
 frequency sensitivity
 2D versus 3D radius
-raster lower-inclusive / upper-exclusive edges
+supported north-up transform (`a > 0`, `e < 0`, `b == 0`, `d == 0`)
+left/right/top/bottom exact edges and inside/outside epsilon cases
+unsupported transform signs, rotation, or shear fatal
 candidate NoData exclusion
 target NoData fatal
 profile NoData exclusion
@@ -390,8 +406,8 @@ occupied-endpoint equality
 interior strict LOS cap
 existing score/color exact regression
 dominant-obstacle projection
-source-zone not requested/available/unavailable
-source-zone batch order and count
+source-zone membership, order, and count for every candidate state
+source-zone omitted/success/failure availability mapping for every candidate state
 actual candidate geometry and no placeholder values
 record/feature order parity
 zero-valid warning
