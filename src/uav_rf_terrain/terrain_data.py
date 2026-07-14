@@ -28,6 +28,14 @@ class TerrainDataError(ValueError):
     """Raised when terrain metadata or adapter access is invalid."""
 
 
+class TerrainPointOutsideError(TerrainDataError):
+    """Raised when a requested terrain point is outside the available extent."""
+
+
+class TerrainNoDataError(TerrainDataError):
+    """Raised when a terrain point resolves to masked, NoData, or non-finite data."""
+
+
 @dataclass(frozen=True)
 class TerrainPointSample:
     """One effective DEM/DSM point sample returned by an analysis session."""

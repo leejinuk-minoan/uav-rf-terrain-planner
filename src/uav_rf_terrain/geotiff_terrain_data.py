@@ -15,6 +15,8 @@ from .terrain_data import (
     RASTER_TYPE_DSM,
     TerrainDataError,
     TerrainDatasetMetadata,
+    TerrainNoDataError,
+    TerrainPointOutsideError,
     TerrainPointSample,
     TerrainRasterMetadata,
     validate_terrain_dataset_metadata,
@@ -162,13 +164,13 @@ class LocalGeoTiffTerrainDataAdapter:
                 masked=True,
             )
         if _cell_is_masked(cell):
-            raise TerrainDataError("terrain cell is masked or NoData.")
+            raise TerrainNoDataError("terrain cell is masked or NoData.")
 
         value = float(cell[0, 0])
         if metadata.nodata_value is not None and value == metadata.nodata_value:
-            raise TerrainDataError("terrain cell is NoData.")
+            raise TerrainNoDataError("terrain cell is NoData.")
         if not isfinite(value):
-            raise TerrainDataError("terrain cell must be finite.")
+            raise TerrainNoDataError("terrain cell must be finite.")
         return value
 
 
@@ -258,10 +260,10 @@ class LocalGeoTiffTerrainAnalysisSession:
             bounds.left <= point.x_m < bounds.right
             and bounds.bottom < point.y_m <= bounds.top
         ):
-            raise TerrainDataError("sample point is outside the raster extent.")
+            raise TerrainPointOutsideError("sample point is outside the raster extent.")
         row, col = dem.index(point.x_m, point.y_m)
         if not (0 <= row < dem.height and 0 <= col < dem.width):
-            raise TerrainDataError("sample point is outside the raster extent.")
+            raise TerrainPointOutsideError("sample point is outside the raster extent.")
         dem_value = _read_open_value(dem, row=row, col=col)
         dsm_value = _read_open_value(dsm, row=row, col=col)
         effective_dsm = max(dsm_value, dem_value)
@@ -338,10 +340,10 @@ def _validate_north_up_transform(transform: Any) -> None:
 def _read_open_value(source: Any, *, row: int, col: int) -> float:
     cell = source.read(1, window=((row, row + 1), (col, col + 1)), masked=True)
     if _cell_is_masked(cell):
-        raise TerrainDataError("terrain cell is masked or NoData.")
+        raise TerrainNoDataError("terrain cell is masked or NoData.")
     value = float(cell[0, 0])
     if source.nodata is not None and value == float(source.nodata):
-        raise TerrainDataError("terrain cell is NoData.")
+        raise TerrainNoDataError("terrain cell is NoData.")
     if not isfinite(value):
-        raise TerrainDataError("terrain cell must be finite.")
+        raise TerrainNoDataError("terrain cell must be finite.")
     return value

@@ -21,7 +21,14 @@ from .profile import TerrainProfile, TerrainProfileError, TerrainProfileSample, 
 from .schemas import ColorClass
 from .scoring import CandidateScore, ScoringError, compute_candidate_score
 from .source_zones import TerrainSourceZone, is_source_sensitive_zone
-from .terrain_data import TerrainDataAdapter, TerrainDataError, TerrainDatasetMetadata, TerrainPointSample
+from .terrain_data import (
+    TerrainDataAdapter,
+    TerrainDataError,
+    TerrainDatasetMetadata,
+    TerrainNoDataError,
+    TerrainPointOutsideError,
+    TerrainPointSample,
+)
 
 
 class RealTerrainLaunchAreaAnalysisError(ValueError):
@@ -100,7 +107,11 @@ class RealTerrainLaunchAreaConfig:
         _positive("frequency_hz", self.frequency_hz)
         if self.profile_sample_spacing_m is not None:
             _positive("profile_sample_spacing_m", self.profile_sample_spacing_m)
-        if not isfinite(self.launch_antenna_height_agl_m) or self.launch_antenna_height_agl_m < 0:
+        if (
+            isinstance(self.launch_antenna_height_agl_m, bool)
+            or not isfinite(self.launch_antenna_height_agl_m)
+            or self.launch_antenna_height_agl_m < 0
+        ):
             raise RealTerrainLaunchAreaAnalysisError(
                 "launch_antenna_height_agl_m must be finite and non-negative."
             )
@@ -201,30 +212,48 @@ def analyze_real_terrain_launch_area(
 
     if not isinstance(config, RealTerrainLaunchAreaConfig):
         raise RealTerrainLaunchAreaAnalysisError("config must be RealTerrainLaunchAreaConfig.")
-    _validate_guard_estimates(config)
-    with _resolve_session(adapter) as session:
-        metadata = session.metadata
-        if metadata.dem.crs != "EPSG:5179":
-            raise RealTerrainLaunchAreaAnalysisError("dataset CRS must be EPSG:5179.")
-        try:
-            target = session.sample_point(config.target_point)
-        except TerrainDataError as exc:
-            raise RealTerrainLaunchAreaAnalysisError(f"target terrain sample failed: {exc}") from exc
-        target_flight_msl = target.dem_msl + config.allowed_agl_m
-        if target.dsm_msl > target_flight_msl:
-            raise RealTerrainLaunchAreaAnalysisError("target surface is above target flight MSL.")
-        cells = generate_candidate_grid(
-            config.target_point,
-            CandidateGridConfig(
-                radius_m=config.operating_radius_m,
-                spacing_m=config.candidate_spacing_m,
-                include_center=config.include_center,
-                include_excluded=config.include_out_of_radius,
-            ),
-        )
-        records = tuple(
-            _analyze_candidate(session, cell, config, target_flight_msl) for cell in cells
-        )
+    _validate_candidate_count_guard(config)
+    try:
+        with _resolve_session(adapter) as session:
+            metadata = session.metadata
+            if metadata.dem.crs != "EPSG:5179":
+                raise RealTerrainLaunchAreaAnalysisError("dataset CRS must be EPSG:5179.")
+            resolved_profile_spacing_m = (
+                config.profile_sample_spacing_m
+                if config.profile_sample_spacing_m is not None
+                else metadata.dem.resolution_m
+            )
+            _validate_profile_sample_guards(config, resolved_profile_spacing_m)
+            try:
+                target = session.sample_point(config.target_point)
+            except TerrainDataError as exc:
+                raise RealTerrainLaunchAreaAnalysisError(
+                    f"target terrain sample failed: {exc}"
+                ) from exc
+            target_flight_msl = target.dem_msl + config.allowed_agl_m
+            if target.dsm_msl > target_flight_msl:
+                raise RealTerrainLaunchAreaAnalysisError("target surface is above target flight MSL.")
+            cells = generate_candidate_grid(
+                config.target_point,
+                CandidateGridConfig(
+                    radius_m=config.operating_radius_m,
+                    spacing_m=config.candidate_spacing_m,
+                    include_center=config.include_center,
+                    include_excluded=config.include_out_of_radius,
+                ),
+            )
+            records = tuple(
+                _analyze_candidate(
+                    session,
+                    cell,
+                    config,
+                    target_flight_msl,
+                    resolved_profile_spacing_m,
+                )
+                for cell in cells
+            )
+    except TerrainDataError as exc:
+        raise RealTerrainLaunchAreaAnalysisError("terrain analysis session failed") from exc
     records, source_warning = _attach_source_zones(records, source_zone_provider)
     warnings: list[str] = []
     if source_warning is not None:
@@ -251,7 +280,10 @@ def _analyze_candidate(
     cell: CandidateCell,
     config: RealTerrainLaunchAreaConfig,
     target_flight_msl: float,
+    resolved_profile_spacing_m: float,
 ) -> CandidateAnalysisRecord:
+    """Build an excluded record with the radius result known at the call site."""
+
     point = cell.point
     distance_2d = distance_2d_m(config.target_point, point)
     if distance_2d > config.operating_radius_m:
@@ -261,16 +293,28 @@ def _analyze_candidate(
             CandidateAnalysisState.OUTSIDE_OPERATING_RADIUS,
             "outside operating radius",
             distance_2d,
+            within_operation_radius=False,
         )
     try:
         sample = session.sample_point(point)
-    except TerrainDataError as exc:
-        state = (
-            CandidateAnalysisState.OUTSIDE_RASTER_EXTENT
-            if "outside" in str(exc)
-            else CandidateAnalysisState.TERRAIN_NODATA
+    except TerrainPointOutsideError as exc:
+        return _excluded_record(
+            cell.cell_id,
+            point,
+            CandidateAnalysisState.OUTSIDE_RASTER_EXTENT,
+            str(exc),
+            distance_2d,
+            within_operation_radius=True,
         )
-        return _excluded_record(cell.cell_id, point, state, str(exc), distance_2d)
+    except TerrainNoDataError as exc:
+        return _excluded_record(
+            cell.cell_id,
+            point,
+            CandidateAnalysisState.TERRAIN_NODATA,
+            str(exc),
+            distance_2d,
+            within_operation_radius=True,
+        )
     launch_antenna_msl = sample.dem_msl + config.launch_antenna_height_agl_m
     distance_3d = distance_3d_m(
         LocalPoint(point.x_m, point.y_m, launch_antenna_msl),
@@ -286,6 +330,7 @@ def _analyze_candidate(
             sample,
             distance_3d,
             launch_antenna_msl,
+            within_operation_radius=False,
         )
     if point.x_m == config.target_point.x_m and point.y_m == config.target_point.y_m:
         return _excluded_record(
@@ -297,6 +342,7 @@ def _analyze_candidate(
             sample,
             distance_3d,
             launch_antenna_msl,
+            within_operation_radius=True,
         )
     if sample.dsm_msl > launch_antenna_msl:
         return _excluded_record(
@@ -308,13 +354,13 @@ def _analyze_candidate(
             sample,
             distance_3d,
             launch_antenna_msl,
+            within_operation_radius=True,
         )
     try:
-        spacing = config.profile_sample_spacing_m or session.metadata.dem.resolution_m
         profile = session.extract_profile(
             point,
             config.target_point,
-            sample_spacing_m=spacing,
+            sample_spacing_m=resolved_profile_spacing_m,
             scenario_name=config.scenario_name,
         )
     except (TerrainDataError, TerrainProfileError) as exc:
@@ -327,6 +373,7 @@ def _analyze_candidate(
             sample,
             distance_3d,
             launch_antenna_msl,
+            within_operation_radius=True,
         )
     try:
         base_los = analyze_dsm_los(
@@ -353,6 +400,7 @@ def _analyze_candidate(
             sample,
             distance_3d,
             launch_antenna_msl,
+            within_operation_radius=True,
         )
     return CandidateAnalysisRecord(
         candidate_id=cell.cell_id,
@@ -390,6 +438,7 @@ def _excluded_record(
     sample: TerrainPointSample | None = None,
     distance_3d: float | None = None,
     launch_antenna_msl: float | None = None,
+    within_operation_radius: bool = False,
 ) -> CandidateAnalysisRecord:
     applicable = sample is not None and state not in {
         CandidateAnalysisState.OUTSIDE_OPERATING_RADIUS,
@@ -404,7 +453,7 @@ def _excluded_record(
         reason=reason,
         distance_2d_m=distance_2d,
         distance_3d_m=distance_3d,
-        within_operation_radius=False,
+        within_operation_radius=within_operation_radius,
         launch_ground_msl=None if sample is None else sample.dem_msl,
         launch_surface_msl=None if sample is None else sample.dsm_msl,
         launch_antenna_msl=launch_antenna_msl,
@@ -556,8 +605,14 @@ class _CompatibilityTerrainAnalysisSession(
             x_index, y_index = local_point_to_metadata_grid_index(self.metadata, point)
             dem = self._adapter.get_dem_msl(x_index, y_index)
             raw_dsm = self._adapter.get_dsm_msl(x_index, y_index)
-        except (TerrainDataError, TerrainProfileError) as exc:
-            raise TerrainDataError(str(exc)) from exc
+        except TerrainPointOutsideError:
+            raise
+        except TerrainNoDataError:
+            raise
+        except TerrainProfileError as exc:
+            raise TerrainPointOutsideError("sample point is outside the terrain extent.") from exc
+        except TerrainDataError as exc:
+            raise TerrainNoDataError("terrain point data is unavailable.") from exc
         effective_dsm = max(raw_dsm, dem)
         x_min, y_min, _, _ = self.metadata.dem.bounds
         return TerrainPointSample(
@@ -618,24 +673,35 @@ def _resolve_session(adapter: TerrainDataAdapter) -> AbstractContextManager[Terr
     return _CompatibilityTerrainAnalysisSession(adapter)
 
 
-def _validate_guard_estimates(config: RealTerrainLaunchAreaConfig) -> None:
+def _validate_candidate_count_guard(config: RealTerrainLaunchAreaConfig) -> None:
     steps = ceil(config.operating_radius_m / config.candidate_spacing_m)
     candidate_count = (2 * steps + 1) ** 2 - (0 if config.include_center else 1)
-    spacing = config.profile_sample_spacing_m or config.candidate_spacing_m
-    profile_count = max(1, int(ceil((2.0 * config.operating_radius_m) / spacing))) + 1
-    if (
-        candidate_count > config.max_candidate_count
-        or profile_count > config.max_profile_samples_per_candidate
-        or candidate_count * profile_count > config.max_total_profile_samples
-    ):
-        raise RealTerrainLaunchAreaAnalysisError("candidate or profile sample guard exceeded.")
+    if candidate_count > config.max_candidate_count:
+        raise RealTerrainLaunchAreaAnalysisError("candidate count guard exceeded.")
+
+
+def _validate_profile_sample_guards(
+    config: RealTerrainLaunchAreaConfig,
+    resolved_profile_spacing_m: float,
+) -> None:
+    _positive("resolved_profile_spacing_m", resolved_profile_spacing_m)
+    profile_count = max(
+        1,
+        int(ceil((2.0 * config.operating_radius_m) / resolved_profile_spacing_m)),
+    ) + 1
+    if profile_count > config.max_profile_samples_per_candidate:
+        raise RealTerrainLaunchAreaAnalysisError("profile sample guard exceeded.")
+    steps = ceil(config.operating_radius_m / config.candidate_spacing_m)
+    candidate_count = (2 * steps + 1) ** 2 - (0 if config.include_center else 1)
+    if candidate_count * profile_count > config.max_total_profile_samples:
+        raise RealTerrainLaunchAreaAnalysisError("total profile sample guard exceeded.")
 
 
 def _finite(name: str, value: float) -> None:
-    if not isfinite(value):
+    if isinstance(value, bool) or not isfinite(value):
         raise RealTerrainLaunchAreaAnalysisError(f"{name} must be finite.")
 
 
 def _positive(name: str, value: float) -> None:
-    if not isfinite(value) or value <= 0:
+    if isinstance(value, bool) or not isfinite(value) or value <= 0:
         raise RealTerrainLaunchAreaAnalysisError(f"{name} must be finite and positive.")

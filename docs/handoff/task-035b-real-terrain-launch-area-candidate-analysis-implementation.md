@@ -32,6 +32,13 @@ The user-facing MGRS boundary remains a later wrapper task.
 - Candidate records preserve deterministic existing grid order and distinguish valid
   scoring from radius, extent, NoData, surface, coincident, profile, and analysis
   exclusions.
+- Candidate-count validation runs before opening a terrain session; profile guards
+  resolve the runtime spacing from session metadata before any target or candidate
+  sample is read.
+- Point-sampling failures use typed extent and NoData categories. Fatal terrain-session
+  failures are exposed as the analysis error with the original domain error chained.
+- Excluded records retain the radius result known at their call site, and projected
+  features preserve that same radius flag.
 - Pipeline-only occupied-endpoint handling retains standalone LOS behavior while
   applying the strict LOS cap to interior blockers.
 - Existing Fresnel calculations, score weights, color thresholds, synthetic outputs,
@@ -49,9 +56,10 @@ state. A failure creates one deterministic warning.
 Local verification on the implementation branch:
 
 ```text
-focused candidate/session tests: passed
+focused candidate tests: 33 passed
+focused GeoTIFF session tests: 12 passed
 existing terrain/profile/LOS/Fresnel/scoring/classification/source-zone/map regressions: passed
-full pytest: 782 passed
+full pytest: 818 passed
 ruff: passed
 mypy: passed
 ```

@@ -9,16 +9,21 @@ import pytest
 
 from uav_rf_terrain.coordinates import LocalPoint
 from uav_rf_terrain.geotiff_terrain_data import LocalGeoTiffTerrainDataAdapter
-from uav_rf_terrain.terrain_data import TerrainDataError
+from uav_rf_terrain.terrain_data import (
+    TerrainDataError,
+    TerrainNoDataError,
+    TerrainPointOutsideError,
+)
 
 
 @dataclass
 class FakeCell:
     value: float
+    masked: bool = False
 
     @property
     def mask(self) -> bool:
-        return False
+        return self.masked
 
     def __getitem__(self, key: tuple[int, int]) -> float:
         return self.value
@@ -35,6 +40,7 @@ class FakeDataset:
     )
     crs: Any = field(default_factory=lambda: SimpleNamespace(to_string=lambda: "EPSG:5179"))
     nodata: float | None = None
+    masked_cells: set[tuple[int, int]] = field(default_factory=set)
     opens: int = 0
     closes: int = 0
 
@@ -61,7 +67,7 @@ class FakeDataset:
 
     def read(self, band: int, *, window: tuple[tuple[int, int], tuple[int, int]], masked: bool) -> FakeCell:
         row, col = window[0][0], window[1][0]
-        return FakeCell(self.values[row][col])
+        return FakeCell(self.values[row][col], (row, col) in self.masked_cells)
 
 
 @dataclass
@@ -101,6 +107,45 @@ def test_analysis_session_samples_north_up_edges_with_one_open_per_raster(
 
     assert (dem.opens, dsm.opens) == (1, 1)
     assert (dem.closes, dsm.closes) == (1, 1)
+
+
+@pytest.mark.parametrize(
+    "point",
+    [
+        LocalPoint(-0.001, 20.0),
+        LocalPoint(30.0, 20.0),
+        LocalPoint(20.0, 30.001),
+        LocalPoint(20.0, 0.0),
+    ],
+)
+def test_analysis_session_maps_each_extent_edge_to_typed_outside_error(
+    monkeypatch: pytest.MonkeyPatch,
+    point: LocalPoint,
+) -> None:
+    adapter, _, _ = _adapter(monkeypatch)
+
+    with adapter.open_analysis_session() as session:
+        with pytest.raises(TerrainPointOutsideError, match="outside the raster extent"):
+            session.sample_point(point)
+
+
+@pytest.mark.parametrize("kind", ["masked", "nodata", "non_finite"])
+def test_analysis_session_maps_data_cells_to_typed_nodata_error(
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+) -> None:
+    adapter, dem, _ = _adapter(monkeypatch)
+    if kind == "masked":
+        dem.masked_cells.add((0, 0))
+    elif kind == "nodata":
+        dem.nodata = -9999.0
+        dem.values[0][0] = -9999.0
+    else:
+        dem.values[0][0] = float("nan")
+
+    with adapter.open_analysis_session() as session:
+        with pytest.raises(TerrainNoDataError):
+            session.sample_point(LocalPoint(5.0, 25.0))
 
 
 @pytest.mark.parametrize(
