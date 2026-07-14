@@ -14,6 +14,22 @@ format_fresnel_diagnostics_appendix_table(
 
 Task 034C is a documentation and code-contract audit only. It does not change source code, tests, report composition, CLI behavior, scoring, routing, map rendering, or UI behavior.
 
+## Task 034D Implementation Update
+
+Task 034D implements the selected CLI-only delivery contract without changing report
+composition. The CLI now exposes these opt-in selectors:
+
+```text
+--diagnostic-table
+--output-diagnostic-table PATH
+```
+
+Both selectors use the existing
+`format_fresnel_diagnostics_appendix_table(preview, max_rows=...)` formatter with
+synthetic or saved preview JSON input. They remain mutually exclusive with every
+other output selector. The stdout and UTF-8 file surfaces have identical content,
+including exactly one trailing newline. Report output remains unchanged.
+
 ## Live Baseline
 
 Task 034C started after the required gate was verified:
@@ -76,17 +92,21 @@ Current output selectors are:
 --json
 --table
 --report
+--diagnostic-table
 --output-json PATH
 --output-text PATH
 --output-table PATH
 --output-report PATH
+--output-diagnostic-table PATH
 ```
 
-The selectors are mutually exclusive. There is no diagnostic-table CLI or file-output option.
+The selectors are mutually exclusive. The diagnostic-table selectors are opt-in and
+do not alter the default plain-text, JSON, default-table, or report paths.
 
 ### Saved preview JSON
 
-Saved preview JSON input is implemented. It is currently accepted only with table or report output. A diagnostic-table CLI mode may support saved JSON because the formatter already accepts the same preview dictionary contract.
+Saved preview JSON input is accepted with table, report, or diagnostic-table stdout
+or file output. JSON and plain-text echo modes remain unsupported for saved input.
 
 ## Alternatives Compared
 

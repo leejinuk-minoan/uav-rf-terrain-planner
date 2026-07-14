@@ -11,6 +11,7 @@ import sys
 from .candidate_display_preview import CandidateDisplayPreviewError
 from .preview_appendix_table import (
     PreviewAppendixTableError,
+    format_fresnel_diagnostics_appendix_table,
     format_preview_appendix_table,
 )
 from .preview_report import PreviewReportError, format_preview_report
@@ -66,10 +67,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="print the existing preview as an appendix table",
     )
     parser.add_argument("--report", action="store_true", dest="report_output")
+    parser.add_argument(
+        "--diagnostic-table",
+        action="store_true",
+        dest="diagnostic_table_output",
+    )
     parser.add_argument("--output-json", metavar="PATH")
     parser.add_argument("--output-text", metavar="PATH")
     parser.add_argument("--output-table", metavar="PATH")
     parser.add_argument("--output-report", metavar="PATH")
+    parser.add_argument("--output-diagnostic-table", metavar="PATH")
     parser.add_argument(
         "--force",
         action="store_true",
@@ -86,10 +93,12 @@ def _validate_arguments(args: argparse.Namespace, parser: argparse.ArgumentParse
         args.json_output,
         args.table_output,
         args.report_output,
+        args.diagnostic_table_output,
         args.output_json is not None,
         args.output_text is not None,
         args.output_table is not None,
         args.output_report is not None,
+        args.output_diagnostic_table is not None,
     )
     output_count = sum(selectors)
     if output_count > 1:
@@ -99,8 +108,10 @@ def _validate_arguments(args: argparse.Namespace, parser: argparse.ArgumentParse
         or args.output_table is not None
         or args.report_output
         or args.output_report is not None
+        or args.diagnostic_table_output
+        or args.output_diagnostic_table is not None
     ):
-        parser.error("--input-json requires table or report output")
+        parser.error("--input-json requires table, report, or diagnostic table output")
     if args.max_records is not None and (
         args.report_output or args.output_report is not None
     ):
@@ -180,6 +191,16 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
         except PreviewAppendixTableError as exc:
             print(f"preview table error: {exc}", file=sys.stderr)
             return 1
+    diagnostic_table_text: str | None = None
+    if args.diagnostic_table_output or args.output_diagnostic_table is not None:
+        try:
+            diagnostic_table_text = format_fresnel_diagnostics_appendix_table(
+                preview_dict,
+                max_rows=args.max_records,
+            )
+        except PreviewAppendixTableError as exc:
+            print(f"preview diagnostic table error: {exc}", file=sys.stderr)
+            return 1
     report_text: str | None = None
     if args.report_output or args.output_report is not None:
         try:
@@ -199,6 +220,14 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
             assert table_text is not None
             _write_text_output(Path(args.output_table), table_text, force=args.force)
             print(f"preview saved: {args.output_table}")
+        elif args.output_diagnostic_table is not None:
+            assert diagnostic_table_text is not None
+            _write_text_output(
+                Path(args.output_diagnostic_table),
+                diagnostic_table_text,
+                force=args.force,
+            )
+            print(f"preview saved: {args.output_diagnostic_table}")
         elif args.output_report is not None:
             assert report_text is not None
             _write_text_output(Path(args.output_report), report_text, force=args.force)
@@ -208,6 +237,9 @@ def run_preview_cli(argv: Sequence[str] | None = None) -> int:
         elif args.table_output:
             assert table_text is not None
             print(table_text)
+        elif args.diagnostic_table_output:
+            assert diagnostic_table_text is not None
+            print(diagnostic_table_text)
         elif args.report_output:
             assert report_text is not None
             print(report_text, end="")

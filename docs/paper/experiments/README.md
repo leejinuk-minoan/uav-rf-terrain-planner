@@ -57,3 +57,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260713-047 - dominant obstacle appendix-table contract audit](EXP-20260713-047-dominant-obstacle-appendix-table-contract-audit.md)
 - [EXP-20260714-048 - dominant obstacle diagnostic appendix-table implementation](EXP-20260714-048-dominant-obstacle-diagnostic-appendix-table-implementation.md)
 - [EXP-20260714-049 - diagnostic appendix-table delivery contract audit](EXP-20260714-049-diagnostic-appendix-table-delivery-contract-audit.md)
+- [EXP-20260714-050 - diagnostic appendix CLI output implementation](EXP-20260714-050-diagnostic-appendix-cli-output-implementation.md)
