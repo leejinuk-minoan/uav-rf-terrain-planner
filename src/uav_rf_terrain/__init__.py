@@ -65,6 +65,37 @@ from .coordinates import (
     local_offset_point,
     mgrs_to_wgs84,
 )
+from .coordinate_conversion import (
+    CoordinateConversionError,
+    Epsg5179ToMgrsConverter,
+    Epsg5179ToWgs84Converter,
+    ProjectedToMgrsConverter,
+    ProjectedToWgs84Converter,
+    Wgs84MapPoint,
+)
+from .launch_site_selection import (
+    LaunchSiteSelectionError,
+    SelectedLaunchSiteRecord,
+    select_launch_site,
+)
+from .local_html_map_renderer import (
+    LocalHtmlMapRenderConfig,
+    LocalHtmlMapRendererError,
+    render_local_html_map,
+    write_local_html_map,
+)
+from .real_terrain_launch_area_map import (
+    LaunchAreaLegendEntry,
+    MapSelectionStyle,
+    RealTerrainCandidatePolygon,
+    RealTerrainCandidatePopup,
+    RealTerrainLaunchAreaMapConfig,
+    RealTerrainLaunchAreaMapError,
+    RealTerrainLaunchAreaMapPackage,
+    RealTerrainLaunchAreaMapSummary,
+    RealTerrainTargetMarker,
+    build_real_terrain_launch_area_map_package,
+)
 from .fresnel import (
     FresnelAnalysis,
     FresnelAnalysisError,
@@ -227,6 +258,24 @@ from .waypoints import (
 )
 
 __all__ = [
+    "CoordinateConversionError",
+    "Epsg5179ToMgrsConverter",
+    "Epsg5179ToWgs84Converter",
+    "LaunchAreaLegendEntry",
+    "LaunchSiteSelectionError",
+    "LocalHtmlMapRenderConfig",
+    "LocalHtmlMapRendererError",
+    "MapSelectionStyle",
+    "ProjectedToMgrsConverter",
+    "ProjectedToWgs84Converter",
+    "RealTerrainCandidatePolygon",
+    "RealTerrainCandidatePopup",
+    "RealTerrainLaunchAreaMapConfig",
+    "RealTerrainLaunchAreaMapError",
+    "RealTerrainLaunchAreaMapPackage",
+    "RealTerrainLaunchAreaMapSummary",
+    "RealTerrainTargetMarker",
+    "SelectedLaunchSiteRecord",
     "AltitudeRequirementSample",
     "CandidateCell",
     "CandidateCellMapFeature",
@@ -327,9 +376,11 @@ __all__ = [
     "WaypointMapFeature",
     "WaypointSamplingConfig",
     "WaypointSourcePoint",
+    "Wgs84MapPoint",
     "analyze_dsm_fresnel",
     "analyze_dsm_los",
     "analyze_real_terrain_launch_area",
+    "build_real_terrain_launch_area_map_package",
     "assign_source_zones_to_candidate_cells",
     "available_synthetic_scenarios",
     "build_candidate_cell_map_features",
@@ -394,6 +445,7 @@ __all__ = [
     "select_lowest_cost_route",
     "select_waypoint_source_points",
     "style_for_color_class",
+    "select_launch_site",
     "style_for_route_type",
     "summarize_candidate_map_source_zone_metadata",
     "summarize_candidate_source_zone_assignment",
@@ -406,6 +458,8 @@ __all__ = [
     "summarize_waypoint_report",
     "validate_terrain_dataset_metadata",
     "wavelength_m",
+    "render_local_html_map",
+    "write_local_html_map",
 ]
 
 __version__ = "0.1.0"
