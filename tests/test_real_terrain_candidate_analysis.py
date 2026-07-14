@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 
 from uav_rf_terrain.coordinates import LocalPoint
+from uav_rf_terrain.geotiff_terrain_data import LocalGeoTiffTerrainDataAdapter
 from uav_rf_terrain.los import LineOfSightError
 from uav_rf_terrain.profile import TerrainProfileError
 from uav_rf_terrain.terrain_data import (
@@ -510,6 +511,48 @@ def test_target_typed_terrain_errors_are_fatal_and_chained(
 def test_target_surface_above_flight_is_fatal() -> None:
     with pytest.raises(RealTerrainLaunchAreaAnalysisError, match="target surface is above"):
         analyze_real_terrain_launch_area(GridAdapter(dsm=121.0), _config())
+
+
+def test_target_non_finite_terrain_value_is_fatal_and_chained() -> None:
+    with pytest.raises(RealTerrainLaunchAreaAnalysisError, match="target terrain sample failed") as exc_info:
+        analyze_real_terrain_launch_area(GridAdapter(dem=float("nan")), _config())
+
+    assert isinstance(exc_info.value.__cause__, TerrainNoDataError)
+
+
+def test_missing_local_rasterio_is_wrapped_as_fatal_session_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def missing_rasterio(name: str) -> object:
+        if name == "rasterio":
+            raise ModuleNotFoundError("fixture rasterio unavailable")
+        return __import__(name)
+
+    monkeypatch.setattr(
+        "uav_rf_terrain.geotiff_terrain_data.importlib.import_module",
+        missing_rasterio,
+    )
+    adapter = LocalGeoTiffTerrainDataAdapter("dem.tif", "dsm.tif")
+
+    with pytest.raises(RealTerrainLaunchAreaAnalysisError, match="terrain analysis session failed") as exc_info:
+        analyze_real_terrain_launch_area(adapter, _config())
+
+    assert isinstance(exc_info.value.__cause__, TerrainDataError)
+
+
+def test_wrong_crs_is_a_public_analysis_error() -> None:
+    @dataclass
+    class WrongCrsAdapter(GridAdapter):
+        def validate_metadata(self) -> TerrainDatasetMetadata:
+            metadata = _metadata()
+            return replace(
+                metadata,
+                dem=replace(metadata.dem, crs="EPSG:4326"),
+                dsm=replace(metadata.dsm, crs="EPSG:4326"),
+            )
+
+    with pytest.raises(RealTerrainLaunchAreaAnalysisError, match="dataset CRS must be EPSG:5179"):
+        analyze_real_terrain_launch_area(WrongCrsAdapter(), _config())
 
 
 def test_session_enter_domain_error_is_wrapped_with_cause() -> None:

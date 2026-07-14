@@ -56,10 +56,10 @@ state. A failure creates one deterministic warning.
 Local verification on the implementation branch:
 
 ```text
-focused candidate tests: 33 passed
+focused candidate tests: 36 passed
 focused GeoTIFF session tests: 12 passed
 existing terrain/profile/LOS/Fresnel/scoring/classification/source-zone/map regressions: passed
-full pytest: 818 passed
+full pytest: 821 passed
 ruff: passed
 mypy: passed
 ```

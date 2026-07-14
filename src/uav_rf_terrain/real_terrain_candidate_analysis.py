@@ -613,6 +613,8 @@ class _CompatibilityTerrainAnalysisSession(
             raise TerrainPointOutsideError("sample point is outside the terrain extent.") from exc
         except TerrainDataError as exc:
             raise TerrainNoDataError("terrain point data is unavailable.") from exc
+        if not isfinite(dem) or not isfinite(raw_dsm):
+            raise TerrainNoDataError("terrain point data must be finite.")
         effective_dsm = max(raw_dsm, dem)
         x_min, y_min, _, _ = self.metadata.dem.bounds
         return TerrainPointSample(
