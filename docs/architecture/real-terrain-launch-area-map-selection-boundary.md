@@ -4,107 +4,84 @@
 
 This document defines the reviewed Task 035D implementation contract for converting the Task 035B real-terrain candidate-analysis result into a renderer-neutral colored launch-area map package, optional local offline HTML/SVG output, and deterministic candidate-ID-based launch-site selection.
 
-Task 035C is a documentation and code-contract audit only. It does not modify runtime source or tests, perform coordinate conversion, render a map, open GIS data, create generated output, or validate field RF or flight outcomes.
+Task 035C and this Master Review amendment are documentation and code-contract work only. They do not modify runtime source or tests, perform coordinate conversion, render a map, open GIS data, create generated output, or validate field RF or flight outcomes.
 
 ## Verified Baseline
 
 ```text
 PR #99: merged to main
-PR #99 merge commit / latest main: a9886eb12633f27cea3556a8e7b9ab4a142667a1
+PR #99 merge commit / Task 035C base: a9886eb12633f27cea3556a8e7b9ab4a142667a1
 Issue #98: closed / completed
 Issue #100: open
 Task 035B source, focused tests, handoff, and EXP-052: present on main
-open PRs before Task 035C: none
+Task 035C branch: agent/task-035c-real-terrain-map-selection-contract
+Draft PR #101: open / Draft / unmerged
+reviewed pre-amendment head: a670663cba4fcd2eba49a09696fad645d1b33fb6
+GPT Master review comment: 4965114229
+```
+
+## Preserved Contract
+
+The amendment does not change the following reviewed boundaries:
+
+```text
+Task 035B records/features are the real input authority
+synthetic placeholder builder is prohibited for real output
+candidate_cell_size_m is explicit
+candidate cell polygons are constructed in EPSG:5179
+ring order is SW → SE → NE → NW → SW
+WGS84 is renderer-internal geometry
+MGRS is the default user-facing coordinate output
+record/feature parity is validated before conversion
+existing color styles are reused
+excluded candidates are visible by default
+valid red candidates remain selectable
+source-zone and Fresnel diagnostics remain non-scoring
+pure HTML/SVG remains the selected local renderer
+no new dependency is approved
+route, waypoint, and minimum-altitude work remain deferred
+runtime source, tests, examples, workflows, dependencies, and GIS data remain protected
 ```
 
 ## Current Runtime Audit
 
 ### Task 035B authority
 
-The next implementation consumes the following immutable Task 035B outputs:
+Task 035D consumes the following immutable Task 035B outputs:
 
 ```text
 RealTerrainLaunchAreaResult.candidate_records
 RealTerrainLaunchAreaResult.candidate_features
 ```
 
-`candidate_records` is authoritative for:
+`candidate_records` is authoritative for candidate order, candidate ID, projected candidate point, candidate state, reason, distance, within-operation-radius state, terrain endpoint fields, score availability and values, color, source-zone availability and values, and Fresnel diagnostics.
 
-```text
-candidate order
-candidate ID
-candidate projected point
-candidate state
-reason
-2D and optional 3D distance
-within-operation-radius state
-terrain endpoint fields
-CandidateScore availability and values
-color class
-source-zone availability and values
-Fresnel diagnostics
-```
+`candidate_features` is the renderer-input projection of the same records and is authoritative for feature ID, actual projected center x/y, geometry CRS, style, primitive score projection, and renderer-oriented state metadata.
 
-`candidate_features` is the rendering-input projection of the same records and is authoritative for:
-
-```text
-feature ID
-actual projected center x/y
-geometry CRS label
-style
-primitive score projection
-renderer-oriented state and metadata projection
-```
-
-Task 035D must not route real output through `build_candidate_cell_map_features(...)`. That function accepts `SyntheticCandidateRecord` and intentionally preserves the synthetic regression geometry:
+Task 035D must not route real output through `build_candidate_cell_map_features(...)`. That function remains a protected synthetic scaffold with placeholder geometry:
 
 ```text
 x_m = index * 500.0
 y_m = 0.0
 ```
 
-### Existing map scaffold
+### Existing map and display scaffolds
 
-`map_outputs.py` provides reusable `MapStyle` and `style_for_color_class(...)` values. Its current `MapOutputPackage`, `CandidateCellMapFeature`, route feature, waypoint feature, and builders are synthetic-era scaffolds. They require non-null score fields and route selection and do not represent Task 035B exclusion states or source-zone availability states.
+Existing synthetic map/display structures cannot represent the full Task 035B real-terrain contract without breaking compatibility. In particular, they require non-null scores, concrete source-zone values, or route/waypoint state that excluded and source-zone-unavailable candidates do not possess.
 
-Task 035D reuses `MapStyle` and `style_for_color_class(...)` but introduces separate real-terrain candidate map schemas. Existing synthetic schemas and builders remain unchanged.
+Task 035D therefore introduces separate frozen real-terrain map, popup, summary, selection, and renderer configuration types. Existing synthetic map/display, preview, report, appendix, and CLI contracts remain unchanged.
 
-### Existing display and preview scaffold
-
-`CandidateDisplayRecord` requires:
-
-```text
-non-empty candidate_cell_mgrs
-finite overall and shielding scores
-string source_zone
-boolean source_sensitive
-```
-
-Task 035B correctly permits excluded candidates with no score, `source_zone=None`, and `source_sensitive=None`. It also distinguishes `not_requested`, `unavailable`, and `not_applicable`. Therefore the synthetic display bundle cannot be used as the production real-terrain popup boundary.
-
-Task 035D introduces a separate popup record with optional score and source-zone fields. Existing display, preview, report, appendix, and CLI contracts remain unchanged.
-
-### Coordinate policy
-
-The repository already fixes:
+### Coordinate and dependency state
 
 ```text
 user-facing input/output: MGRS
-internal computation: EPSG:5179, WGS84, local x/y, raster row/col
+analysis and polygon construction: EPSG:5179
+renderer-internal geometry: WGS84
+raster row/col and sampled-cell centers: internal/debug only
+base dependencies: none
+optional GIS dependencies: pyproj>=3.6, mgrs>=1.5
+new renderer dependency: none
 ```
-
-Current `coordinates.py` contains `LocalPoint`, `WGS84Point`, and an optional MGRS-to-WGS84 helper. It does not provide the complete EPSG:5179-to-WGS84 and EPSG:5179-to-MGRS output path required by the map package.
-
-### Dependency state
-
-The base dependency list is empty. The optional `gis` extra already contains:
-
-```text
-pyproj>=3.6
-mgrs>=1.5
-```
-
-No Folium, Streamlit, matplotlib, GeoPandas, Shapely, or concrete map renderer dependency is declared.
 
 ## Task 035D Endpoint
 
@@ -114,7 +91,7 @@ RealTerrainLaunchAreaResult
 + EPSG:5179-to-WGS84 converter
 + EPSG:5179-to-MGRS converter
 → validate record/feature parity
-→ deterministic projected candidate cell polygons
+→ deterministic EPSG:5179 candidate cell polygons
 → renderer-internal WGS84 geometry
 → MGRS-only user-facing popup properties
 → immutable renderer-neutral map package
@@ -123,42 +100,26 @@ RealTerrainLaunchAreaResult
 → immutable selected launch-site record
 ```
 
-Task 035D does not include:
-
-```text
-route search
-three route alternatives
-waypoint generation
-minimum-altitude integration
-browser-to-Python callback server
-automatic launch-site recommendation
-Top-N replacement
-field RF validation
-external device integration
-autopilot or flight control
-```
+Task 035D does not include route search, three route alternatives, waypoint generation, minimum-altitude integration, browser-to-Python callback infrastructure, automatic launch-site recommendation, Top-N replacement, field RF validation, external-device integration, autopilot, or flight control.
 
 ## Input and Parity Contract
 
-### Result validation
-
-Before any coordinate conversion or polygon creation, Task 035D validates:
+Before any coordinate conversion or polygon construction, Task 035D validates:
 
 1. `result` is `RealTerrainLaunchAreaResult`.
-2. `candidate_records` is non-empty.
-3. `candidate_features` is non-empty.
-4. Record and feature counts are equal.
-5. Candidate IDs are non-empty and unique in each sequence.
-6. Candidate IDs match by index.
-7. Each feature ID is non-empty and unique.
-8. `feature.geometry_crs == "EPSG:5179"`.
-9. `feature.x_m/y_m` exactly equal the record candidate point x/y.
-10. Feature state, color, radius flag, reason, source-zone fields, and diagnostics equal the record projection.
-11. For scored records, feature overall and shielding scores exactly equal `record.candidate_score` values.
-12. For excluded records, feature score projections are `None` and color is `ColorClass.EXCLUDED`.
-13. `candidate_cell_mgrs is None` and `coordinate_display_state == "projected_only"` at the Task 035B boundary.
+2. Candidate records and features are both non-empty.
+3. Record and feature counts are equal.
+4. Candidate IDs are non-empty and unique in both sequences.
+5. Candidate IDs match by index.
+6. Feature IDs are non-empty and unique.
+7. `feature.geometry_crs == "EPSG:5179"`.
+8. Feature x/y exactly equal the corresponding record candidate point x/y.
+9. State, color, radius flag, reason, source-zone fields, and diagnostics match.
+10. Scored feature values exactly match the record score projection.
+11. Excluded features have `None` score projections and `ColorClass.EXCLUDED`.
+12. Task 035B MGRS fields remain `None` with `coordinate_display_state == "projected_only"` at input.
 
-Any mismatch is fatal `RealTerrainLaunchAreaMapError`. Task 035D does not repair or silently reorder input.
+Any mismatch is fatal `RealTerrainLaunchAreaMapError`. The builder does not reorder, repair, or synthesize missing input.
 
 ## Map Configuration
 
@@ -172,98 +133,66 @@ class RealTerrainLaunchAreaMapConfig:
 
 Validation:
 
-| Field | Contract |
-|---|---|
-| `candidate_cell_size_m` | positive finite non-boolean float |
-| `selected_candidate_id` | `None` or non-empty stripped string |
-| `include_excluded` | bool |
+```text
+candidate_cell_size_m: positive finite non-boolean numeric value
+selected_candidate_id: None or non-empty stripped string
+include_excluded: bool
+```
 
-The same cell size is used for every candidate.
-
-Task 035B does not retain `candidate_spacing_m` in `RealTerrainLaunchAreaResult`. Task 035D must not infer spacing from arbitrary candidate distances or raster geometry. The caller is responsible for passing the same value used by the Task 035B analysis config. A later backward-compatible result/config provenance enhancement requires a separate reviewed task.
-
-The map builder does not mutate the result, config, records, features, popup data, or converter inputs.
+Task 035B does not retain the original candidate spacing in `RealTerrainLaunchAreaResult`. The caller must pass the same spacing used by the Task 035B analysis config. Task 035D must not infer spacing from candidate distances, raster geometry, or arbitrary neighboring points.
 
 ## Candidate Cell Geometry
 
-### Authority CRS
-
 ```text
-cell construction CRS: EPSG:5179
-cell center: CandidateAnalysisMapFeature.x_m / y_m
-cell side length: RealTerrainLaunchAreaMapConfig.candidate_cell_size_m
+construction CRS: EPSG:5179
+center: CandidateAnalysisMapFeature.x_m / y_m
+side length: candidate_cell_size_m
 half size: candidate_cell_size_m / 2
+ring: SW → SE → NE → NW → SW
+orientation: counter-clockwise in projected x/y
 ```
 
-### Projected corner order
-
-For center `(x, y)` and half-size `h`, the four unique corners are:
+For center `(x, y)` and half-size `h`:
 
 ```text
-southwest = (x - h, y - h)
-southeast = (x + h, y - h)
-northeast = (x + h, y + h)
-northwest = (x - h, y + h)
+SW = (x - h, y - h)
+SE = (x + h, y - h)
+NE = (x + h, y + h)
+NW = (x - h, y + h)
 ```
 
-The authoritative closed ring is:
+Each unique corner is converted separately to WGS84. The converted SW point is reused to close the ring. Task 035D does not use meter-to-degree constants, candidate indices, raster row/col polygons, sampled-cell-center replacement geometry, or polygon clipping.
 
-```text
-southwest
-southeast
-northeast
-northwest
-southwest
-```
+Candidate polygons are not clipped to the operating circle, raster extent, NoData footprint, coastline, or source-zone boundaries. Candidate radius and state authority remain the center-based Task 035B result.
 
-This is counter-clockwise in projected x/y space. The first converted WGS84 corner is reused to close the ring; the southwest converter is not called twice.
-
-Each unique projected corner is converted individually. Task 035D must not use:
-
-```text
-meter-to-degree constants
-manual latitude-dependent approximation
-candidate index multiplied by spacing
-raster row/column polygons
-sampled-cell-center replacement geometry
-```
-
-The candidate requested projected point remains the center authority, including candidates whose center lies outside raster coverage or on NoData.
-
-### Radius and clipping
-
-The polygon may extend beyond the operating circle. The authoritative radius state remains the Task 035B center/3D analysis state.
-
-Task 035D does not clip cell polygons to:
-
-```text
-operating circle
-raster extent
-NoData footprint
-coastline
-source-zone boundary
-```
-
-Clipping would create a new visual geometry interpretation and is deferred.
-
-### Visibility
+## Visibility and Partial Results
 
 ```text
 include_excluded=True:
   include all Task 035B candidates in source order
 
 include_excluded=False:
-  omit only state != valid_scored / ColorClass.EXCLUDED polygons
-  preserve source result, source summary, and source warnings unchanged
+  omit only excluded polygons from the map package
+  preserve the source result, source summary, and source warnings
 ```
 
-`outside_operating_radius`, `outside_raster_extent`, `terrain_nodata`, surface, coincident, profile, and analysis exclusions share the existing excluded gray style but retain distinct state and reason in popup data when visible.
+A Task 035B partial grid remains partial. Task 035D does not invent omitted cells.
 
-A Task 035B result created with `include_out_of_radius=False` naturally contains a partial grid. Task 035D does not invent omitted cells.
+A zero-candidate source result is fatal. A candidate source with zero selectable records remains a valid package and includes:
+
+```text
+no selectable launch-site candidates were produced
+```
+
+When excluded candidates are hidden and no polygon remains, the package is still valid and adds:
+
+```text
+no candidate polygons were included by the map configuration
+```
 
 ## Coordinate Conversion Contract
 
-### Immutable renderer point
+### WGS84 renderer point
 
 ```python
 @dataclass(frozen=True)
@@ -272,14 +201,7 @@ class Wgs84MapPoint:
     latitude_deg: float
 ```
 
-Validation:
-
-```text
-longitude_deg: finite and within [-180, 180]
-latitude_deg: finite and within [-90, 90]
-```
-
-Storage and polygon order are longitude first, latitude second. This avoids ambiguity with the current `WGS84Point(lat, lon)` placeholder.
+Longitude is stored first. Longitude must be finite and within `[-180, 180]`; latitude must be finite and within `[-90, 90]`.
 
 ### Converter protocols
 
@@ -293,174 +215,58 @@ class ProjectedToMgrsConverter(Protocol):
         ...
 ```
 
-Task 035D concrete local adapters use EPSG:5179 as source CRS and WGS84/EPSG:4326 as destination CRS. `pyproj.Transformer` must use `always_xy=True` so input is easting/x then northing/y and output is longitude then latitude.
+Concrete local EPSG:5179-to-WGS84 conversion uses `pyproj.Transformer(..., always_xy=True)`. The MGRS adapter converts through WGS84 and calls the MGRS library with latitude then longitude, as required by that library.
 
-The MGRS adapter converts through WGS84 and calls the MGRS library using latitude then longitude as required by that library. Axis order must be covered by tests.
+MGRS output uses five easting and five northing digits, uppercase, stripped surrounding whitespace, and non-empty validation. This formatting precision is not a one-meter terrain or RF accuracy claim.
 
-### MGRS precision and normalization
-
-Task 035D uses:
+### Deterministic conversion order
 
 ```text
-precision: 5 digits each for easting and northing
-case: uppercase
-leading/trailing whitespace: removed
-empty output: fatal
+1. target projected point → WGS84 once
+2. target projected point → MGRS once, precision 5
+3. included candidates in Task 035B order
+4. candidate center → WGS84 once
+5. candidate center → MGRS once, precision 5
+6. unique corners → WGS84 in SW, SE, NE, NW order
+7. reuse converted SW to close the ring
 ```
 
-Five-digit MGRS is a coordinate formatting precision, not a claim that 90 m or proxy terrain data has 1 m physical accuracy. Popup interpretation must preserve the terrain-data limitation.
-
-### Deterministic converter call order
-
-After parity and config validation:
-
-1. Convert target projected point to WGS84 once.
-2. Convert target projected point to MGRS once with precision 5.
-3. Iterate included candidates in Task 035B order.
-4. For each included candidate, convert the candidate center to WGS84 once.
-5. Convert the candidate center to MGRS once with precision 5.
-6. Convert unique projected corners in SW, SE, NE, NW order, once each.
-7. Reuse the converted SW point to close the ring.
-
-Thus each included candidate uses:
-
-```text
-center WGS84 calls: 1
-center MGRS calls: 1
-corner WGS84 calls: 4
-corner MGRS calls: 0
-```
-
-Selection from an already-built package reuses popup MGRS and performs no coordinate conversion.
-
-Any target, center, or corner conversion failure is fatal for the whole package. Candidate omission with a warning is not allowed because complete geometry/popup parity is required for the included set.
+Selection from an already-built package performs no coordinate conversion.
 
 ## Renderer-Neutral Schemas
 
-All schemas are frozen dataclasses.
-
-### Popup record
-
-```python
-@dataclass(frozen=True)
-class RealTerrainCandidatePopup:
-    candidate_id: str
-    candidate_cell_mgrs: str
-    external_coordinate_format: str
-    user_coordinate_field: str
-    state: CandidateAnalysisState
-    color_class: ColorClass
-    color_name: str
-    selectable: bool
-    overall_score: float | None
-    shielding_stability_score: float | None
-    distance_3d_m: float | None
-    within_operation_radius: bool
-    candidate_reason: str
-    source_zone: TerrainSourceZone | None
-    source_zone_state: SourceZoneAvailability
-    source_sensitive: bool | None
-    source_zone_reason: str
-    fresnel_diagnostics: CandidateFresnelDiagnostics | None
-```
-
-`external_coordinate_format == "MGRS"` and `user_coordinate_field == "candidate_cell_mgrs"`.
-
-The default user-facing dictionary contains no:
+Task 035D introduces frozen dataclasses equivalent to:
 
 ```text
-x_m
-y_m
-EPSG:5179 values
-WGS84 longitude/latitude
-raster row/col
-sampled cell center
+Wgs84MapPoint
+RealTerrainCandidatePopup
+RealTerrainCandidatePolygon
+RealTerrainTargetMarker
+MapSelectionStyle
+LaunchAreaLegendEntry
+RealTerrainLaunchAreaMapSummary
+RealTerrainLaunchAreaMapPackage
+SelectedLaunchSiteRecord
+LocalHtmlMapRenderConfig
 ```
 
-Excluded candidates retain `None` scores. Source-zone `None` and optional sensitivity values are preserved rather than defaulted.
+Existing `MapStyle`, `ColorClass`, `CandidateAnalysisState`, source-zone enums, and Fresnel diagnostics are reused.
 
-### Candidate polygon
+The default popup and selected-record dictionaries do not expose projected x/y, EPSG:5179 values, WGS84 longitude/latitude, raster row/col, or sampled-cell-center data.
 
-```python
-@dataclass(frozen=True)
-class RealTerrainCandidatePolygon:
-    feature_id: str
-    candidate_id: str
-    center_wgs84: Wgs84MapPoint
-    polygon_wgs84: tuple[Wgs84MapPoint, ...]
-    state: CandidateAnalysisState
-    color_class: ColorClass
-    style: MapStyle
-    selectable: bool
-    is_selected: bool
-    popup: RealTerrainCandidatePopup
-```
+Excluded candidates retain `None` scores. Source-zone `None`, availability state, and optional sensitivity values are preserved and are never replaced with invented defaults.
 
-Validation:
+## Visual and Legend Policy
 
 ```text
-polygon length == 5
-first point == last point
-four unique pre-closure points
-candidate_id matches popup
-state/color/selectable match popup
-style matches existing color style
-is_selected implies selectable
+green/yellow/orange/red: existing style_for_color_class values
+excluded: existing gray #808080 with opacity 0.5
+target: blue #1f77b4 with white stroke
+package-selected: black 3 px outline overlay; base fill unchanged
+browser transient preview: separate preview class/outline, never package authority
 ```
 
-### Target marker
-
-```python
-@dataclass(frozen=True)
-class RealTerrainTargetMarker:
-    marker_id: str
-    target_mgrs: str
-    position_wgs84: Wgs84MapPoint
-    style: MapStyle
-    label: str
-```
-
-Required values:
-
-```text
-marker_id = "target-marker"
-label = "target"
-style = MapStyle(
-    color_name="target",
-    fill_hex="#1f77b4",
-    stroke_hex="#ffffff",
-    opacity=1.0,
-)
-```
-
-Target MGRS is the only default user-facing target coordinate.
-
-### Selection style
-
-```python
-@dataclass(frozen=True)
-class MapSelectionStyle:
-    stroke_hex: str = "#000000"
-    stroke_width: float = 3.0
-    opacity: float = 1.0
-```
-
-The selected outline is an overlay. It does not replace the base candidate fill or color class.
-
-### Legend
-
-```python
-@dataclass(frozen=True)
-class LaunchAreaLegendEntry:
-    key: str
-    label: str
-    fill_hex: str
-    stroke_hex: str
-    opacity: float
-    count: int
-```
-
-Fixed legend order:
+Legend order is fixed:
 
 ```text
 green
@@ -472,75 +278,49 @@ selected
 target
 ```
 
-Color entries reuse `style_for_color_class(...)`. `selected` uses the selection outline and count 0 or 1. `target` uses the target style and count 1. Color counts refer to polygons included in the package, not hidden excluded source records.
+Source-zone fields and dominant-obstacle diagnostics remain popup interpretation data only. They do not change score, color, order, selectability, route cost, or waypoint cost.
 
-### Summary
-
-```python
-@dataclass(frozen=True)
-class RealTerrainLaunchAreaMapSummary:
-    source_candidate_count: int
-    rendered_candidate_count: int
-    selectable_candidate_count: int
-    selected_candidate_count: int
-    hidden_excluded_count: int
-    color_counts: tuple[tuple[str, int], ...]
-    state_counts: tuple[tuple[str, int], ...]
-    source_zone_state_counts: tuple[tuple[str, int], ...]
-```
-
-Ordering follows the existing enum declaration order. Source state counts describe the full Task 035B result. Rendered color counts describe included polygons.
-
-### Package
-
-```python
-@dataclass(frozen=True)
-class RealTerrainLaunchAreaMapPackage:
-    scenario_name: str
-    target_marker: RealTerrainTargetMarker
-    candidate_polygons: tuple[RealTerrainCandidatePolygon, ...]
-    selected_candidate_id: str | None
-    selection_style: MapSelectionStyle
-    legend: tuple[LaunchAreaLegendEntry, ...]
-    summary: RealTerrainLaunchAreaMapSummary
-    warnings: tuple[str, ...]
-```
-
-Candidate polygon order is filtered Task 035B order. Warnings begin with Task 035B warnings unchanged, followed by deterministic map-package warnings without duplicates.
-
-## Visual and Popup Policy
-
-### Base styles
-
-```text
-green/yellow/orange/red: existing style_for_color_class values
-excluded: existing gray #808080 with opacity 0.5
-target: blue fill, white stroke
-selected: black 3 px outline overlay
-```
-
-Source-zone state and dominant-obstacle diagnostics do not alter fill, score, order, or selectability.
-
-No Top-N filtering or automatic best-site selection is introduced.
-
-### Selectability
+## Selectability
 
 A candidate is selectable if and only if:
 
 ```text
-state is CandidateAnalysisState.VALID_SCORED
+state == CandidateAnalysisState.VALID_SCORED
 candidate_score is not None
 color_class is not ColorClass.EXCLUDED
 within_operation_radius is True
 ```
 
-A valid red candidate remains selectable. Its color and risk reason remain visible.
+A valid red candidate remains selectable and retains its risk reason. Visibility and selectability are independent; an excluded candidate may be visible but is never selectable.
 
-Map visibility and selectability are independent. Excluded candidates may be visible but are never selectable.
+# Master Review Amendment A — Selection Lifecycle
 
-## Selection Contract
+## Map-builder selected-ID validation
 
-### Package-based API
+When `RealTerrainLaunchAreaMapConfig.selected_candidate_id is None`:
+
+```text
+all candidate polygons have is_selected=False
+package.selected_candidate_id is None
+summary.selected_candidate_count == 0
+legend selected count == 0
+```
+
+When `selected_candidate_id` is not `None`, the builder requires:
+
+```text
+the candidate exists in the source result
+the candidate is included in the package
+the candidate is selectable
+exactly one polygon has is_selected=True
+package.selected_candidate_id equals that polygon candidate_id
+summary.selected_candidate_count == 1
+legend selected count == 1
+```
+
+Unknown, hidden, excluded, or non-selectable config-selected IDs are fatal. The builder never silently clears or substitutes an invalid selected ID.
+
+## Selection service lifecycle
 
 ```python
 def select_launch_site(
@@ -551,125 +331,327 @@ def select_launch_site(
     ...
 ```
 
-The package-based API reuses the already-converted MGRS popup value and performs no terrain, LOS, Fresnel, score, color, ranking, or coordinate recomputation.
+Exact package-state rules:
 
-### Selected record
+```text
+Case 1:
+package.selected_candidate_id is None
+→ requested candidate may be selected when it is included and selectable
+
+Case 2:
+package.selected_candidate_id == requested candidate_id
+→ selection succeeds
+
+Case 3:
+package.selected_candidate_id is not None
+and package.selected_candidate_id != requested candidate_id
+→ raise conflicting package selection error
+```
+
+The selection service does not mutate the immutable package. It returns only an immutable `SelectedLaunchSiteRecord`. It reuses the package popup MGRS and Task 035B projected point and performs no terrain, LOS, Fresnel, score, color, ranking, or coordinate recomputation.
+
+Recommended controller lifecycle:
+
+```text
+1. build package(selected_candidate_id=None)
+2. browser/controller obtains candidate_id
+3. call select_launch_site(result, package, candidate_id)
+4. receive SelectedLaunchSiteRecord
+5. optionally rebuild package with selected_candidate_id=candidate_id
+6. render synchronized package-selected outline, summary, and legend
+```
+
+Selection rejects blank, unknown, duplicate, hidden, excluded, non-selectable, missing-MGRS, record/feature/package-mismatched, or conflicting package-selected IDs. It never auto-selects a green or highest-score candidate and never substitutes another candidate.
+
+## Selection tests frozen for Task 035D
+
+```text
+unselected package + valid candidate selection succeeds
+matching selected package + same candidate succeeds
+selected package + different requested candidate fails
+selection does not mutate package
+returned record reuses popup MGRS
+optional rebuilt package has exactly one selected polygon
+selected summary and legend count are exactly one after rebuild
+unknown/hidden/excluded/non-selectable config-selected ID is fatal
+None config produces zero selected polygon/summary/legend counts
+```
+
+# Master Review Amendment B — Deterministic HTML/SVG Viewport
+
+## Renderer configuration
 
 ```python
 @dataclass(frozen=True)
-class SelectedLaunchSiteRecord:
-    candidate_id: str
-    launch_site_mgrs: str
-    external_coordinate_format: str
-    user_coordinate_field: str
-    projected_point: LocalPoint
-    color_class: ColorClass
-    overall_score: float
-    shielding_stability_score: float
-    distance_3d_m: float
-    candidate_reason: str
-    source_zone: TerrainSourceZone | None
-    source_zone_state: SourceZoneAvailability
-    source_sensitive: bool | None
-    source_zone_reason: str
-    fresnel_diagnostics: CandidateFresnelDiagnostics | None
+class LocalHtmlMapRenderConfig:
+    width_px: int = 1000
+    height_px: int = 800
+    padding_px: int = 40
 ```
 
-Required external fields:
+Validation:
 
 ```text
-external_coordinate_format = "MGRS"
-user_coordinate_field = "launch_site_mgrs"
+width_px: positive non-boolean int
+height_px: positive non-boolean int
+padding_px: non-negative non-boolean int
+2 * padding_px < width_px
+2 * padding_px < height_px
 ```
 
-`projected_point` is retained for the future route engine but excluded from the default user-facing dictionary.
+## Bounds authority
 
-### Deterministic failures
+Viewport bounds use all WGS84 points from included candidate polygon rings plus the target marker position. Repeated ring-closure points do not change bounds and are ignored when computing unique reference values. Hidden candidate geometry is not used. The target is always included.
 
-The selection service rejects:
+For deterministic reference values:
 
 ```text
-blank candidate ID
-unknown candidate ID
-duplicate candidate IDs in result or package
-record/feature/package mismatch
-candidate omitted from the package
-non-selectable or excluded candidate
-missing or empty MGRS popup value
-package selected ID inconsistent with requested ID
+reference_longitude_deg = arithmetic mean of unique bound-input longitude values
+reference_latitude_deg = arithmetic mean of unique bound-input latitude values
 ```
 
-Only one active selection is allowed. `selected_candidate_id` is either `None` or exactly one selectable candidate ID.
+## Local display projection
 
-Selection does not choose another candidate and does not automatically select a green or highest-score candidate.
+For each WGS84 point:
 
-## Zero, Partial, and Warning Policies
-
-### Zero source candidates
-
-A result with zero candidate records or zero candidate features is fatal `RealTerrainLaunchAreaMapError`. There is no candidate layer to build.
-
-### Candidates but zero selectable
-
-The map package remains valid. When excluded candidates are visible they are rendered. The package uses:
-
-```text
-selected_candidate_id = None
-warning = "no selectable launch-site candidates were produced"
+```python
+x_local = radians(longitude_deg - reference_longitude_deg) * cos(
+    radians(reference_latitude_deg)
+)
+y_local = radians(latitude_deg - reference_latitude_deg)
 ```
 
-When `include_excluded=False`, an all-excluded source result may produce an empty polygon tuple. The target, source summary, and warnings remain valid, with an additional warning:
+This is renderer-only schematic display geometry. It is not analysis geometry, distance authority, cell-size authority, or geodetic measurement output.
 
-```text
-"no candidate polygons were included by the map configuration"
+## Antimeridian rule
+
+```python
+if max(longitude_deg) - min(longitude_deg) > 180:
+    raise LocalHtmlMapRendererError
 ```
 
-### Coordinate failure
+Task 035D does not silently unwrap longitude.
 
-Any required target, included center, or included corner WGS84/MGRS conversion failure is fatal and chained as `RealTerrainLaunchAreaMapError`.
-
-### Source-zone unavailable
-
-`not_requested`, `unavailable`, and `not_applicable` are preserved in popup data and are not fatal.
-
-### Selected ID
-
-Unknown, hidden, or non-selectable selected IDs are fatal. The package does not silently clear an invalid requested selection.
-
-## Renderer Decision
-
-### Audited options
-
-| Option | Offline correctness | Selection support | CI testability | Dependency impact | Decision |
-|---|---|---|---|---|---|
-| Folium/Leaflet HTML | tiles are normally network-backed; offline tile policy needed | browser click possible but Python callback needs more integration | moderate | new dependency | defer |
-| Streamlit + map component | local server and component callback possible | strong | weak without UI environment | multiple new dependencies | defer |
-| matplotlib static preview | offline | no candidate click workflow | strong | new dependency | reject for MVP selection |
-| pure HTML/SVG | self-contained and no tile/network requirement | client-side highlight and candidate ID display possible | strong via deterministic text tests | standard library only | **selected** |
-
-### Task 035D local renderer
-
-Task 035D includes an optional self-contained HTML/SVG renderer in a separate module. The renderer:
+## SVG fitting
 
 ```text
-consumes only RealTerrainLaunchAreaMapPackage
-imports no concrete GIS library
-uses no base tile or external network resource
-renders polygons, target, legend, popup/side-panel text, and selected outline
-uses data-candidate-id attributes
-allows browser-side visual click highlighting and ID display
+usable_width = width_px - 2 * padding_px
+usable_height = height_px - 2 * padding_px
+x_span = x_max - x_min
+y_span = y_max - y_min
+```
+
+### Both spans non-zero
+
+```python
+scale = min(usable_width / x_span, usable_height / y_span)
+fitted_width = x_span * scale
+fitted_height = y_span * scale
+left = padding_px + (usable_width - fitted_width) / 2
+bottom = padding_px + (usable_height - fitted_height) / 2
+x_svg = left + (x_local - x_min) * scale
+y_svg = bottom + (y_max - y_local) * scale
+```
+
+The `y_svg` formula inverts the upward local y-axis into the downward SVG y-axis while preserving aspect ratio.
+
+### Zero x span only
+
+```text
+x_svg = width_px / 2
+scale = usable_height / y_span
+y_svg = padding_px + (y_max - y_local) * scale
+```
+
+### Zero y span only
+
+```text
+y_svg = height_px / 2
+scale = usable_width / x_span
+x_svg = padding_px + (x_local - x_min) * scale
+```
+
+### Both spans zero
+
+All points are placed at:
+
+```text
+x_svg = width_px / 2
+y_svg = height_px / 2
+```
+
+No division by zero is permitted.
+
+## Empty-polygon package
+
+A package may contain zero candidate polygons when excluded candidates are hidden. The renderer still renders the target marker, legend, summary, and warnings. It uses the target-only both-zero-span behavior and does not fail solely because the polygon tuple is empty.
+
+## Deterministic SVG output
+
+```text
+SVG viewBox: 0 0 width_px height_px
+candidate polygon element order: package candidate order
+target element: rendered after all candidate polygons
+legend order: contract legend order
+side-panel field order: popup contract order
+SVG geometry coordinates: fixed 6 decimal places
+negative zero: normalize -0.000000 to 0.000000
+encoding: UTF-8
+newline: \n
+final newline: required
+```
+
+The renderer never sorts candidates by geometry, score, color, or ID.
+
+## Viewport tests frozen for Task 035D
+
+```text
+default renderer config
+invalid width/height/padding and bool rejection
+bounds include target and visible polygons only
+local equirectangular formula
+aspect-ratio preservation
+y-axis inversion
+zero-x span
+zero-y span
+both spans zero
+target-only package
+antimeridian rejection
+candidate SVG element order
+target after polygons
+fixed 6-decimal formatting
+negative-zero normalization
+deterministic repeated output
+```
+
+# Master Review Amendment C — HTML/JavaScript Safety and Click Semantics
+
+## Escaping contract
+
+Every data-derived value inserted into HTML text or an HTML attribute is escaped with standard-library semantics equivalent to:
+
+```python
+html.escape(value, quote=True)
+```
+
+This applies to scenario name, candidate ID, MGRS, candidate reason, source-zone reason, target MGRS, diagnostics, warnings, legend labels, side-panel text, titles, and `data-candidate-id` attributes. MGRS and reason fields are always text, never markup.
+
+## Prohibited HTML/JavaScript behavior
+
+```text
+no raw data interpolation into executable JavaScript
+no data-derived innerHTML assignment
+no eval
+no Function constructor
+no document.write with package data
+no inline event-handler attributes derived from data
+no external script, font, tile, image, or network URL
+no raw package JSON embedded inside a script element
+```
+
+Client-side updates use only safe DOM APIs such as:
+
+```text
+textContent
+classList
+dataset
+```
+
+The inline script operates on already-rendered, escaped DOM attributes and text elements. If a future task requires embedded structured data, it must separately define safe JSON serialization that neutralizes `<`, `>`, `&`, U+2028, U+2029, and closing-script sequences. Task 035D does not embed package JSON.
+
+## Local content security policy
+
+The HTML includes the following exact deterministic CSP meta content:
+
+```text
+default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;
+```
+
+No network origin is allowed.
+
+## Three selection states
+
+The renderer and documentation must distinguish:
+
+```text
+1. package-authoritative selection
+2. transient browser preview
+3. Python SelectedLaunchSiteRecord
+```
+
+### Package-authoritative selection
+
+Package-authoritative selection comes only from `package.selected_candidate_id`. It sets the initial selected outline and the static selected counts in summary and legend.
+
+### Transient browser preview
+
+A selectable candidate click may update side-panel details, expose the candidate ID for the controller, and apply a transient preview outline. The UI labels this state `preview only` or an equivalent concise phrase.
+
+A transient preview:
+
+```text
+does not mutate the immutable package
+does not change package.selected_candidate_id
+does not alter static summary or legend counts
+does not create SelectedLaunchSiteRecord
+does not claim Python selection succeeded
+```
+
+A non-selectable or excluded candidate click may show details but must not receive the selectable preview class. It displays `selectable=false` and the exclusion reason.
+
+Clearing transient preview or resetting the page deterministically restores the package-selected outline, or no selected outline when `package.selected_candidate_id is None`.
+
+## Safety and click tests frozen for Task 035D
+
+Malicious values include:
+
+```text
+<script>
+</script>
+double quotes
+apostrophes
+ampersands
+angle brackets
+attribute-breaking text
+```
+
+Required tests verify:
+
+```text
+malicious values appear only as escaped inert text
+no raw closing-script injection
+no raw event-handler attribute injection
+no data-derived innerHTML assignment
+data-candidate-id is safely escaped
+no eval, Function, or document.write with package data
+no embedded raw package JSON
+exact CSP string is present
+no external URLs or resources
+selectable click may receive transient preview class
+non-selectable click cannot receive selectable preview class
+browser click does not alter serialized summary or legend counts
+initial package-selected state is represented separately
+preview clear/reset restores package-selected state
+browser click does not create or claim a Python selected record
+```
+
+## Renderer File Boundary
+
+The optional renderer:
+
+```text
+consumes only RealTerrainLaunchAreaMapPackage and LocalHtmlMapRenderConfig
 writes only to an explicit output path
-requires force=True to overwrite an existing file
+requires force=True to overwrite
 opens no browser automatically
+uses no base tile or external network resource
+adds no dependency
+produces deterministic UTF-8 text
 ```
 
-Browser-side click state is not the authoritative Python selection record. The user/controller passes the displayed candidate ID to `select_launch_site(...)`. A browser-to-Python callback server or Streamlit component is deferred to a later UI task.
+Generated HTML contains renderer WGS84 geometry and MGRS popup data. It is a local potentially sensitive artifact, is not committed, and is not attached to public records without separate review.
 
-Generated HTML contains renderer WGS84 geometry and MGRS popup data. It is a local potentially sensitive artifact, is excluded from Git, and must not be attached to public records without separate review.
-
-Renderer unavailability is not a package error because the renderer uses only the Python standard library. File permission, invalid path, or overwrite-policy failures are renderer-specific errors and do not invalidate the package.
-
-## Task 035D Source Scope
+## Task 035D Source and Test Scope
 
 Target agent:
 
@@ -696,16 +678,16 @@ Narrow update:
 ```text
 src/uav_rf_terrain/__init__.py
 README.md
-Task 035D handoff / EXP / indexes
+Task 035D handoff, EXP, and indexes
 ```
 
-No dependency change is approved. The existing optional `gis` extra is used for local concrete coordinate adapters. Core map-package, selection, and HTML/SVG tests use fake converters and standard-library behavior so standard CI does not require GIS packages.
+No dependency or workflow change is approved. Core map-package, selection, viewport, escaping, and HTML tests use fake converters and standard-library behavior so standard CI does not require GIS packages. Concrete coordinate adapters use lazy optional imports and require local validation.
 
 Task 035D must use TDD and keep its PR Draft until GPT Master review and explicit user approval.
 
 ## Protected Runtime Scope
 
-Do not modify without an evidenced blocker and explicit scope review:
+Do not modify without an evidenced blocker and separate scope review:
 
 ```text
 src/uav_rf_terrain/real_terrain_candidate_analysis.py
@@ -729,68 +711,14 @@ pyproject.toml
 lock files
 ```
 
-Preserve:
-
-```text
-Task 035B candidate order, state, score, color, and actual geometry
-dsm_fresnel_score == average_fresnel_score
-existing score weights and strict LOS cap
-existing color thresholds
-source-zone non-scoring semantics
-route and waypoint costs
-synthetic placeholder builder regression
-preview/report/appendix/CLI behavior
-MGRS external-output policy
-```
-
-## Test Matrix for Task 035D
-
-At minimum:
-
-```text
-map config positive finite non-boolean cell size
-result/record/feature type validation
-record/feature count and ID parity
-duplicate IDs
-state/color/score/reason/source/diagnostic parity
-actual center geometry; no placeholder values
-projected SW/SE/NE/NW/closed-ring order
-counter-clockwise projected ring
-four unique corner converter calls
-center and target converter call order/count
-WGS84 longitude/latitude range and axis order
-MGRS precision 5 and non-empty uppercase output
-converter failure fatal
-include_excluded true/false
-partial grid order preservation
-zero source candidates fatal
-zero selectable warning
-all-excluded hidden polygon warning
-existing color style reuse
-legend order and counts
-target and selected visual metadata
-red valid candidate selectable
-unknown/blank/hidden/excluded selection failures
-selected record exact reuse without recomputation
-no internal coordinates in default popup/selected dictionaries
-source-zone unavailable preservation
-dominant diagnostics popup-only behavior
-package builder writes no file
-HTML/SVG deterministic offline output
-explicit output and force-overwrite behavior
-HTML contains no external script, tile, font, or network URL
-no browser auto-open
-no committed generated artifact
-existing map/display/preview/report/CLI regressions
-package import does not eagerly import pyproj or mgrs
-```
+Preserve Task 035B candidate order, state, score, color, actual geometry, score weights, strict LOS cap, color thresholds, source-zone non-scoring semantics, route and waypoint costs, synthetic placeholder regressions, preview/report/appendix/CLI behavior, and MGRS external-output policy.
 
 ## Interpretation Limits
 
 The map displays Task 035B offline terrain/surface-obstacle risk proxy results. It is not a measured coverage map, RF link budget, terrain-accuracy certificate, communication guarantee, reconnaissance guarantee, flight-feasibility determination, or airspace approval result.
 
-Candidate polygons visualize center-based analysis cells. Polygon area does not mean every point inside the cell was separately sampled or validated.
+Candidate polygons visualize center-based analysis cells. Polygon area does not mean every point inside the cell was separately sampled or validated. The local equirectangular SVG transform is a schematic display projection and is not an analysis or geodetic measurement authority.
 
 ## Public Repository Sensitivity Check
 
-This contract includes no actual coordinate, private path, GIS raster, generated HTML, screenshot, QGIS project, credential, operational command, external-device command, autopilot command, or flight-control output.
+This contract contains no actual coordinate, private local path, GIS raster, generated HTML, screenshot, credential, operational command, external-device command, autopilot command, or flight-control output.
