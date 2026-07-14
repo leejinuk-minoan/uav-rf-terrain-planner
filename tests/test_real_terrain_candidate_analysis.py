@@ -177,6 +177,79 @@ def test_source_zone_provider_failure_marks_only_eligible_records_unavailable() 
     )
 
 
+def test_zero_eligible_source_zone_batch_does_not_call_provider_or_warn() -> None:
+    @dataclass
+    class NoCandidateDataAdapter(GridAdapter):
+        def get_dem_msl(self, x_index: int, y_index: int) -> float:
+            if (x_index, y_index) != (2, 2):
+                raise TerrainNoDataError("fixture candidate NoData")
+            return super().get_dem_msl(x_index, y_index)
+
+    calls: list[tuple[LocalPoint, ...]] = []
+
+    def provider(points: tuple[LocalPoint, ...]) -> tuple[TerrainSourceZone, ...]:
+        calls.append(points)
+        raise RuntimeError("empty batches must not be sent")
+
+    config = _config(include_center=False, include_out_of_radius=False)
+    baseline = analyze_real_terrain_launch_area(NoCandidateDataAdapter(), config)
+    result = analyze_real_terrain_launch_area(
+        NoCandidateDataAdapter(),
+        config,
+        source_zone_provider=provider,
+    )
+
+    assert calls == []
+    assert result.candidate_records == baseline.candidate_records
+    assert all(
+        record.source_zone_state is SourceZoneAvailability.NOT_APPLICABLE
+        for record in result.candidate_records
+    )
+    assert result.warnings == ("no valid scored candidates were produced",)
+
+
+@pytest.mark.parametrize(
+    "provider_result",
+    [
+        (),
+        ("not-a-source-zone",),
+    ],
+)
+def test_eligible_source_zone_provider_invalid_results_preserve_core_records(
+    provider_result: tuple[object, ...],
+) -> None:
+    calls: list[tuple[LocalPoint, ...]] = []
+    config = _config()
+    baseline = analyze_real_terrain_launch_area(GridAdapter(), config)
+
+    def provider(points: tuple[LocalPoint, ...]) -> tuple[object, ...]:
+        calls.append(points)
+        return provider_result
+
+    result = analyze_real_terrain_launch_area(
+        GridAdapter(),
+        config,
+        source_zone_provider=provider,
+    )
+    expected_points = tuple(
+        record.candidate_point
+        for record in baseline.candidate_records
+        if record.source_zone_state is SourceZoneAvailability.NOT_REQUESTED
+    )
+
+    assert calls == [expected_points]
+    assert result.warnings == ("source-zone provider unavailable",)
+    assert [record.candidate_id for record in result.candidate_records] == [
+        record.candidate_id for record in baseline.candidate_records
+    ]
+    assert [record.state for record in result.candidate_records] == [
+        record.state for record in baseline.candidate_records
+    ]
+    assert [record.candidate_score for record in result.candidate_records] == [
+        record.candidate_score for record in baseline.candidate_records
+    ]
+
+
 def test_invalid_config_fails_before_adapter_access() -> None:
     adapter = GridAdapter()
 
@@ -184,6 +257,41 @@ def test_invalid_config_fails_before_adapter_access() -> None:
         analyze_real_terrain_launch_area(adapter, _config(scenario_name=" "))
 
     assert adapter.metadata_calls == 0
+
+
+def test_public_safe_ordinary_scenario_name_is_accepted() -> None:
+    config = _config(scenario_name="South Korea terrain candidate review")
+
+    assert config.scenario_name == "South Korea terrain candidate review"
+
+
+def test_public_https_scenario_name_uses_shared_public_safe_label_policy() -> None:
+    config = _config(scenario_name="https://example.org/scenario-reference")
+
+    assert config.scenario_name == "https://example.org/scenario-reference"
+
+
+@pytest.mark.parametrize(
+    "scenario_name",
+    [
+        "file:///Users/example/private-input.tif",
+        "C:/Users/example/private-input.tif",
+        r"C:\Users\example\private-input.tif",
+        r"\\server\private-share\input.tif",
+        "/home/example/private-input.tif",
+    ],
+)
+def test_private_scenario_name_is_rejected_before_adapter_access_without_path_echo(
+    scenario_name: str,
+) -> None:
+    adapter = GridAdapter()
+
+    with pytest.raises(RealTerrainLaunchAreaAnalysisError, match="scenario_name") as exc_info:
+        _config(scenario_name=scenario_name)
+
+    assert scenario_name not in str(exc_info.value)
+    assert adapter.metadata_calls == 0
+    assert adapter.read_calls == 0
 
 
 def test_candidate_count_guard_fails_before_session_metadata_access() -> None:

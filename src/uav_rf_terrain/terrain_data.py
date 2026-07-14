@@ -217,10 +217,12 @@ def _validate_metadata_strings(values: tuple[str, ...]) -> None:
     for value in values:
         if not value.strip():
             raise TerrainDataError("metadata string fields must not be blank.")
-        _raise_for_private_path(value)
+        validate_public_safe_label(value)
 
 
-def _raise_for_private_path(value: str) -> None:
+def validate_public_safe_label(value: str) -> None:
+    """Reject narrow private local-path forms without repeating the input value."""
+
     normalized = value.strip().casefold()
     if normalized.startswith(_PUBLIC_URL_PREFIXES):
         return
@@ -230,7 +232,7 @@ def _raise_for_private_path(value: str) -> None:
         or _UNC_PATH_PATTERN.search(normalized)
         or _POSIX_PRIVATE_PATH_PATTERN.search(normalized)
     ):
-        raise TerrainDataError("metadata must not include private local paths.")
+        raise TerrainDataError("public-safe label must not include private local paths.")
 
 
 def _require_equal(field_name: str, dem_value: object, dsm_value: object) -> None:

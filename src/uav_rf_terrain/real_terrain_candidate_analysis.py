@@ -28,6 +28,7 @@ from .terrain_data import (
     TerrainNoDataError,
     TerrainPointOutsideError,
     TerrainPointSample,
+    validate_public_safe_label,
 )
 
 
@@ -91,6 +92,12 @@ class RealTerrainLaunchAreaConfig:
     def __post_init__(self) -> None:
         if not isinstance(self.scenario_name, str) or not self.scenario_name.strip():
             raise RealTerrainLaunchAreaAnalysisError("scenario_name must be non-empty.")
+        try:
+            validate_public_safe_label(self.scenario_name)
+        except TerrainDataError as exc:
+            raise RealTerrainLaunchAreaAnalysisError(
+                "scenario_name must not include private local paths."
+            ) from exc
         if not isinstance(self.target_point, LocalPoint):
             raise RealTerrainLaunchAreaAnalysisError("target_point must be LocalPoint.")
         _finite("target_point.x_m", self.target_point.x_m)
@@ -505,6 +512,8 @@ def _attach_source_zones(
         if record.sampled_cell_center is not None and record.state not in ineligible
     ]
     if provider is None:
+        return records, None
+    if not eligible_indices:
         return records, None
     points = tuple(records[index].candidate_point for index in eligible_indices)
     try:
