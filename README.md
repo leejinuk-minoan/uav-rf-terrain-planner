@@ -241,6 +241,10 @@ Task 032CD adds optional `average_fresnel_score`, `worst_obstacle_score`, and ne
 
 Task 033A defines the optional preview/report contract, and Task 033B implements its typed candidate-to-preview diagnostic projection and deterministic report section while keeping appendix-table columns and scoring unchanged.
 
+Task 034D adds opt-in diagnostic appendix-table stdout and UTF-8 file output without changing report composition or existing default outputs.
+
+Task 035A defines the first real-terrain candidate-analysis contract: EPSG:5179 target input, one DEM/DSM analysis session, explicit candidate exclusion states, production-neutral records, actual projected rendering-independent candidate features, and optional source-zone metadata. Task 035B implementation, MGRS wrapper, map rendering, route, waypoint, and UI remain future work.
+
 ## 향후 고도 판단 보조 기능
 
 향후 Task에서는 공역사용승인 신청 고도의 과소·과도 산정을 줄이기 위해 DSM 기반 LOS/Fresnel Clearance 조건을 만족하는 최소 요구 MSL을 산출하고, 직선 운용구간 내 최고 지표고 기준 AGL로 변환하는 기능을 검토한다.
