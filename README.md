@@ -243,7 +243,7 @@ Task 033A defines the optional preview/report contract, and Task 033B implements
 
 Task 034D adds opt-in diagnostic appendix-table stdout and UTF-8 file output without changing report composition or existing default outputs.
 
-Task 035A defines the first real-terrain candidate-analysis contract. Task 035B implements the EPSG:5179 developer/runtime engine boundary: one DEM/DSM analysis session, explicit candidate exclusion states, production-neutral records, actual projected rendering-independent candidate features, and optional source-zone metadata. MGRS wrapper, map rendering, route, waypoint, and UI remain future work.
+Task 035A defined the first real-terrain candidate-analysis contract, and Task 035B implemented the EPSG:5179 developer/runtime engine boundary with one DEM/DSM analysis session, explicit candidate exclusion states, production-neutral records, actual projected candidate features, and optional source-zone metadata. Task 035C defines the next renderer-neutral map and launch-site selection boundary: explicit candidate cell size, EPSG:5179 polygons, WGS84 renderer geometry, MGRS popup/selected-site fields, candidate-ID selection, and optional self-contained local HTML/SVG output. Task 035C is docs-only; Task 035D runtime implementation remains future work.
 
 ## 향후 고도 판단 보조 기능
 

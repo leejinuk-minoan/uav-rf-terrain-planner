@@ -60,3 +60,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260714-050 - diagnostic appendix CLI output implementation](EXP-20260714-050-diagnostic-appendix-cli-output-implementation.md)
 - [EXP-20260714-051 - real-terrain launch-area contract audit](EXP-20260714-051-real-terrain-launch-area-contract-audit.md)
 - [EXP-20260714-052 - real-terrain launch-area candidate analysis implementation](EXP-20260714-052-real-terrain-launch-area-candidate-analysis-implementation.md)
+- [EXP-20260714-053 - real-terrain launch-area map and selection contract audit](EXP-20260714-053-real-terrain-launch-area-map-selection-contract-audit.md)
