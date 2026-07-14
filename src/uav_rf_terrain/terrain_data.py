@@ -5,9 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isfinite
 import re
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from .synthetic import SyntheticTerrainGrid
+
+if TYPE_CHECKING:
+    from .coordinates import LocalPoint
 
 Bounds = tuple[float, float, float, float]
 
@@ -23,6 +26,19 @@ _POSIX_PRIVATE_PATH_PATTERN = re.compile(r"(^|[\s\"'`(=])(/users/|/home/)")
 
 class TerrainDataError(ValueError):
     """Raised when terrain metadata or adapter access is invalid."""
+
+
+@dataclass(frozen=True)
+class TerrainPointSample:
+    """One effective DEM/DSM point sample returned by an analysis session."""
+
+    requested_point: LocalPoint
+    cell_center_point: LocalPoint
+    x_index: int
+    y_index: int
+    dem_msl: float
+    dsm_msl: float
+    surface_delta_m: float
 
 
 @dataclass(frozen=True)
