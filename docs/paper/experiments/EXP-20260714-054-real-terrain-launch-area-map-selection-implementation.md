@@ -21,6 +21,13 @@ EPSG:5179 remains the analysis and polygon-construction authority, while MGRS is
 default user-facing coordinate. Browser clicks are transient preview only and do not
 create a Python selected-site record.
 
+## Local Result
+
+The amendment-focused coordinate, map, selection, and renderer tests passed 32 cases;
+the full local suite passed 863 cases. `compileall`, Ruff, mypy, and diff validation
+also passed. This is source-level verification only: no browser automation, actual GIS
+adapter smoke, or real-data rendering was executed.
+
 ## Interpretation Limit
 
 Map polygons and SVG are deterministic visualization artifacts for an offline terrain

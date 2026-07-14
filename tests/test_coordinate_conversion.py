@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import uav_rf_terrain.coordinate_conversion as coordinate_conversion
 from uav_rf_terrain.coordinate_conversion import (
     CoordinateConversionError,
     Epsg5179ToMgrsConverter,
@@ -57,3 +58,45 @@ def test_lazy_coordinate_adapters_preserve_epsg_axis_and_mgrs_precision(monkeypa
     assert transformer_calls == [("EPSG:5179", "EPSG:4326", True)]
     assert transform_calls == [(950000.0, 1950000.0), (950000.0, 1950000.0)]
     assert mgrs_calls == [(37.5, 127.0, 5)]
+
+
+def test_mgrs_invalid_bytes_stay_inside_coordinate_conversion_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeMgrs:
+        def toMGRS(self, latitude: float, longitude: float, *, MGRSPrecision: int) -> bytes:
+            return b"\xff"
+
+    monkeypatch.setitem(sys.modules, "mgrs", SimpleNamespace(MGRS=FakeMgrs))
+    converter = Epsg5179ToMgrsConverter(lambda point: Wgs84MapPoint(127.0, 37.5))
+
+    with pytest.raises(CoordinateConversionError, match="MGRS conversion"):
+        converter(LocalPoint(1.0, 1.0), precision=5)
+
+
+def test_lazy_adapters_do_not_import_optional_packages_until_called(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unavailable(name: str) -> object:
+        raise ModuleNotFoundError(name)
+
+    monkeypatch.setattr(coordinate_conversion.importlib, "import_module", unavailable)
+    wgs84 = Epsg5179ToWgs84Converter()
+    mgrs = Epsg5179ToMgrsConverter(lambda point: Wgs84MapPoint(127.0, 37.5))
+
+    with pytest.raises(CoordinateConversionError, match="pyproj"):
+        wgs84(LocalPoint(1.0, 1.0))
+    with pytest.raises(CoordinateConversionError, match="mgrs"):
+        mgrs(LocalPoint(1.0, 1.0), precision=5)
+
+
+@pytest.mark.parametrize("output", [None, "   ", b"   "])
+def test_mgrs_result_validation_uses_domain_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    output: object,
+) -> None:
+    class FakeMgrs:
+        def toMGRS(self, latitude: float, longitude: float, *, MGRSPrecision: int) -> object:
+            return output
+
+    monkeypatch.setitem(sys.modules, "mgrs", SimpleNamespace(MGRS=FakeMgrs))
+    converter = Epsg5179ToMgrsConverter(lambda point: Wgs84MapPoint(127.0, 37.5))
+
+    with pytest.raises(CoordinateConversionError, match="MGRS conversion"):
+        converter(LocalPoint(1.0, 1.0), precision=5)

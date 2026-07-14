@@ -16,8 +16,12 @@ waypoint, preview, or CLI behavior.
   returns an immutable MGRS-facing record, and does not recompute terrain, LOS, Fresnel,
   score, color, or coordinate conversion.
 - HTML/SVG is self-contained, deterministic, uses a fixed six-decimal schematic viewport,
-  escapes data-derived content, uses the reviewed CSP, is explicit-path only, and does not
-  open a browser.
+  renders target MGRS, static counts, and ordered popup details, escapes data-derived
+  content, uses the reviewed CSP, is explicit-path only, and does not open a browser.
+- Browser preview reads escaped hidden detail DOM with `dataset` comparison and `textContent`;
+  it cannot create a Python selected record or alter static summary and legend values.
+- Package, popup, polygon, target, legend, summary, and selected-record replacements are
+  validated before map rendering or candidate selection.
 
 ## Safety and Limits
 
@@ -26,3 +30,9 @@ waypoint, preview, or CLI behavior.
 - The local smoke example consumes an application-prepared map package and does not create
   a terrain analysis result or publish coordinates.
 - The output remains a research/education/simulation visualization, not RF, flight, or approval evidence.
+
+## Local Verification
+
+On the amendment head, the focused Task 035D files passed 32 tests and the full suite
+passed 863 tests. `compileall`, Ruff, mypy, and `git diff --check` also passed. Browser
+automation, real GIS adapter smoke, and generated HTML inspection were not run.

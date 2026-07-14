@@ -95,16 +95,20 @@ class Epsg5179ToMgrsConverter:
                 wgs84.longitude_deg,
                 MGRSPrecision=precision,
             )
+            if isinstance(output, bytes):
+                output = output.decode("ascii")
+            if not isinstance(output, str):
+                raise TypeError("MGRS conversion did not return text.")
+            normalized = output.strip().upper()
+            if not normalized:
+                raise ValueError("MGRS conversion returned empty text.")
+            return normalized
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except CoordinateConversionError:
+            raise
         except Exception as exc:
             raise CoordinateConversionError("WGS84 to MGRS conversion failed.") from exc
-        if isinstance(output, bytes):
-            output = output.decode("ascii")
-        if not isinstance(output, str):
-            raise CoordinateConversionError("MGRS conversion returned invalid text.")
-        normalized = output.strip().upper()
-        if not normalized:
-            raise CoordinateConversionError("MGRS conversion returned empty text.")
-        return normalized
 
     def _get_mgrs(self) -> Any:
         if self._mgrs is not None:

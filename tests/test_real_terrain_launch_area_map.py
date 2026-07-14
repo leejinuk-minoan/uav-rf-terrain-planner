@@ -43,6 +43,8 @@ def test_map_config_requires_explicit_positive_cell_size_and_actual_bool() -> No
         RealTerrainLaunchAreaMapConfig(candidate_cell_size_m=0.0)
     with pytest.raises(RealTerrainLaunchAreaMapError):
         RealTerrainLaunchAreaMapConfig(candidate_cell_size_m=180.0, include_excluded=1)  # type: ignore[arg-type]
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="stripped"):
+        RealTerrainLaunchAreaMapConfig(candidate_cell_size_m=180.0, selected_candidate_id=" candidate-001 ")
 
 
 def test_map_point_ring_is_closed_with_four_distinct_wgs84_corners() -> None:
@@ -122,7 +124,10 @@ def test_selection_and_renderer_keep_package_selection_separate_from_preview() -
     assert selected.external_coordinate_format == "MGRS"
     assert package.selected_candidate_id is None
     assert "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;" in html
-    assert "preview candidate:" in html
+    assert "preview only" in html
+    assert "target_mgrs" in html
+    assert "source_candidate_count" in html
+    assert "candidate_cell_mgrs" in html
     assert 'id="reset-preview"' in html
     assert "reset-preview" in html
     assert "innerHTML" not in html
@@ -131,7 +136,7 @@ def test_selection_and_renderer_keep_package_selection_separate_from_preview() -
         select_launch_site(result, selected_package, "other")
 
 
-def test_selection_rejects_an_empty_popup_mgrs_value() -> None:
+def test_popup_rejects_an_empty_mgrs_value_at_construction() -> None:
     def wgs(point: LocalPoint) -> Wgs84MapPoint:
         return Wgs84MapPoint(point.x_m / 1000.0, point.y_m / 1000.0)
 
@@ -146,13 +151,12 @@ def test_selection_rejects_an_empty_popup_mgrs_value() -> None:
         projected_to_mgrs=mgrs,
     )
     polygon = package.candidate_polygons[0]
-    invalid_package = replace(
-        package,
-        candidate_polygons=(replace(polygon, popup=replace(polygon.popup, candidate_cell_mgrs="")),),
-    )
-
-    with pytest.raises(LaunchSiteSelectionError, match="MGRS"):
-        select_launch_site(result, invalid_package, "candidate-001")
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="candidate_cell_mgrs"):
+        replace(polygon.popup, candidate_cell_mgrs="")
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="valid popup requires score"):
+        replace(polygon.popup, overall_score=None)
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="target_mgrs"):
+        replace(package.target_marker, target_mgrs=" ")
 
 
 def test_renderer_handles_edge_viewports_and_normalizes_negative_zero() -> None:
@@ -220,17 +224,37 @@ def test_renderer_supports_target_only_package() -> None:
     def mgrs(point: LocalPoint, *, precision: int) -> str:
         return "52SCB1234512345"
 
+    result = _result()
+    record = replace(
+        result.candidate_records[0],
+        state=CandidateAnalysisState.OUTSIDE_OPERATING_RADIUS,
+        candidate_score=None,
+        color_class=ColorClass.EXCLUDED,
+        within_operation_radius=False,
+        distance_3d_m=None,
+    )
+    feature = replace(
+        result.candidate_features[0],
+        state=CandidateAnalysisState.OUTSIDE_OPERATING_RADIUS,
+        color_class=ColorClass.EXCLUDED,
+        style=style_for_color_class(ColorClass.EXCLUDED),
+        overall_score=None,
+        shielding_stability_score=None,
+        within_operation_radius=False,
+        distance_3d_m=None,
+    )
     package = build_real_terrain_launch_area_map_package(
-        _result(),
-        RealTerrainLaunchAreaMapConfig(10.0),
+        replace(result, candidate_records=(record,), candidate_features=(feature,)),
+        RealTerrainLaunchAreaMapConfig(10.0, include_excluded=False),
         projected_to_wgs84=wgs,
         projected_to_mgrs=mgrs,
     )
 
-    html = render_local_html_map(replace(package, candidate_polygons=()))
+    html = render_local_html_map(package)
 
     assert "<circle class=\"target\"" in html
     assert "<polygon " not in html
+    assert "no candidate previewed" in html
 
 
 def test_builder_rejects_feature_parity_errors_before_conversion() -> None:
@@ -244,6 +268,102 @@ def test_builder_rejects_feature_parity_errors_before_conversion() -> None:
     with pytest.raises(RealTerrainLaunchAreaMapError, match="parity"):
         build_real_terrain_launch_area_map_package(
             invalid,
+            RealTerrainLaunchAreaMapConfig(10.0),
+            projected_to_wgs84=should_not_convert,
+            projected_to_mgrs=lambda point, *, precision: "52SCB1234512345",
+        )
+
+
+def test_builder_rejects_empty_feature_id_before_conversion() -> None:
+    def should_not_convert(point: LocalPoint) -> Wgs84MapPoint:
+        raise AssertionError("conversion must not run for invalid parity")
+
+    result = _result()
+    invalid = replace(result, candidate_features=(replace(result.candidate_features[0], feature_id=""),))
+
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="feature IDs"):
+        build_real_terrain_launch_area_map_package(
+            invalid,
+            RealTerrainLaunchAreaMapConfig(10.0),
+            projected_to_wgs84=should_not_convert,
+            projected_to_mgrs=lambda point, *, precision: "52SCB1234512345",
+        )
+
+
+@pytest.mark.parametrize(
+    ("record_change", "feature_change", "message"),
+    [
+        (
+            {"color_class": ColorClass.EXCLUDED},
+            {"color_class": ColorClass.EXCLUDED, "style": style_for_color_class(ColorClass.EXCLUDED)},
+            "valid candidate",
+        ),
+        ({"candidate_score": None}, {"overall_score": None, "shielding_stability_score": None}, "valid candidate"),
+        (
+            {
+                "state": CandidateAnalysisState.OUTSIDE_OPERATING_RADIUS,
+                "candidate_score": CandidateScore(10.0, 100.0, 100.0, 100.0, 90.0, 100.0, 98.0),
+                "color_class": ColorClass.EXCLUDED,
+            },
+            {
+                "state": CandidateAnalysisState.OUTSIDE_OPERATING_RADIUS,
+                "color_class": ColorClass.EXCLUDED,
+                "style": style_for_color_class(ColorClass.EXCLUDED),
+            },
+            "excluded candidate",
+        ),
+    ],
+)
+def test_builder_rejects_state_score_color_invariants_before_conversion(
+    record_change: dict[str, object],
+    feature_change: dict[str, object],
+    message: str,
+) -> None:
+    def should_not_convert(point: LocalPoint) -> Wgs84MapPoint:
+        raise AssertionError("conversion must not run for invalid state invariant")
+
+    result = _result()
+    record = replace(result.candidate_records[0], **record_change)
+    feature = replace(result.candidate_features[0], **feature_change)
+    invalid = replace(result, candidate_records=(record,), candidate_features=(feature,))
+
+    with pytest.raises(RealTerrainLaunchAreaMapError, match=message):
+        build_real_terrain_launch_area_map_package(
+            invalid,
+            RealTerrainLaunchAreaMapConfig(10.0),
+            projected_to_wgs84=should_not_convert,
+            projected_to_mgrs=lambda point, *, precision: "52SCB1234512345",
+        )
+
+
+def test_package_rejects_summary_and_legend_replacements_that_disagree_with_polygons() -> None:
+    def wgs(point: LocalPoint) -> Wgs84MapPoint:
+        return Wgs84MapPoint(point.x_m / 1000.0, point.y_m / 1000.0)
+
+    package = build_real_terrain_launch_area_map_package(
+        _result(),
+        RealTerrainLaunchAreaMapConfig(10.0),
+        projected_to_wgs84=wgs,
+        projected_to_mgrs=lambda point, *, precision: "52SCB1234512345",
+    )
+
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="rendered"):
+        replace(package, summary=replace(package.summary, rendered_candidate_count=0))
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="legend"):
+        replace(package, legend=tuple(reversed(package.legend)))
+
+
+def test_builder_rejects_non_boolean_radius_parity_before_conversion() -> None:
+    def should_not_convert(point: LocalPoint) -> Wgs84MapPoint:
+        raise AssertionError("conversion must not run for invalid radius type")
+
+    result = _result()
+    record = replace(result.candidate_records[0], within_operation_radius=1)
+    feature = replace(result.candidate_features[0], within_operation_radius=1)
+
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="radius"):
+        build_real_terrain_launch_area_map_package(
+            replace(result, candidate_records=(record,), candidate_features=(feature,)),
             RealTerrainLaunchAreaMapConfig(10.0),
             projected_to_wgs84=should_not_convert,
             projected_to_mgrs=lambda point, *, precision: "52SCB1234512345",

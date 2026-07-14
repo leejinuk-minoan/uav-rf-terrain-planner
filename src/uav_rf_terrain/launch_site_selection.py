@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 from .coordinates import LocalPoint
 from .fresnel_diagnostics import CandidateFresnelDiagnostics
@@ -12,7 +13,12 @@ from .real_terrain_candidate_analysis import (
     RealTerrainLaunchAreaResult,
     SourceZoneAvailability,
 )
-from .real_terrain_launch_area_map import RealTerrainCandidatePolygon, RealTerrainLaunchAreaMapPackage
+from .real_terrain_launch_area_map import (
+    RealTerrainCandidatePolygon,
+    RealTerrainLaunchAreaMapError,
+    RealTerrainLaunchAreaMapPackage,
+    validate_real_terrain_launch_area_map_package,
+)
 from .schemas import ColorClass
 from .source_zones import TerrainSourceZone
 
@@ -42,12 +48,37 @@ class SelectedLaunchSiteRecord:
     fresnel_diagnostics: CandidateFresnelDiagnostics | None
 
     def __post_init__(self) -> None:
-        if not self.launch_site_mgrs.strip():
-            raise LaunchSiteSelectionError("launch_site_mgrs must be non-empty.")
+        _required_text("candidate_id", self.candidate_id)
+        _required_text("launch_site_mgrs", self.launch_site_mgrs)
+        if self.launch_site_mgrs != self.launch_site_mgrs.upper():
+            raise LaunchSiteSelectionError("launch_site_mgrs must be uppercase.")
         if self.external_coordinate_format != "MGRS":
             raise LaunchSiteSelectionError("external_coordinate_format must be MGRS.")
         if self.user_coordinate_field != "launch_site_mgrs":
             raise LaunchSiteSelectionError("user_coordinate_field must be launch_site_mgrs.")
+        if not isinstance(self.projected_point, LocalPoint):
+            raise LaunchSiteSelectionError("projected_point must be LocalPoint.")
+        if not isinstance(self.color_class, ColorClass) or self.color_class is ColorClass.EXCLUDED:
+            raise LaunchSiteSelectionError("selected color_class must be a non-excluded ColorClass.")
+        for name, value in (
+            ("overall_score", self.overall_score),
+            ("shielding_stability_score", self.shielding_stability_score),
+            ("distance_3d_m", self.distance_3d_m),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (float, int)) or not isfinite(value):
+                raise LaunchSiteSelectionError(f"{name} must be finite numeric.")
+        _required_text("candidate_reason", self.candidate_reason)
+        _required_text("source_zone_reason", self.source_zone_reason)
+        if self.source_zone is not None and not isinstance(self.source_zone, TerrainSourceZone):
+            raise LaunchSiteSelectionError("source_zone must be approved enum or None.")
+        if not isinstance(self.source_zone_state, SourceZoneAvailability):
+            raise LaunchSiteSelectionError("source_zone_state must use approved enum.")
+        if self.source_sensitive is not None and not isinstance(self.source_sensitive, bool):
+            raise LaunchSiteSelectionError("source_sensitive must be bool or None.")
+        if self.fresnel_diagnostics is not None and not isinstance(
+            self.fresnel_diagnostics, CandidateFresnelDiagnostics
+        ):
+            raise LaunchSiteSelectionError("fresnel_diagnostics must be approved diagnostics or None.")
 
     def to_user_facing_dict(self) -> dict[str, object]:
         return {
@@ -77,12 +108,18 @@ def select_launch_site(
 ) -> SelectedLaunchSiteRecord:
     """Select one included selectable candidate without mutating or recomputing analysis."""
 
+    if not isinstance(candidate_id, str) or not candidate_id.strip():
+        raise LaunchSiteSelectionError("candidate_id must be non-empty.")
+    if candidate_id != candidate_id.strip():
+        raise LaunchSiteSelectionError("candidate_id must be stripped.")
     if not isinstance(result, RealTerrainLaunchAreaResult):
         raise LaunchSiteSelectionError("result must be RealTerrainLaunchAreaResult.")
     if not isinstance(package, RealTerrainLaunchAreaMapPackage):
         raise LaunchSiteSelectionError("package must be RealTerrainLaunchAreaMapPackage.")
-    if not isinstance(candidate_id, str) or not candidate_id.strip():
-        raise LaunchSiteSelectionError("candidate_id must be non-empty.")
+    try:
+        validate_real_terrain_launch_area_map_package(package)
+    except RealTerrainLaunchAreaMapError as exc:
+        raise LaunchSiteSelectionError("package invariant validation failed.") from exc
     if package.selected_candidate_id not in {None, candidate_id}:
         raise LaunchSiteSelectionError("package has a conflicting selected candidate.")
     _validate_unique_ids(result.candidate_records, package.candidate_polygons)
@@ -161,3 +198,8 @@ def _validate_record_polygon_parity(
         or popup.distance_3d_m != record.distance_3d_m
     ):
         raise LaunchSiteSelectionError("result record and package candidate do not match.")
+
+
+def _required_text(name: str, value: object) -> None:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise LaunchSiteSelectionError(f"{name} must be a non-empty stripped string.")

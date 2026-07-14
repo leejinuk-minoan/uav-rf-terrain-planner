@@ -8,7 +8,11 @@ from math import cos, radians
 from pathlib import Path
 
 from .coordinate_conversion import Wgs84MapPoint
-from .real_terrain_launch_area_map import RealTerrainLaunchAreaMapPackage
+from .real_terrain_launch_area_map import (
+    RealTerrainLaunchAreaMapError,
+    RealTerrainLaunchAreaMapPackage,
+    validate_real_terrain_launch_area_map_package,
+)
 
 
 class LocalHtmlMapRendererError(ValueError):
@@ -38,6 +42,10 @@ def render_local_html_map(
     """Return a deterministic UTF-8-safe HTML document without touching the filesystem."""
 
     config = LocalHtmlMapRenderConfig() if config is None else config
+    try:
+        validate_real_terrain_launch_area_map_package(package)
+    except RealTerrainLaunchAreaMapError as exc:
+        raise LocalHtmlMapRendererError("map package invariant validation failed.") from exc
     points = [
         point
         for polygon in package.candidate_polygons
@@ -81,14 +89,31 @@ def render_local_html_map(
         for entry in package.legend
     )
     warnings = "".join(f"<li>{escape(warning, quote=True)}</li>" for warning in package.warnings)
+    summary = _definition_rows(
+        (
+            ("target_mgrs", package.target_marker.target_mgrs),
+            ("source_candidate_count", package.summary.source_candidate_count),
+            ("rendered_candidate_count", package.summary.rendered_candidate_count),
+            ("selectable_candidate_count", package.summary.selectable_candidate_count),
+            ("selected_candidate_count", package.summary.selected_candidate_count),
+            ("hidden_excluded_count", package.summary.hidden_excluded_count),
+        )
+    )
+    details = "".join(
+        '<dl class="candidate-detail-source" data-candidate-id="{}" hidden>{}</dl>'.format(
+            escape(polygon.candidate_id, quote=True),
+            _definition_rows(tuple(polygon.popup.to_user_facing_dict().items())),
+        )
+        for polygon in package.candidate_polygons
+    )
     title = escape(package.scenario_name, quote=True)
     csp = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;"
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="{csp}"><title>{title}</title>
-<style>body{{font-family:sans-serif;margin:0;display:grid;grid-template-columns:1fr 260px}}svg{{width:100%;height:auto}}.candidate{{cursor:pointer}}.package-selected{{stroke:#000000;stroke-width:3}}.preview-selectable{{stroke:#000000;stroke-width:2;stroke-dasharray:4 2}}aside{{padding:12px}}li span{{display:inline-block;width:12px;height:12px;border:1px solid;margin-right:6px}}</style></head>
+<style>body{{font-family:sans-serif;margin:0;display:grid;grid-template-columns:1fr 320px}}svg{{width:100%;height:auto}}.candidate{{cursor:pointer}}.package-selected{{stroke:#000000;stroke-width:3}}.preview-selectable{{stroke:#000000;stroke-width:2;stroke-dasharray:4 2}}aside{{padding:12px;overflow-wrap:anywhere}}li span{{display:inline-block;width:12px;height:12px;border:1px solid;margin-right:6px}}dt{{font-weight:700}}dd{{margin:0 0 8px}}pre{{white-space:pre-wrap}}</style></head>
 <body><svg viewBox="0 0 {config.width_px} {config.height_px}" role="img" aria-label="{title}">{''.join(polygons)}{target}</svg>
-<aside><h1>{title}</h1><p id="preview">preview only</p><button type="button" id="reset-preview">Reset preview</button><h2>Legend</h2><ul>{legend}</ul><h2>Warnings</h2><ul>{warnings}</ul></aside>
-<script>function resetPreview(){{document.querySelectorAll('.preview-selectable').forEach(function(item){{item.classList.remove('preview-selectable');}});document.getElementById('preview').textContent='preview only';}}document.querySelectorAll('.candidate').forEach(function(node){{node.addEventListener('click',function(){{resetPreview();if(node.dataset.selectable==='true'){{node.classList.add('preview-selectable');}}document.getElementById('preview').textContent='preview candidate: '+node.dataset.candidateId;}});}});document.getElementById('reset-preview').addEventListener('click',resetPreview);</script>
+<aside><h1>{title}</h1><h2>Summary</h2><dl id="static-summary">{summary}</dl><h2>Candidate detail</h2><p id="preview">preview only</p><pre id="candidate-detail">no candidate previewed</pre><button type="button" id="reset-preview">Reset preview</button><h2>Legend</h2><ul>{legend}</ul><h2>Warnings</h2><ul>{warnings}</ul>{details}</aside>
+<script>function resetPreview(){{document.querySelectorAll('.preview-selectable').forEach(function(item){{item.classList.remove('preview-selectable');}});document.getElementById('preview').textContent='preview only';document.getElementById('candidate-detail').textContent='no candidate previewed';}}function candidateDetail(candidateId){{var details=document.querySelectorAll('.candidate-detail-source');for(var index=0;index<details.length;index+=1){{if(details[index].dataset.candidateId===candidateId){{return details[index];}}}}return null;}}document.querySelectorAll('.candidate').forEach(function(node){{node.addEventListener('click',function(){{resetPreview();var detail=candidateDetail(node.dataset.candidateId);if(detail!==null){{document.getElementById('candidate-detail').textContent=detail.textContent;}}if(node.dataset.selectable==='true'){{node.classList.add('preview-selectable');document.getElementById('preview').textContent='preview only';}}else{{document.getElementById('preview').textContent='preview only: selectable=false';}}}});}});document.getElementById('reset-preview').addEventListener('click',resetPreview);</script>
 </body></html>
 """
 
@@ -142,3 +167,23 @@ def _viewport(points: list[Wgs84MapPoint], config: LocalHtmlMapRenderConfig) -> 
 def _number(value: float) -> str:
     text = f"{value:.6f}"
     return "0.000000" if text == "-0.000000" else text
+
+
+def _definition_rows(items: tuple[tuple[object, object], ...]) -> str:
+    return "".join(
+        "<dt>{}</dt><dd>{}</dd>".format(
+            escape(str(key), quote=True),
+            escape(_display(value), quote=True),
+        )
+        for key, value in items
+    )
+
+
+def _display(value: object) -> str:
+    if value is None:
+        return "not available"
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, dict):
+        return "; ".join(f"{key}={_display(nested)}" for key, nested in value.items())
+    return str(value)
