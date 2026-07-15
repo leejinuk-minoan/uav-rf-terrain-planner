@@ -100,9 +100,9 @@ def render_local_html_map(
         )
     )
     details = "".join(
-        '<dl class="candidate-detail-source" data-candidate-id="{}" hidden>{}</dl>'.format(
+        '<pre class="candidate-detail-source" data-candidate-id="{}" hidden>{}</pre>'.format(
             escape(polygon.candidate_id, quote=True),
-            _definition_rows(tuple(polygon.popup.to_user_facing_dict().items())),
+            escape(_candidate_detail_text(tuple(polygon.popup.to_user_facing_dict().items())), quote=True),
         )
         for polygon in package.candidate_polygons
     )
@@ -113,7 +113,7 @@ def render_local_html_map(
 <style>body{{font-family:sans-serif;margin:0;display:grid;grid-template-columns:1fr 320px}}svg{{width:100%;height:auto}}.candidate{{cursor:pointer}}.package-selected{{stroke:#000000;stroke-width:3}}.preview-selectable{{stroke:#000000;stroke-width:2;stroke-dasharray:4 2}}aside{{padding:12px;overflow-wrap:anywhere}}li span{{display:inline-block;width:12px;height:12px;border:1px solid;margin-right:6px}}dt{{font-weight:700}}dd{{margin:0 0 8px}}pre{{white-space:pre-wrap}}</style></head>
 <body><svg viewBox="0 0 {config.width_px} {config.height_px}" role="img" aria-label="{title}">{''.join(polygons)}{target}</svg>
 <aside><h1>{title}</h1><h2>Summary</h2><dl id="static-summary">{summary}</dl><h2>Candidate detail</h2><p id="preview">preview only</p><pre id="candidate-detail">no candidate previewed</pre><button type="button" id="reset-preview">Reset preview</button><h2>Legend</h2><ul>{legend}</ul><h2>Warnings</h2><ul>{warnings}</ul>{details}</aside>
-<script>function resetPreview(){{document.querySelectorAll('.preview-selectable').forEach(function(item){{item.classList.remove('preview-selectable');}});document.getElementById('preview').textContent='preview only';document.getElementById('candidate-detail').textContent='no candidate previewed';}}function candidateDetail(candidateId){{var details=document.querySelectorAll('.candidate-detail-source');for(var index=0;index<details.length;index+=1){{if(details[index].dataset.candidateId===candidateId){{return details[index];}}}}return null;}}document.querySelectorAll('.candidate').forEach(function(node){{node.addEventListener('click',function(){{resetPreview();var detail=candidateDetail(node.dataset.candidateId);if(detail!==null){{document.getElementById('candidate-detail').textContent=detail.textContent;}}if(node.dataset.selectable==='true'){{node.classList.add('preview-selectable');document.getElementById('preview').textContent='preview only';}}else{{document.getElementById('preview').textContent='preview only: selectable=false';}}}});}});document.getElementById('reset-preview').addEventListener('click',resetPreview);</script>
+<script>function resetPreview(){{document.querySelectorAll('.preview-selectable').forEach(function(item){{item.classList.remove('preview-selectable');}});document.getElementById('preview').textContent='preview only';document.getElementById('candidate-detail').textContent='no candidate previewed';}}function candidateDetailText(candidateId){{var details=document.querySelectorAll('.candidate-detail-source');for(var index=0;index<details.length;index+=1){{if(details[index].dataset.candidateId===candidateId){{return details[index].textContent;}}}}return null;}}document.querySelectorAll('.candidate').forEach(function(node){{node.addEventListener('click',function(){{resetPreview();var detailText=candidateDetailText(node.dataset.candidateId);if(detailText!==null){{document.getElementById('candidate-detail').textContent=detailText;}}if(node.dataset.selectable==='true'){{node.classList.add('preview-selectable');document.getElementById('preview').textContent='preview only';}}else{{document.getElementById('preview').textContent='preview only: selectable=false';}}}});}});document.getElementById('reset-preview').addEventListener('click',resetPreview);</script>
 </body></html>
 """
 
@@ -177,6 +177,14 @@ def _definition_rows(items: tuple[tuple[object, object], ...]) -> str:
         )
         for key, value in items
     )
+
+
+def _candidate_detail_text(items: tuple[tuple[object, object], ...]) -> str:
+    return "\n".join(f"{key}: {_single_line(_display(value))}" for key, value in items)
+
+
+def _single_line(value: str) -> str:
+    return value.replace("\r", "\\r").replace("\n", "\\n")
 
 
 def _display(value: object) -> str:

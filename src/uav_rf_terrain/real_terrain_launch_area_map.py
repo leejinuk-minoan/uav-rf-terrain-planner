@@ -108,9 +108,7 @@ class RealTerrainCandidatePopup:
                 raise RealTerrainLaunchAreaMapError("excluded popup state/color/selectability is invalid.")
             if self.overall_score is not None or self.shielding_stability_score is not None:
                 raise RealTerrainLaunchAreaMapError("excluded popup scores must be None.")
-        if self.selectable:
-            if not self.within_operation_radius or self.distance_3d_m is None:
-                raise RealTerrainLaunchAreaMapError("selectable popup requires radius and distance.")
+        _validate_popup_selectability(self)
 
     def to_user_facing_dict(self) -> dict[str, object]:
         return {
@@ -325,6 +323,8 @@ def validate_real_terrain_launch_area_map_package(package: RealTerrainLaunchArea
     feature_ids = [polygon.feature_id for polygon in package.candidate_polygons]
     if len(set(candidate_ids)) != len(candidate_ids) or len(set(feature_ids)) != len(feature_ids):
         raise RealTerrainLaunchAreaMapError("package candidate and feature IDs must be unique.")
+    for polygon in package.candidate_polygons:
+        _validate_polygon_selectability(polygon)
     summary = package.summary
     if summary.rendered_candidate_count != len(package.candidate_polygons):
         raise RealTerrainLaunchAreaMapError("package rendered candidate count is inconsistent.")
@@ -606,7 +606,29 @@ def _selectable(record: CandidateAnalysisRecord) -> bool:
         and record.candidate_score is not None
         and record.color_class is not ColorClass.EXCLUDED
         and record.within_operation_radius
+        and record.distance_3d_m is not None
     )
+
+
+def _validate_popup_selectability(popup: RealTerrainCandidatePopup) -> None:
+    expected = (
+        popup.state is CandidateAnalysisState.VALID_SCORED
+        and popup.overall_score is not None
+        and popup.shielding_stability_score is not None
+        and popup.color_class is not ColorClass.EXCLUDED
+        and popup.within_operation_radius is True
+        and popup.distance_3d_m is not None
+    )
+    if popup.selectable is not expected:
+        raise RealTerrainLaunchAreaMapError(
+            "popup selectability must match valid score, color, radius, and distance fields."
+        )
+
+
+def _validate_polygon_selectability(polygon: RealTerrainCandidatePolygon) -> None:
+    if polygon.selectable is not polygon.popup.selectable:
+        raise RealTerrainLaunchAreaMapError("package polygon and popup selectability is inconsistent.")
+    _validate_popup_selectability(polygon.popup)
 
 
 def _validate_selected(

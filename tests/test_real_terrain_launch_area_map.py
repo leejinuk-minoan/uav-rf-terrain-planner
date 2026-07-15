@@ -28,6 +28,7 @@ from uav_rf_terrain.real_terrain_launch_area_map import (
     RealTerrainLaunchAreaMapConfig,
     RealTerrainLaunchAreaMapError,
     build_real_terrain_launch_area_map_package,
+    validate_real_terrain_launch_area_map_package,
 )
 from uav_rf_terrain.schemas import ColorClass
 from uav_rf_terrain.scoring import CandidateScore
@@ -351,6 +352,23 @@ def test_package_rejects_summary_and_legend_replacements_that_disagree_with_poly
         replace(package, summary=replace(package.summary, rendered_candidate_count=0))
     with pytest.raises(RealTerrainLaunchAreaMapError, match="legend"):
         replace(package, legend=tuple(reversed(package.legend)))
+
+
+def test_package_rejects_coordinated_mutation_that_disables_a_selectable_candidate() -> None:
+    package = build_real_terrain_launch_area_map_package(
+        _result(),
+        RealTerrainLaunchAreaMapConfig(10.0),
+        projected_to_wgs84=lambda point: Wgs84MapPoint(point.x_m / 1000.0, point.y_m / 1000.0),
+        projected_to_mgrs=lambda point, *, precision: "52SCB1234512345",
+    )
+    polygon = package.candidate_polygons[0]
+
+    object.__setattr__(polygon.popup, "selectable", False)
+    object.__setattr__(polygon, "selectable", False)
+    object.__setattr__(package.summary, "selectable_candidate_count", 0)
+
+    with pytest.raises(RealTerrainLaunchAreaMapError, match="selectability"):
+        validate_real_terrain_launch_area_map_package(package)
 
 
 def test_builder_rejects_non_boolean_radius_parity_before_conversion() -> None:

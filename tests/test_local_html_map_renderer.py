@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from html.parser import HTMLParser
 
 import pytest
 
@@ -21,6 +22,36 @@ from uav_rf_terrain.real_terrain_launch_area_map import (
     build_real_terrain_launch_area_map_package,
 )
 from uav_rf_terrain.schemas import ColorClass
+
+
+class _CandidateDetailParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.details: dict[str, str] = {}
+        self._candidate_id: str | None = None
+        self._parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "pre" and attributes.get("class") == "candidate-detail-source":
+            self._candidate_id = attributes["data-candidate-id"]
+            self._parts = []
+
+    def handle_data(self, data: str) -> None:
+        if self._candidate_id is not None:
+            self._parts.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "pre" and self._candidate_id is not None:
+            self.details[self._candidate_id] = "".join(self._parts)
+            self._candidate_id = None
+            self._parts = []
+
+
+def _detail_text_by_candidate(html: str) -> dict[str, str]:
+    parser = _CandidateDetailParser()
+    parser.feed(html)
+    return parser.details
 
 
 def test_renderer_config_requires_positive_dimensions_and_safe_padding() -> None:
@@ -55,11 +86,11 @@ def test_renderer_serializes_static_summary_and_popup_fields_in_contract_order()
     assert "source_candidate_count" in html
     assert "hidden_excluded_count" in html
     fields = tuple(package.candidate_polygons[0].popup.to_user_facing_dict())
-    positions = [html.index(f"<dt>{field}</dt>") for field in fields]
-    assert positions == sorted(positions)
+    detail_lines = _detail_text_by_candidate(html)["candidate-001"].splitlines()
+    assert [line.split(": ", 1)[0] for line in detail_lines] == list(fields)
     assert "not available" in html
     assert "candidate-detail-source" in html
-    assert "candidateDetail" in html
+    assert "candidateDetailText" in html
     script = html.split("<script>", 1)[1]
     assert "candidate-001" not in script
     assert "innerHTML" not in script
@@ -70,7 +101,7 @@ def test_renderer_serializes_static_summary_and_popup_fields_in_contract_order()
     assert "https://" not in html
 
 
-def test_renderer_flattens_fresnel_diagnostics_in_approved_field_order() -> None:
+def test_renderer_serializes_click_detail_as_deterministic_lines_with_fresnel_diagnostics() -> None:
     result = _result()
     diagnostics = CandidateFresnelDiagnostics.no_eligible(average_fresnel_score=90.0)
     record = replace(result.candidate_records[0], fresnel_diagnostics=diagnostics)
@@ -83,10 +114,16 @@ def test_renderer_flattens_fresnel_diagnostics_in_approved_field_order() -> None
     )
 
     html = render_local_html_map(package)
-    positions = [html.index(field) for field in DIAGNOSTIC_FIELD_ORDER]
+    detail_lines = _detail_text_by_candidate(html)["candidate-001"].splitlines()
+    fresnel_line = next(line for line in detail_lines if line.startswith("fresnel_diagnostics: "))
 
+    assert detail_lines[0] == "candidate_id: candidate-001"
+    assert detail_lines[7] == "selectable: true"
+    assert "source_zone: not available" in detail_lines
+    assert "source_sensitive: not available" in detail_lines
+    assert "average_fresnel_score=90.0" in fresnel_line
+    positions = [fresnel_line.index(field) for field in DIAGNOSTIC_FIELD_ORDER]
     assert positions == sorted(positions)
-    assert "average_fresnel_score=90.0" in html
 
 
 def test_renderer_keeps_excluded_detail_visible_but_never_marks_it_preview_selectable() -> None:
@@ -121,9 +158,14 @@ def test_renderer_keeps_excluded_detail_visible_but_never_marks_it_preview_selec
     html = render_local_html_map(package)
 
     assert "excluded detail reason" in html
-    assert "selectable</dt><dd>false" in html
+    excluded_lines = _detail_text_by_candidate(html)["candidate-001"].splitlines()
+    assert excluded_lines[7] == "selectable: false"
+    assert "overall_score: not available" in excluded_lines
+    assert "distance_3d_m: not available" in excluded_lines
+    assert "candidate_reason: excluded detail reason" in excluded_lines
     assert "if(node.dataset.selectable==='true'){node.classList.add('preview-selectable')" in html
     assert "preview only: selectable=false" in html
+    assert "textContent='no candidate previewed'" in html
 
 
 def test_renderer_rejects_a_package_mutated_outside_frozen_constructor_invariants() -> None:
