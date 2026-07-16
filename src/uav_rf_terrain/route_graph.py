@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import floor, isfinite, sqrt
+from math import ceil, floor, isfinite, sqrt
 
 from .coordinates import LocalPoint, distance_2d_m
 
@@ -34,6 +34,16 @@ class RouteGraphNode:
     point: LocalPoint
 
 
+@dataclass(frozen=True)
+class RouteGraphTopology:
+    """Precomputed immutable node and neighbor indexes for bounded route work."""
+
+    nodes: tuple[RouteGraphNode, ...]
+    node_by_id: dict[str, RouteGraphNode]
+    node_id_by_position: dict[tuple[int, int], str]
+    neighbors_by_id: dict[str, tuple[str, ...]]
+
+
 _NEIGHBOR_OFFSETS: tuple[tuple[int, int], ...] = (
     (1, 0),
     (1, 1),
@@ -55,8 +65,12 @@ def build_route_grid(bounds: RouteGraphBounds, *, graph_spacing_m: float) -> tup
         raise RouteGraphError("graph_spacing_m must be positive and finite.")
     origin_x = floor(bounds.min_x_m / graph_spacing_m) * graph_spacing_m
     origin_y = floor(bounds.min_y_m / graph_spacing_m) * graph_spacing_m
-    column_count = int(floor((bounds.max_x_m - origin_x) / graph_spacing_m + 1e-12)) + 1
-    row_count = int(floor((bounds.max_y_m - origin_y) / graph_spacing_m + 1e-12)) + 1
+    minimum_column = int(ceil((bounds.min_x_m - origin_x) / graph_spacing_m - 1e-12))
+    maximum_column = int(floor((bounds.max_x_m - origin_x) / graph_spacing_m + 1e-12))
+    minimum_row = int(ceil((bounds.min_y_m - origin_y) / graph_spacing_m - 1e-12))
+    maximum_row = int(floor((bounds.max_y_m - origin_y) / graph_spacing_m + 1e-12))
+    if minimum_column > maximum_column or minimum_row > maximum_row:
+        raise RouteGraphError("route graph bounds contain no aligned lattice node.")
     return tuple(
         RouteGraphNode(
             node_id=f"route-node-r{row:05d}-c{column:05d}",
@@ -64,23 +78,39 @@ def build_route_grid(bounds: RouteGraphBounds, *, graph_spacing_m: float) -> tup
             column=column,
             point=LocalPoint(origin_x + column * graph_spacing_m, origin_y + row * graph_spacing_m),
         )
-        for row in range(row_count)
-        for column in range(column_count)
+        for row in range(minimum_row, maximum_row + 1)
+        for column in range(minimum_column, maximum_column + 1)
     )
 
 
 def neighboring_node_ids(nodes: tuple[RouteGraphNode, ...], node_id: str) -> tuple[str, ...]:
     """Return existing 8-neighbor IDs in the reviewed clockwise order."""
 
-    by_position = {(node.row, node.column): node.node_id for node in nodes}
-    current = next((node for node in nodes if node.node_id == node_id), None)
-    if current is None:
-        raise RouteGraphError("node_id is not present in graph.")
-    return tuple(
-        by_position[(current.row + row_offset, current.column + column_offset)]
-        for row_offset, column_offset in _NEIGHBOR_OFFSETS
-        if (current.row + row_offset, current.column + column_offset) in by_position
-    )
+    topology = build_route_graph_topology(nodes)
+    try:
+        return topology.neighbors_by_id[node_id]
+    except KeyError as exc:
+        raise RouteGraphError("node_id is not present in graph.") from exc
+
+
+def build_route_graph_topology(nodes: tuple[RouteGraphNode, ...]) -> RouteGraphTopology:
+    """Build node/position/ordered-neighbor indexes exactly once for a graph."""
+
+    node_by_id = {node.node_id: node for node in nodes}
+    if len(node_by_id) != len(nodes):
+        raise RouteGraphError("route graph node IDs must be unique.")
+    node_id_by_position = {(node.row, node.column): node.node_id for node in nodes}
+    if len(node_id_by_position) != len(nodes):
+        raise RouteGraphError("route graph positions must be unique.")
+    neighbors_by_id = {
+        node.node_id: tuple(
+            node_id_by_position[(node.row + row_offset, node.column + column_offset)]
+            for row_offset, column_offset in _NEIGHBOR_OFFSETS
+            if (node.row + row_offset, node.column + column_offset) in node_id_by_position
+        )
+        for node in nodes
+    }
+    return RouteGraphTopology(nodes, node_by_id, node_id_by_position, neighbors_by_id)
 
 
 def snap_point_to_route_node(

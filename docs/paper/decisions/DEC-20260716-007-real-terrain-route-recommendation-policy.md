@@ -38,6 +38,12 @@ This decision does not change Task 035B candidate analysis, Task 035D map/select
 LOS/Fresnel formulas, scoring/color thresholds, source-zone scoring semantics,
 preview/report/CLI behavior, legacy route/waypoint scaffolds, dependencies, or CI.
 
+The source launch-area result preserves mission authority needed by the route boundary:
+scenario, target, operation radius, AGL, frequency, and resolved profile spacing. The
+route boundary validates that authority and selected MGRS parity before opening terrain.
+Route nodes and handoffs intentionally retain `NOT_REQUESTED` source-zone metadata in
+this MVP rather than inheriting it from the selected launch site.
+
 ## Public Repository Sensitivity Check
 
 This record contains no GIS data, generated route, actual coordinate, private local

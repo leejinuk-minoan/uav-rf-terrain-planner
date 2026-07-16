@@ -39,7 +39,9 @@ convex.
 ## Grid and Node Contract
 
 The grid uses a fixed EPSG:5179 origin formed by flooring the clipped lower bounds to
-`graph_spacing_m`, row-major South-to-North then West-to-East order, and stable IDs:
+`graph_spacing_m`. It then emits only the inclusive integer row/column range whose
+aligned points remain inside the clipped bounds (within a small floating tolerance),
+in row-major South-to-North then West-to-East order, with stable IDs:
 
 ```text
 route-node-r{row:05d}-c{column:05d}
@@ -85,8 +87,11 @@ The three fixed route modes are:
 Search uses standard-library Dijkstra with deterministic heap ordering by cumulative
 cost, cumulative 3D distance, row, column, insertion count, and node ID. Equal costs
 within `1e-12` prefer lower cumulative distance and then lower predecessor row/column.
-Graph size, edge count, profile estimates, profile sample total, and path expansions
-are bounded before or during processing.
+Graph topology, ordered neighbor indexes, 3D edge geometry, and base edge components
+are built once; each mode reweights those components only. Graph size, edge count,
+profile estimates, profile sample total, and path expansions are bounded before or
+during processing. No-path is a per-mode warning, while input/invariant and resource
+guard failures are fatal.
 
 Routes are searched in the listed order. Later searches receive a directed-edge
 overlap penalty. Duplicate sequences are omitted. If shared directed-edge ratio exceeds
@@ -96,8 +101,17 @@ are non-fatal partial output, and zero routes are fatal.
 
 ## Output and Handoff Boundary
 
-The immutable result exposes user-facing MGRS route paths, route mode, distance,
-aggregate score fields, warnings, source-zone summaries, and selected-site identity.
+The source result retains the scenario, target, operation radius, AGL, frequency, and
+profile-spacing authority. These and selected projected-point/MGRS parity are checked
+before a terrain session starts. Each unique route point is converted to MGRS once and
+the cached value is reused for candidate paths and waypoint handoffs.
+
+The immutable result exposes actual launch/target MGRS separately from snapped graph
+endpoint IDs/MGRS and snap distances. Candidate paths are explicitly
+`snapped_graph_path` records, so their distance does not imply actual-endpoint
+connector distance. It exposes route mode, distance, aggregate score fields, warnings,
+and selected-site identity. Route-node and handoff source-zone state is intentionally
+`NOT_REQUESTED` in this MVP; no route source-zone summary is retained.
 It does not expose projected coordinates, raster indexes, WGS84 geometry, or raw
 terrain cells in its default user dictionary. MGRS conversion is required only for
 output path points, not all graph nodes.

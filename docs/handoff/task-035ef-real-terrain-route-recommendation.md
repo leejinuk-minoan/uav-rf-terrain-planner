@@ -3,7 +3,7 @@
 ## Current Task
 
 Task 035EF implements deterministic, selected-launch-site route recommendation over
-the existing real-terrain analysis boundary.
+the existing real-terrain analysis boundary in Draft PR #105, pending GPT Master review.
 
 ## Current Branch
 
@@ -13,13 +13,17 @@ the existing real-terrain analysis boundary.
 
 - Consume `SelectedLaunchSiteRecord`, its `RealTerrainLaunchAreaResult`, an existing
   `TerrainDataAdapter`, route configuration, and an MGRS converter.
-- Validate selection/source parity before terrain access; resolve one terrain session
+- Validate scenario, target, radius, AGL, frequency, profile-spacing, selection/source,
+  and selected MGRS/projected-point parity before terrain access; resolve one terrain session
   for DEM/DSM sampling and profiles.
 - Use EPSG:5179 graph construction, fixed AGL-to-MSL altitude rules, 3D operating-radius
   checks, existing LOS/Fresnel/scoring/classification, and deterministic Dijkstra.
 - Return up to three diverse MGRS-facing route candidates in fixed mode order.
 - Retain immutable graph node/edge analysis records and unsampled waypoint handoff
   points without changing the existing waypoint report behavior.
+- Keep route-node source-zone metadata as `NOT_REQUESTED`; it is not copied from the
+  selected launch site and no route source-zone summary is reported in this MVP.
+- Make actual launch/target MGRS distinct from snapped graph endpoints in public output.
 
 ## Explicit Non-Goals
 
@@ -38,10 +42,10 @@ must also pass its exact-head standard GitHub Actions run.
 
 ## Local Verification Result
 
-The focused Task 035EF suite passed 11 tests and the full local suite passed 875 tests.
-`compileall`, Ruff, mypy, and `git diff --check` are required again on the final commit
-head. No real GIS route smoke, generated route artifact, or browser/UI test is run by
-this task.
+The amended focused Task 035EF suite passed 20 tests and the full local suite passed
+884 tests. `compileall`, Ruff, mypy, and `git diff --check` passed on the amendment
+worktree before the final commit. No real GIS route smoke, generated route artifact,
+or browser/UI test is run by this task.
 
 ## Paper Record
 

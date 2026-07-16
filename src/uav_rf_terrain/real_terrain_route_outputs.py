@@ -161,12 +161,30 @@ class RealTerrainRouteNode:
     fresnel_diagnostics: CandidateFresnelDiagnostics | None
 
     def __post_init__(self) -> None:
-        if not self.node_id or self.row < 0 or self.column < 0:
+        if (
+            not self.node_id
+            or isinstance(self.row, bool)
+            or isinstance(self.column, bool)
+            or not isinstance(self.row, int)
+            or not isinstance(self.column, int)
+            or self.row < 0
+            or self.column < 0
+        ):
             raise RealTerrainRouteOutputError("route node identity is invalid.")
         if not isinstance(self.projected_point, LocalPoint):
             raise RealTerrainRouteOutputError("projected_point must be LocalPoint.")
-        _positive_finite("flight_agl_m", self.flight_agl_m)
-        if not isinstance(self.state, RouteNodeState) or not isinstance(self.color_class, ColorClass):
+        _non_negative_finite("flight_agl_m", self.flight_agl_m)
+        if (
+            not isinstance(self.state, RouteNodeState)
+            or not isinstance(self.color_class, ColorClass)
+            or not isinstance(self.source_zone_state, SourceZoneAvailability)
+            or (self.source_zone is not None and not isinstance(self.source_zone, TerrainSourceZone))
+            or (self.source_sensitive is not None and not isinstance(self.source_sensitive, bool))
+            or (
+                self.fresnel_diagnostics is not None
+                and not isinstance(self.fresnel_diagnostics, CandidateFresnelDiagnostics)
+            )
+        ):
             raise RealTerrainRouteOutputError("route node state or color is invalid.")
         if not isinstance(self.within_operation_radius, bool) or not isinstance(self.traversable, bool):
             raise RealTerrainRouteOutputError("route node booleans are invalid.")
@@ -195,14 +213,26 @@ class RealTerrainRouteNode:
                 or self.distance_3d_from_launch_m is None
                 or self.shielding_stability_score is None
                 or self.overall_score is None
+                or self.terrain_msl_m is None
+                or self.surface_msl_m is None
             ):
                 raise RealTerrainRouteOutputError("valid route node is incomplete.")
+            if self.surface_msl_m < self.terrain_msl_m:
+                raise RealTerrainRouteOutputError("valid route node surface must not be below terrain.")
+            if self.surface_msl_m > self.flight_msl_m:
+                raise RealTerrainRouteOutputError("valid route node surface must not exceed flight MSL.")
+            if abs(self.flight_msl_m - (self.terrain_msl_m + self.flight_agl_m)) > 1e-9:
+                raise RealTerrainRouteOutputError("valid route node flight MSL must equal terrain plus AGL.")
+            _score("shielding_stability_score", self.shielding_stability_score)
+            _score("overall_score", self.overall_score)
         elif (
             self.color_class is not ColorClass.EXCLUDED
             or self.shielding_stability_score is not None
             or self.overall_score is not None
         ):
             raise RealTerrainRouteOutputError("excluded route node must not invent scores.")
+        if self.state is RouteNodeState.OUTSIDE_OPERATION_RADIUS and self.within_operation_radius:
+            raise RealTerrainRouteOutputError("outside-radius route node must have radius flag false.")
 
 
 @dataclass(frozen=True)
@@ -251,7 +281,13 @@ class WaypointHandoffPoint:
     source_zone_reason: str
 
     def __post_init__(self) -> None:
-        if not self.point_id or not self.point_mgrs.strip() or self.point_mgrs != self.point_mgrs.upper():
+        if (
+            not self.point_id
+            or not isinstance(self.projected_point, LocalPoint)
+            or not self.point_mgrs.strip()
+            or self.point_mgrs != self.point_mgrs.upper()
+            or self.point_mgrs != self.point_mgrs.strip()
+        ):
             raise RealTerrainRouteOutputError("waypoint handoff identity is invalid.")
         for name, value in (
             ("cumulative_distance_3d_m", self.cumulative_distance_3d_m),
@@ -263,6 +299,24 @@ class WaypointHandoffPoint:
             ("overall_score", self.overall_score),
         ):
             _finite(name, value)
+        _non_negative_finite("cumulative_distance_3d_m", self.cumulative_distance_3d_m)
+        _non_negative_finite("flight_agl_m", self.flight_agl_m)
+        if self.surface_msl_m < self.terrain_msl_m:
+            raise RealTerrainRouteOutputError("waypoint handoff surface must not be below terrain.")
+        if abs(self.flight_msl_m - (self.terrain_msl_m + self.flight_agl_m)) > 1e-9:
+            raise RealTerrainRouteOutputError("waypoint handoff flight MSL must equal terrain plus AGL.")
+        if self.color_class is ColorClass.EXCLUDED:
+            raise RealTerrainRouteOutputError("waypoint handoff color must not be excluded.")
+        _score("shielding_stability_score", self.shielding_stability_score)
+        _score("overall_score", self.overall_score)
+        if (
+            not isinstance(self.color_class, ColorClass)
+            or not isinstance(self.source_zone_state, SourceZoneAvailability)
+            or (self.source_zone is not None and not isinstance(self.source_zone, TerrainSourceZone))
+            or (self.source_sensitive is not None and not isinstance(self.source_sensitive, bool))
+            or not self.source_zone_reason.strip()
+        ):
+            raise RealTerrainRouteOutputError("waypoint handoff source or color metadata is invalid.")
 
 
 @dataclass(frozen=True)
@@ -305,10 +359,12 @@ class RealTerrainRouteCandidate:
     source_zone_summary: SourceZoneSummary | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.route_id, str) or not self.route_id.strip():
-            raise RealTerrainRouteOutputError("route_id must be non-empty.")
         if not isinstance(self.mode, RouteMode):
             raise RealTerrainRouteOutputError("mode must be a RouteMode.")
+        if not isinstance(self.route_id, str) or not self.route_id.strip():
+            raise RealTerrainRouteOutputError("route_id must be non-empty.")
+        if self.route_id != f"route-{self.mode.value}":
+            raise RealTerrainRouteOutputError("route_id must be derived from its route mode.")
         if not self.path:
             raise RealTerrainRouteOutputError("path must not be empty.")
         if tuple(point.sequence_index for point in self.path) != tuple(range(len(self.path))):
@@ -320,15 +376,29 @@ class RealTerrainRouteCandidate:
             ("minimum_shielding_stability_score", self.minimum_shielding_stability_score),
         ):
             _finite(name, value)
-        if self.ordered_node_ids and len(self.ordered_node_ids) != len(self.path):
+        if not self.ordered_node_ids or len(self.ordered_node_ids) != len(self.path):
             raise RealTerrainRouteOutputError("ordered_node_ids must match path length.")
-        if self.ordered_projected_points and len(self.ordered_projected_points) != len(self.path):
+        if not self.ordered_projected_points or len(self.ordered_projected_points) != len(self.path):
             raise RealTerrainRouteOutputError("ordered_projected_points must match path length.")
+        if len(set(self.ordered_node_ids)) != len(self.ordered_node_ids):
+            raise RealTerrainRouteOutputError("route candidate node IDs must be unique.")
+        if any(not isinstance(point, LocalPoint) for point in self.ordered_projected_points):
+            raise RealTerrainRouteOutputError("route candidate projected points must be LocalPoint.")
+        if self.total_cost < 0.0 or self.total_distance_3d_m < 0.0:
+            raise RealTerrainRouteOutputError("route cost and distance must be non-negative.")
+        _score("mean_shielding_stability_score", self.mean_shielding_stability_score)
+        _score("minimum_shielding_stability_score", self.minimum_shielding_stability_score)
+        if self.minimum_shielding_stability_score > self.mean_shielding_stability_score:
+            raise RealTerrainRouteOutputError("route minimum shielding score must not exceed mean.")
         for count in (self.orange_count, self.red_count, self.high_risk_count):
             if isinstance(count, bool) or not isinstance(count, int) or count < 0:
                 raise RealTerrainRouteOutputError("route risk counts must be non-negative integers.")
+        if self.high_risk_count != self.orange_count + self.red_count:
+            raise RealTerrainRouteOutputError("high_risk_count must equal orange plus red counts.")
         if not self.reason.strip():
             raise RealTerrainRouteOutputError("route reason must be non-empty.")
+        if len(set(self.warnings)) != len(self.warnings):
+            raise RealTerrainRouteOutputError("route candidate warnings must be unique.")
         for ratio in self.shared_edge_ratios:
             if not isfinite(ratio) or not 0.0 <= ratio <= 1.0:
                 raise RealTerrainRouteOutputError("shared edge ratios must be within [0, 1].")
@@ -358,6 +428,13 @@ class RealTerrainRouteResult:
     summary: RealTerrainRouteSummary | None = None
     waypoint_handoffs: tuple[tuple[WaypointHandoffPoint, ...], ...] = ()
     launch_ground_msl_m: float | None = None
+    snapped_launch_node_id: str | None = None
+    snapped_target_node_id: str | None = None
+    snapped_launch_node_mgrs: str | None = None
+    snapped_target_node_mgrs: str | None = None
+    launch_snap_distance_m: float | None = None
+    target_snap_distance_m: float | None = None
+    path_semantics: str = "snapped_graph_path"
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -377,6 +454,8 @@ class RealTerrainRouteResult:
         modes = tuple(candidate.mode for candidate in self.route_candidates)
         if len(set(modes)) != len(modes) or tuple(sorted(modes, key=route_order.__getitem__)) != modes:
             raise RealTerrainRouteOutputError("route candidates must retain fixed mode order.")
+        if len({candidate.route_id for candidate in self.route_candidates}) != len(self.route_candidates):
+            raise RealTerrainRouteOutputError("route candidate IDs must be unique.")
         if self.config is not None and not isinstance(self.config, RealTerrainRouteConfig):
             raise RealTerrainRouteOutputError("config must be RealTerrainRouteConfig when present.")
         if self.summary is not None and self.summary.route_count != len(self.route_candidates):
@@ -385,6 +464,12 @@ class RealTerrainRouteResult:
             raise RealTerrainRouteOutputError("waypoint handoffs must match route candidates.")
         if self.launch_ground_msl_m is not None:
             _finite("launch_ground_msl_m", self.launch_ground_msl_m)
+        if len(set(self.warnings)) != len(self.warnings):
+            raise RealTerrainRouteOutputError("result warnings must be unique.")
+        if self.graph_nodes:
+            _validate_result_graph_contract(self)
+        if self.path_semantics != "snapped_graph_path":
+            raise RealTerrainRouteOutputError("path_semantics must describe snapped graph paths.")
 
     def to_public_dict(self) -> dict[str, object]:
         """Return a user-facing dictionary without projected, raster, or WGS84 fields."""
@@ -407,11 +492,23 @@ class RealTerrainRouteResult:
                     "total_distance_3d_m": candidate.total_distance_3d_m,
                     "mean_shielding_stability_score": candidate.mean_shielding_stability_score,
                     "minimum_shielding_stability_score": candidate.minimum_shielding_stability_score,
+                    "orange_count": candidate.orange_count,
+                    "red_count": candidate.red_count,
+                    "high_risk_count": candidate.high_risk_count,
+                    "shared_edge_ratios": candidate.shared_edge_ratios,
+                    "reason": candidate.reason,
                     "warnings": candidate.warnings,
                 }
                 for candidate in self.route_candidates
             ),
             "warnings": self.warnings,
+            "path_semantics": self.path_semantics,
+            "snapped_launch_node_id": self.snapped_launch_node_id,
+            "snapped_target_node_id": self.snapped_target_node_id,
+            "snapped_launch_node_mgrs": self.snapped_launch_node_mgrs,
+            "snapped_target_node_mgrs": self.snapped_target_node_mgrs,
+            "launch_snap_distance_m": self.launch_snap_distance_m,
+            "target_snap_distance_m": self.target_snap_distance_m,
         }
 
 
@@ -424,3 +521,98 @@ def _positive_finite(name: str, value: object) -> None:
     _finite(name, value)
     if not isinstance(value, (int, float)) or value <= 0.0:
         raise RealTerrainRouteOutputError(f"{name} must be positive.")
+
+
+def _non_negative_finite(name: str, value: object) -> None:
+    _finite(name, value)
+    if not isinstance(value, (int, float)) or value < 0.0:
+        raise RealTerrainRouteOutputError(f"{name} must be non-negative.")
+
+
+def _score(name: str, value: float) -> None:
+    _finite(name, value)
+    if value < 0.0 or value > 100.0:
+        raise RealTerrainRouteOutputError(f"{name} must be within [0, 100].")
+
+
+def _validate_result_graph_contract(result: RealTerrainRouteResult) -> None:
+    nodes_by_id = {node.node_id: node for node in result.graph_nodes}
+    if len(nodes_by_id) != len(result.graph_nodes):
+        raise RealTerrainRouteOutputError("result graph node IDs must be unique.")
+    if result.summary is None or (
+        result.summary.graph_node_count != len(result.graph_nodes)
+        or result.summary.graph_edge_count != len(result.graph_edges)
+        or result.summary.traversable_node_count
+        != sum(node.traversable for node in result.graph_nodes)
+    ):
+        raise RealTerrainRouteOutputError("result graph summary does not match graph records.")
+    for edge in result.graph_edges:
+        source = nodes_by_id.get(edge.from_node_id)
+        destination = nodes_by_id.get(edge.to_node_id)
+        if source is None or destination is None or not source.traversable or not destination.traversable:
+            raise RealTerrainRouteOutputError("result edge must reference traversable graph nodes.")
+    if any(
+        node.source_zone is not None
+        or node.source_zone_state is not SourceZoneAvailability.NOT_REQUESTED
+        or node.source_sensitive is not None
+        for node in result.graph_nodes
+    ):
+        raise RealTerrainRouteOutputError("route-node source-zone metadata must remain not requested in this MVP.")
+    if not result.waypoint_handoffs or len(result.waypoint_handoffs) != len(result.route_candidates):
+        raise RealTerrainRouteOutputError("result waypoint handoffs must match route candidates.")
+    for index, candidate in enumerate(result.route_candidates):
+        if len(candidate.shared_edge_ratios) != index:
+            raise RealTerrainRouteOutputError("shared edge ratios must follow prior-route order.")
+        path_nodes = tuple(nodes_by_id.get(node_id) for node_id in candidate.ordered_node_ids)
+        if any(node is None for node in path_nodes) or any(
+            node.projected_point != point
+            for node, point in zip(path_nodes, candidate.ordered_projected_points)
+            if node is not None
+        ):
+            raise RealTerrainRouteOutputError("candidate path must match graph node references.")
+        handoff = result.waypoint_handoffs[index]
+        if len(handoff) != len(candidate.path):
+            raise RealTerrainRouteOutputError("waypoint handoff length must match candidate path.")
+        if handoff and abs(handoff[-1].cumulative_distance_3d_m - candidate.total_distance_3d_m) > 1e-9:
+            raise RealTerrainRouteOutputError("final waypoint cumulative distance must match route distance.")
+        for sequence_index, (path_point, handoff_point) in enumerate(zip(candidate.path, handoff)):
+            if (
+                handoff_point.point_mgrs != path_point.mgrs
+                or handoff_point.projected_point != candidate.ordered_projected_points[sequence_index]
+                or handoff_point.point_id
+                != f"route-{candidate.mode.value}-handoff-{sequence_index:03d}"
+                or handoff_point.source_zone is not None
+                or handoff_point.source_zone_state is not SourceZoneAvailability.NOT_REQUESTED
+                or handoff_point.source_sensitive is not None
+            ):
+                raise RealTerrainRouteOutputError("waypoint handoff must match candidate path MGRS and point parity.")
+    _validate_snap_metadata(result, nodes_by_id)
+
+
+def _validate_snap_metadata(
+    result: RealTerrainRouteResult,
+    nodes_by_id: dict[str, RealTerrainRouteNode],
+) -> None:
+    values = (
+        result.snapped_launch_node_id,
+        result.snapped_target_node_id,
+        result.snapped_launch_node_mgrs,
+        result.snapped_target_node_mgrs,
+        result.launch_snap_distance_m,
+        result.target_snap_distance_m,
+    )
+    if any(value is not None for value in values):
+        if any(value is None for value in values):
+            raise RealTerrainRouteOutputError("snap metadata must be complete when present.")
+        launch_node = nodes_by_id.get(result.snapped_launch_node_id or "")
+        target_node = nodes_by_id.get(result.snapped_target_node_id or "")
+        if launch_node is None or target_node is None:
+            raise RealTerrainRouteOutputError("snap metadata must reference graph nodes.")
+        for name, distance in (
+            ("launch_snap_distance_m", result.launch_snap_distance_m),
+            ("target_snap_distance_m", result.target_snap_distance_m),
+        ):
+            _non_negative_finite(name, distance)
+        for mgrs in (result.snapped_launch_node_mgrs, result.snapped_target_node_mgrs):
+            if not isinstance(mgrs, str) or not mgrs.strip() or mgrs != mgrs.upper():
+                raise RealTerrainRouteOutputError("snapped MGRS metadata must be uppercase text.")

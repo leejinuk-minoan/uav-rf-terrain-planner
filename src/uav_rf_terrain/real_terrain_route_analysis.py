@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from math import ceil
 
 from .classification import ClassificationError, classify_candidate_score
@@ -35,13 +36,18 @@ from .route_graph import (
     RouteGraphBounds,
     RouteGraphError,
     RouteGraphNode,
+    RouteGraphTopology,
+    build_route_graph_topology,
     build_route_grid,
-    neighboring_node_ids,
     snap_point_to_route_node,
 )
 from .route_pathfinding import (
     DijkstraPath,
     DirectedRouteEdge,
+    RouteExpansionLimitError,
+    RouteNoPathError,
+    RoutePathfindingInputError,
+    RoutePathfindingInvariantError,
     RoutePathfindingError,
     dijkstra_shortest_path,
 )
@@ -111,6 +117,18 @@ class _PathCandidate:
         self.shared_edge_ratios = shared_edge_ratios
 
 
+@dataclass(frozen=True)
+class _BaseRouteEdge:
+    """Mode-independent topology and cost components for one directed edge."""
+
+    from_node_id: str
+    to_node_id: str
+    distance_3d_m: float
+    shielding_risk_cost: float
+    distance_cost: float
+    high_risk_penalty: float
+
+
 def validate_selected_launch_site_for_route(
     selected: SelectedLaunchSiteRecord,
     source_result: RealTerrainLaunchAreaResult,
@@ -129,6 +147,20 @@ def validate_selected_launch_site_for_route(
         validate_public_safe_label(config.mission_id)
     except TerrainDataError as exc:
         raise RealTerrainRouteAnalysisError("scenario or mission label is not public-safe.") from exc
+    mission_values = (
+        source_result.operation_radius_m,
+        source_result.allowed_agl_m,
+        source_result.frequency_hz,
+        source_result.profile_sample_spacing_m,
+    )
+    if any(value is None for value in mission_values):
+        raise RealTerrainRouteAnalysisError("source result does not retain route mission authority.")
+    if (
+        source_result.allowed_agl_m != config.allowed_flight_agl_m
+        or source_result.frequency_hz != config.frequency_hz
+        or source_result.profile_sample_spacing_m != config.profile_spacing_m
+    ):
+        raise RealTerrainRouteAnalysisError("route config does not match source mission authority.")
     record = next(
         (item for item in source_result.candidate_records if item.candidate_id == selected.candidate_id),
         None,
@@ -157,6 +189,8 @@ def validate_selected_launch_site_for_route(
         or record.fresnel_diagnostics != selected.fresnel_diagnostics
     ):
         raise RealTerrainRouteAnalysisError("selected launch site does not match source candidate parity.")
+    if source_result.operation_radius_m != score.operating_radius_m:
+        raise RealTerrainRouteAnalysisError("source operation radius does not match selected candidate.")
     return record
 
 
@@ -176,6 +210,13 @@ def analyze_selected_launch_site_routes(
         raise RealTerrainRouteAnalysisError("selected candidate score is unavailable.")
     if not callable(projected_to_mgrs):
         raise RealTerrainRouteAnalysisError("projected_to_mgrs must be callable.")
+    mgrs_cache: dict[LocalPoint, str] = {}
+    try:
+        selected_mgrs = _mgrs_for_point(selected.projected_point, projected_to_mgrs, mgrs_cache)
+    except Exception as exc:
+        raise RealTerrainRouteAnalysisError("route MGRS conversion failed.") from exc
+    if selected_mgrs != selected.launch_site_mgrs:
+        raise RealTerrainRouteAnalysisError("selected launch MGRS does not match projected conversion.")
     _validate_pre_session_guards(source_result, selected, selected_score, config)
     try:
         with _resolve_session(adapter) as session:
@@ -248,30 +289,29 @@ def analyze_selected_launch_site_routes(
     by_id = {node.graph.node_id: node for node in analyzed_nodes}
     if not by_id[start.node_id].traversable or not by_id[target.node_id].traversable:
         raise RealTerrainRouteAnalysisError("snapped launch or target node is not traversable.")
-    edges = _build_edges(
-        analyzed_nodes,
-        config,
-        RouteMode.DISTANCE_SHIELDING_BALANCED,
-    )
-    if len(edges) > config.max_graph_edges:
+    topology = build_route_graph_topology(graph_nodes)
+    base_edges = _build_base_edges(analyzed_nodes, topology, config)
+    if len(base_edges) > config.max_graph_edges:
         raise RealTerrainRouteAnalysisError("graph edge guard exceeded.")
     candidates, warnings = _route_candidates(
-        analyzed_nodes,
+        base_edges,
         by_id,
         start.node_id,
         target.node_id,
         config,
     )
     try:
-        target_mgrs = _normalize_mgrs(projected_to_mgrs(source_result.target_point, precision=5))
+        target_mgrs = _mgrs_for_point(source_result.target_point, projected_to_mgrs, mgrs_cache)
+        snapped_launch_mgrs = _mgrs_for_point(start.point, projected_to_mgrs, mgrs_cache)
+        snapped_target_mgrs = _mgrs_for_point(target.point, projected_to_mgrs, mgrs_cache)
         output_candidates = tuple(
-            _to_output_candidate(candidate, by_id, projected_to_mgrs) for candidate in candidates
+            _to_output_candidate(candidate, by_id, mgrs_cache, projected_to_mgrs) for candidate in candidates
         )
-    except CoordinateConversionError as exc:
+        handoffs = tuple(_waypoint_handoff(candidate, by_id, mgrs_cache, projected_to_mgrs) for candidate in candidates)
+    except Exception as exc:
         raise RealTerrainRouteAnalysisError("route MGRS conversion failed.") from exc
     node_outputs = tuple(_node_output(node, config) for node in analyzed_nodes)
-    edge_outputs = tuple(_edge_output(edge, by_id, config) for edge in edges)
-    handoffs = tuple(_waypoint_handoff(candidate, by_id, projected_to_mgrs) for candidate in candidates)
+    edge_outputs = tuple(_edge_output(edge) for edge in base_edges)
     return RealTerrainRouteResult(
         scenario_name=source_result.scenario_name,
         mission_id=config.mission_id,
@@ -292,6 +332,12 @@ def analyze_selected_launch_site_routes(
         ),
         waypoint_handoffs=handoffs,
         launch_ground_msl_m=launch_sample.dem_msl,
+        snapped_launch_node_id=start.node_id,
+        snapped_target_node_id=target.node_id,
+        snapped_launch_node_mgrs=snapped_launch_mgrs,
+        snapped_target_node_mgrs=snapped_target_mgrs,
+        launch_snap_distance_m=distance_2d_m(selected.projected_point, start.point),
+        target_snap_distance_m=distance_2d_m(source_result.target_point, target.point),
     )
 
 
@@ -357,7 +403,7 @@ def _analyze_node(session: object, graph: RouteGraphNode, *, launch_point: Local
             distance,
             terrain_msl_m=sample.dem_msl,
             surface_msl_m=sample.dsm_msl,
-            within_operation_radius=True,
+            within_operation_radius=False,
         )
     if sample.dsm_msl > flight_msl:
         return _Node(
@@ -438,36 +484,67 @@ def _analyze_node(session: object, graph: RouteGraphNode, *, launch_point: Local
     )
 
 
-def _build_edges(
+def _build_base_edges(
     nodes: tuple[_Node, ...],
+    topology: RouteGraphTopology,
     config: RealTerrainRouteConfig,
-    mode: RouteMode,
-) -> tuple[DirectedRouteEdge, ...]:
+) -> tuple[_BaseRouteEdge, ...]:
+    """Construct immutable graph topology and mode-independent edge parts once."""
+
     by_id = {node.graph.node_id: node for node in nodes}
-    edges: list[DirectedRouteEdge] = []
+    edges: list[_BaseRouteEdge] = []
     for node in nodes:
         if not node.traversable:
             continue
-        for neighbor_id in neighboring_node_ids(tuple(item.graph for item in nodes), node.graph.node_id):
+        for neighbor_id in topology.neighbors_by_id[node.graph.node_id]:
             neighbor = by_id[neighbor_id]
             if not neighbor.traversable:
                 continue
-            distance = distance_3d_m(LocalPoint(node.graph.point.x_m, node.graph.point.y_m, node.flight_msl_m or 0.0), LocalPoint(neighbor.graph.point.x_m, neighbor.graph.point.y_m, neighbor.flight_msl_m or 0.0))
-            policy = route_mode_cost_policy(mode)
+            distance = distance_3d_m(
+                LocalPoint(node.graph.point.x_m, node.graph.point.y_m, node.flight_msl_m or 0.0),
+                LocalPoint(neighbor.graph.point.x_m, neighbor.graph.point.y_m, neighbor.flight_msl_m or 0.0),
+            )
             risk = 100.0 - (neighbor.score.shielding_stability_score if neighbor.score else 0.0)
             distance_component = min(distance / config.graph_spacing_m, 2.0) * 50.0
-            color_penalty = 0.0 if neighbor.color_class in {ColorClass.GREEN, ColorClass.YELLOW} else 50.0 if neighbor.color_class is ColorClass.ORANGE else 100.0
-            base_cost = (
-                policy.shielding_weight * risk
-                + policy.distance_weight * distance_component
-                + policy.high_risk_multiplier * color_penalty
+            color_penalty = (
+                0.0
+                if neighbor.color_class in {ColorClass.GREEN, ColorClass.YELLOW}
+                else 50.0
+                if neighbor.color_class is ColorClass.ORANGE
+                else 100.0
             )
-            edges.append(DirectedRouteEdge(node.graph.node_id, neighbor_id, base_cost, distance))
+            edges.append(
+                _BaseRouteEdge(
+                    node.graph.node_id,
+                    neighbor_id,
+                    distance,
+                    risk,
+                    distance_component,
+                    color_penalty,
+                )
+            )
     return tuple(edges)
 
 
+def _mode_edges(base_edges: tuple[_BaseRouteEdge, ...], mode: RouteMode) -> tuple[DirectedRouteEdge, ...]:
+    """Reweight precomputed edge components without rebuilding graph topology."""
+
+    policy = route_mode_cost_policy(mode)
+    return tuple(
+        DirectedRouteEdge(
+            edge.from_node_id,
+            edge.to_node_id,
+            policy.shielding_weight * edge.shielding_risk_cost
+            + policy.distance_weight * edge.distance_cost
+            + policy.high_risk_multiplier * edge.high_risk_penalty,
+            edge.distance_3d_m,
+        )
+        for edge in base_edges
+    )
+
+
 def _route_candidates(
-    nodes: tuple[_Node, ...],
+    base_edges: tuple[_BaseRouteEdge, ...],
     by_id: dict[str, _Node],
     start_id: str,
     target_id: str,
@@ -479,16 +556,17 @@ def _route_candidates(
     warnings: list[str] = []
     expansions_total = 0
     for mode in RouteMode:
-        edges = _build_edges(nodes, config, mode)
+        edges = _mode_edges(base_edges, mode)
         penalties = {edge: config.overlap_penalty_weight for edge in previous_edges}
         try:
             path = dijkstra_shortest_path(edges, start_node_id=start_id, target_node_id=target_id, node_positions=positions, max_path_expansions=config.max_path_expansions_per_search, additional_edge_cost=penalties)
-        except RoutePathfindingError:
+        except RouteNoPathError as exc:
+            expansions_total = _add_expansions(expansions_total, exc, config)
             warnings.append(f"{mode.value} route unavailable")
             continue
-        expansions_total += path.expansions
-        if expansions_total > config.max_total_path_expansions:
-            raise RealTerrainRouteAnalysisError("total path expansion guard exceeded.")
+        except (RouteExpansionLimitError, RoutePathfindingInputError, RoutePathfindingInvariantError) as exc:
+            raise RealTerrainRouteAnalysisError("route pathfinding failed.") from exc
+        expansions_total = _add_expansions(expansions_total, path, config)
         directed = set(zip(path.node_ids, path.node_ids[1:]))
         if any(path.node_ids == prior.path.node_ids for prior in candidates):
             warnings.append(f"{mode.value} route duplicates an earlier route")
@@ -498,10 +576,17 @@ def _route_candidates(
                 retry_penalties = {edge: config.overlap_penalty_weight * 2.0 for edge in previous_edges}
                 try:
                     path = dijkstra_shortest_path(edges, start_node_id=start_id, target_node_id=target_id, node_positions=positions, max_path_expansions=config.max_path_expansions_per_search, additional_edge_cost=retry_penalties)
-                except RoutePathfindingError:
+                except RouteNoPathError as exc:
+                    expansions_total = _add_expansions(expansions_total, exc, config)
                     warnings.append(f"{mode.value} route unavailable after diversity retry")
                     continue
+                except (RouteExpansionLimitError, RoutePathfindingInputError, RoutePathfindingInvariantError) as exc:
+                    raise RealTerrainRouteAnalysisError("route pathfinding failed.") from exc
+                expansions_total = _add_expansions(expansions_total, path, config)
                 directed = set(zip(path.node_ids, path.node_ids[1:]))
+                if any(path.node_ids == prior.path.node_ids for prior in candidates):
+                    warnings.append(f"{mode.value} route duplicates an earlier route after diversity retry")
+                    continue
                 shared_ratios = _shared_edge_ratios(directed, candidates)
                 if shared_ratios and max(shared_ratios) > config.maximum_shared_edge_ratio:
                     warnings.append(f"{mode.value} route exceeds diversity limit")
@@ -517,15 +602,31 @@ def _route_candidates(
     return tuple(candidates), tuple(dict.fromkeys(warnings))
 
 
+def _add_expansions(
+    total: int,
+    outcome: DijkstraPath | RoutePathfindingError,
+    config: RealTerrainRouteConfig,
+) -> int:
+    updated = total + outcome.expansions
+    if updated > config.max_total_path_expansions:
+        raise RealTerrainRouteAnalysisError("total path expansion guard exceeded.")
+    return updated
+
+
 def _to_output_candidate(
     candidate: _PathCandidate,
     by_id: dict[str, _Node],
+    mgrs_cache: dict[LocalPoint, str],
     converter: ProjectedToMgrsConverter,
 ) -> RealTerrainRouteCandidate:
     mode, path = candidate.mode, candidate.path
     node_ids = path.node_ids
     points = tuple(
-        RealTerrainRoutePathPoint(index, _normalize_mgrs(converter(by_id[node_id].graph.point, precision=5)), by_id[node_id].flight_msl_m or 0.0)
+        RealTerrainRoutePathPoint(
+            index,
+            _mgrs_for_point(by_id[node_id].graph.point, converter, mgrs_cache),
+            by_id[node_id].flight_msl_m or 0.0,
+        )
         for index, node_id in enumerate(node_ids)
     )
     scores = tuple(
@@ -582,34 +683,21 @@ def _node_output(node: _Node, config: RealTerrainRouteConfig) -> RealTerrainRout
     )
 
 
-def _edge_output(
-    edge: DirectedRouteEdge,
-    by_id: dict[str, _Node],
-    config: RealTerrainRouteConfig,
-) -> RealTerrainRouteEdge:
-    destination = by_id[edge.to_node_id]
-    shielding_risk = 100.0 - (destination.score.shielding_stability_score if destination.score else 0.0)
-    distance_cost = min(edge.distance_3d_m / config.graph_spacing_m, 2.0) * 50.0
-    high_risk = (
-        0.0
-        if destination.color_class in {ColorClass.GREEN, ColorClass.YELLOW}
-        else 50.0
-        if destination.color_class is ColorClass.ORANGE
-        else 100.0
-    )
+def _edge_output(edge: _BaseRouteEdge) -> RealTerrainRouteEdge:
     return RealTerrainRouteEdge(
         from_node_id=edge.from_node_id,
         to_node_id=edge.to_node_id,
         distance_3d_m=edge.distance_3d_m,
-        shielding_risk_cost=shielding_risk,
-        distance_cost=distance_cost,
-        high_risk_penalty=high_risk,
+        shielding_risk_cost=edge.shielding_risk_cost,
+        distance_cost=edge.distance_cost,
+        high_risk_penalty=edge.high_risk_penalty,
     )
 
 
 def _waypoint_handoff(
     candidate: _PathCandidate,
     by_id: dict[str, _Node],
+    mgrs_cache: dict[LocalPoint, str],
     converter: ProjectedToMgrsConverter,
 ) -> tuple[WaypointHandoffPoint, ...]:
     path = candidate.path
@@ -631,9 +719,9 @@ def _waypoint_handoff(
             raise RealTerrainRouteAnalysisError("traversable route node is incomplete.")
         points.append(
             WaypointHandoffPoint(
-                point_id=f"{path.node_ids[0]}-handoff-{index:03d}",
+                point_id=f"route-{candidate.mode.value}-handoff-{index:03d}",
                 projected_point=node.graph.point,
-                point_mgrs=_normalize_mgrs(converter(node.graph.point, precision=5)),
+                point_mgrs=_mgrs_for_point(node.graph.point, converter, mgrs_cache),
                 cumulative_distance_3d_m=cumulative,
                 terrain_msl_m=node.terrain_msl_m,
                 surface_msl_m=node.surface_msl_m,
@@ -675,3 +763,15 @@ def _normalize_mgrs(value: object) -> str:
     if not normalized:
         raise CoordinateConversionError("MGRS conversion returned empty text.")
     return normalized
+
+
+def _mgrs_for_point(
+    point: LocalPoint,
+    converter: ProjectedToMgrsConverter,
+    cache: dict[LocalPoint, str],
+) -> str:
+    """Convert each unique projected route point at most once."""
+
+    if point not in cache:
+        cache[point] = _normalize_mgrs(converter(point, precision=5))
+    return cache[point]

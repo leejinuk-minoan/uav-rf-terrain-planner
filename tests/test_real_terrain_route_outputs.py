@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from uav_rf_terrain.real_terrain_route_outputs import (
@@ -72,3 +74,35 @@ def test_non_valid_node_has_no_fabricated_score_or_non_excluded_color() -> None:
             source_zone_reason="source-zone not applicable",
             fresnel_diagnostics=None,
         )
+
+
+def test_outside_radius_node_rejects_coordinated_radius_or_traversability_mutation() -> None:
+    node = RealTerrainRouteNode(
+        node_id="route-node-r00000-c00000",
+        row=0,
+        column=0,
+        projected_point=LocalPoint(0.0, 0.0),
+        node_mgrs=None,
+        terrain_msl_m=100.0,
+        surface_msl_m=100.0,
+        flight_agl_m=20.0,
+        flight_msl_m=120.0,
+        distance_3d_from_launch_m=20.001,
+        within_operation_radius=False,
+        state=RouteNodeState.OUTSIDE_OPERATION_RADIUS,
+        traversable=False,
+        reason="outside operation radius",
+        shielding_stability_score=None,
+        overall_score=None,
+        color_class=ColorClass.EXCLUDED,
+        source_zone=None,
+        source_zone_state=SourceZoneAvailability.NOT_REQUESTED,
+        source_sensitive=None,
+        source_zone_reason="source-zone provider not requested",
+        fresnel_diagnostics=None,
+    )
+
+    with pytest.raises(RealTerrainRouteOutputError, match="radius flag false"):
+        replace(node, within_operation_radius=True)
+    with pytest.raises(RealTerrainRouteOutputError, match="valid_scored and traversable"):
+        replace(node, traversable=True)

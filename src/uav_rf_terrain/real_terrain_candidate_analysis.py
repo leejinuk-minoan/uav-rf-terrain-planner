@@ -207,6 +207,22 @@ class RealTerrainLaunchAreaResult:
     candidate_features: tuple[CandidateAnalysisMapFeature, ...]
     summary: RealTerrainLaunchAreaSummary
     warnings: tuple[str, ...]
+    operation_radius_m: float | None = None
+    allowed_agl_m: float | None = None
+    frequency_hz: float | None = None
+    profile_sample_spacing_m: float | None = None
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("operation_radius_m", self.operation_radius_m),
+            ("allowed_agl_m", self.allowed_agl_m),
+            ("frequency_hz", self.frequency_hz),
+            ("profile_sample_spacing_m", self.profile_sample_spacing_m),
+        ):
+            if value is not None and (
+                isinstance(value, bool) or not isfinite(value) or value <= 0.0
+            ):
+                raise RealTerrainLaunchAreaAnalysisError(f"{name} must be positive when present.")
 
 
 def analyze_real_terrain_launch_area(
@@ -279,6 +295,10 @@ def analyze_real_terrain_launch_area(
         candidate_features=features,
         summary=_summary(records),
         warnings=tuple(warnings),
+        operation_radius_m=config.operating_radius_m,
+        allowed_agl_m=config.allowed_agl_m,
+        frequency_hz=config.frequency_hz,
+        profile_sample_spacing_m=resolved_profile_spacing_m,
     )
 
 
