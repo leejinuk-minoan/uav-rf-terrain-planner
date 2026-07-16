@@ -243,7 +243,7 @@ Task 033A defines the optional preview/report contract, and Task 033B implements
 
 Task 034D adds opt-in diagnostic appendix-table stdout and UTF-8 file output without changing report composition or existing default outputs.
 
-Task 035A defined the first real-terrain candidate-analysis contract, and Task 035B implemented the EPSG:5179 developer/runtime engine boundary with one DEM/DSM analysis session, explicit candidate exclusion states, production-neutral records, actual projected candidate features, and optional source-zone metadata. Task 035C defined the renderer-neutral map and launch-site selection boundary. Task 035D implements that boundary with explicit candidate cell size, EPSG:5179 polygons, lazy WGS84/MGRS conversion adapters, MGRS popup/selected-site fields, immutable candidate-ID selection, and optional deterministic self-contained local HTML/SVG output. It does not implement route, waypoint, UI callback, scoring, or terrain-analysis changes.
+Task 035A defined the first real-terrain candidate-analysis contract, Task 035B implemented the EPSG:5179 developer/runtime engine boundary, and Task 035D implemented the renderer-neutral map and immutable launch-site selection boundary. Task 035EF is implemented in Draft PR #105, pending review: bounded EPSG:5179 graph analysis, fixed-AGL 3D radius handling, deterministic Dijkstra, up to three diverse MGRS-facing route candidates, and unsampled waypoint handoff points. It preserves the existing terrain-analysis, LOS/Fresnel, score/color, map/selection, preview/report/CLI, route scaffold, and waypoint scaffold contracts.
 
 ## 향후 고도 판단 보조 기능
 
