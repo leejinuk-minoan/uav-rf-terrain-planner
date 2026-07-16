@@ -281,7 +281,7 @@ Dominant obstacle diagnostics는 현재 경로비용에 반영하지 않는다.
 5. 발진 가능구역 색상 임계값과 경로추천 가중치는 검증 후 별도 Task에서 보정한다.
 6. Task 033B는 PR #85를 통해 `main`에 완료됐으며 dominant obstacle diagnostics를 preview JSON, plain text, report에 제공하지만 scoring과 route/waypoint cost에는 사용하지 않는다.
 7. Task 034B는 PR #91을 통해 별도 14-column diagnostic appendix formatter를 `main`에 구현했고, Task 034D는 PR #95를 통해 diagnostic-table CLI stdout/file output을 구현했다.
-8. Task 035B는 PR #99를 통해 EPSG:5179 target과 real DEM/DSM adapter를 production-neutral candidate records 및 actual-geometry features까지 연결했고, Task 035D는 PR #103을 통해 renderer-neutral package, lazy coordinate conversion, immutable selection과 explicit-path HTML/SVG writer를 구현했다. Task 035EF는 선택된 발진기지에서 target까지 bounded graph, fixed-AGL 3D radius, deterministic Dijkstra와 최대 3개 diverse route proxy를 구현한다.
+8. Task 035B는 PR #99를 통해 EPSG:5179 target과 real DEM/DSM adapter를 production-neutral candidate records 및 actual-geometry features까지 연결했고, Task 035D는 PR #103을 통해 renderer-neutral package, lazy coordinate conversion, immutable selection과 explicit-path HTML/SVG writer를 구현했다. Task 035EF는 선택된 발진기지에서 target까지 bounded graph, fixed-AGL 3D radius, deterministic Dijkstra와 최대 3개 diverse route proxy 및 unsampled waypoint handoff를 구현했다.
 9. Tile-based Folium/Leaflet, Streamlit callback UI, waypoint interpolation, minimum altitude, report composition, scoring 반영과 field RF validation은 각각 별도의 reviewed Task로 분리한다.
 
 ---

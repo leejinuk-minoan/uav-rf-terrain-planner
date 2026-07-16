@@ -96,4 +96,3 @@ def snap_point_to_route_node(
     if distance_2d_m(point, node.point) > graph_spacing_m * sqrt(2.0) / 2.0 + 1e-12:
         raise RouteGraphError("point cannot be snapped within the graph spacing limit.")
     return node
-

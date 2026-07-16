@@ -43,4 +43,3 @@ preview/report/CLI behavior, legacy route/waypoint scaffolds, dependencies, or C
 This record contains no GIS data, generated route, actual coordinate, private local
 path, credential, external-device command, autopilot instruction, or flight-control
 output.
-

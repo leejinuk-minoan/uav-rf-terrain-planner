@@ -629,7 +629,7 @@ Task 035A: real-terrain candidate-analysis pipeline contract 완료
 Task 035B: PR #99를 통해 real-terrain candidate-analysis runtime 완료
 Task 035C: real-terrain map/selection architecture contract 완료
 Task 035D: PR #103을 통해 real-terrain map/selection 구현 완료
-Task 035EF: selected-launch-site real-terrain route recommendation 계약 및 구현 진행
+Task 035EF: selected launch site → 최대 3개 real-terrain route candidate 계약 및 구현 완료, Draft PR 검토 대기
 ```
 
 ---

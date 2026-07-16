@@ -113,4 +113,3 @@ LOS/Fresnel calculations, score weights, color thresholds, preview/report/CLI be
 and dependency/workflow files. Route outputs are heuristic terrain and surface-obstacle
 proxies. They do not establish obstacle absence, RF availability, flight feasibility,
 reconnaissance success, or airspace approval.
-

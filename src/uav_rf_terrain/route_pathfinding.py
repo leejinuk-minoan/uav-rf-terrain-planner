@@ -106,4 +106,3 @@ def dijkstra_shortest_path(
                 counter += 1
                 heapq.heappush(queue, (candidate_cost, candidate_distance, row, column, counter, edge.to_node_id))
     raise RoutePathfindingError("no traversable path was found.")
-

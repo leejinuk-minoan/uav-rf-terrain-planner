@@ -15,15 +15,15 @@ Later modes penalize prior directed edges to seek bounded diversity.
 
 ## Evidence Boundary
 
-Focused synthetic adapter tests verify guards, node states, 3D radius behavior, graph
-order and edges, deterministic tie-breaking, diversity handling, public MGRS output,
-and performance failures. Local tests verify source behavior only. No field RF test,
-real GIS route run, browser/UI test, generated route artifact, or actual coordinate is
-recorded in the repository.
+Focused synthetic adapter tests verify configuration, selection guards, graph order,
+snapping, explicit node invariants, deterministic Dijkstra, public MGRS output, and
+performance failures. The initial Task 035EF focused suite passed 11 tests and the
+full local suite passed 875 tests. Local tests verify source behavior only. No field
+RF test, real GIS route run, browser/UI test, generated route artifact, or actual
+coordinate is recorded in the repository.
 
 ## Interpretation Limit
 
 The calculated paths are research and simulation terrain-risk proxies. They do not
 measure link performance or demonstrate operational route suitability, flight
 feasibility, or regulatory approval.
-
