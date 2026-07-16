@@ -1,6 +1,6 @@
 # 드론 주파수 차폐 기반 발진기지 및 경로추천 프로그램 Master Plan 초안
 
-Task 032AB와 Task 032CD는 완료됐고, Task 033A/033B의 dominant-obstacle output integration, Task 034B의 diagnostic appendix formatter, Task 034D의 diagnostic CLI stdout/file delivery가 `main`에 완료됐다. Task 035A가 정의한 real-terrain candidate-analysis 계약은 Task 035B와 PR #99를 통해 production-neutral candidate records와 rendering-independent actual-geometry features로 구현됐다. Task 035C는 다음 Local Task가 실제 후보 셀 polygon, WGS84 renderer geometry, MGRS popup, candidate-ID selection과 optional local HTML/SVG output을 구현하도록 경계를 고정한다. Existing scoring, color, ranking, route cost, waypoint cost, preview/report contracts는 변경되지 않는다.
+Task 032AB와 Task 032CD는 완료됐고, Task 033A/033B의 dominant-obstacle output integration, Task 034B의 diagnostic appendix formatter, Task 034D의 diagnostic CLI stdout/file delivery가 `main`에 완료됐다. Task 035A가 정의한 real-terrain candidate-analysis 계약은 Task 035B와 PR #99를 통해 구현됐고, Task 035D는 PR #103을 통해 실제 후보 셀 polygon, WGS84 renderer geometry, MGRS popup, candidate-ID selection과 optional local HTML/SVG output을 구현했다. Task 035EF는 선택된 발진기지에서 목표까지의 bounded EPSG:5179 real-terrain graph, deterministic route search, three-route diversity, and MGRS-facing output을 정의하고 구현한다. Existing scoring, color, preview/report contracts와 legacy route/waypoint scaffold는 변경되지 않는다.
 
 작성일: 2026-07-08  
 개정일: 2026-07-14  
@@ -214,7 +214,7 @@ Radio map 기반 UAV 경로계획 연구는 공간 격자마다 통신품질 점
 
 Dominant obstacle 보조 진단은 11~14단계의 점수·분류 결과를 변경하지 않는다.
 
-Task 035B는 14단계 결과를 production-neutral candidate record와 actual projected rendering-independent candidate feature로 구현했다. Task 035C는 15단계를 위해 explicit cell size, EPSG:5179 counter-clockwise cell polygon, WGS84 renderer geometry, MGRS popup, fixed legend, candidate-ID selection과 optional local HTML/SVG output 계약을 정의한다. Route와 waypoint는 여전히 후속 Task다.
+Task 035B는 14단계 결과를 production-neutral candidate record와 actual projected rendering-independent candidate feature로 구현했고, Task 035D는 explicit cell size, EPSG:5179 counter-clockwise cell polygon, WGS84 renderer geometry, MGRS popup, fixed legend, candidate-ID selection과 optional local HTML/SVG output을 구현했다. Task 035EF는 선택된 발진기지와 목표를 잇는 EPSG:5179 terrain graph, 3D 운용반경, deterministic Dijkstra, 최대 3개 route diversity와 MGRS-facing route output을 구현한다. Waypoint interpolation은 여전히 후속 Task다.
 
 ### 6.2 발진 가능구역 종합점수
 
@@ -429,7 +429,7 @@ frequency_hz
  - 경유점 표
 ```
 
-Task 033B가 optional preview/report diagnostic bridge를 구현했고 Task 034D가 diagnostic-table CLI delivery를 구현했다. Task 035B는 지형 데이터 로딩부터 색상 등급 분류와 rendering-independent actual-geometry candidate feature까지의 real-terrain engine을 구현했다. Task 035C는 다음 Local Task가 actual projected cell polygon, WGS84 renderer geometry, MGRS popup, legend, candidate-ID selection service와 dependency-free local HTML/SVG를 구현하도록 경계를 고정한다. Route와 waypoint 및 full UI는 추가하지 않는다.
+Task 033B가 optional preview/report diagnostic bridge를 구현했고 Task 034D가 diagnostic-table CLI delivery를 구현했다. Task 035B는 지형 데이터 로딩부터 색상 등급 분류와 rendering-independent actual-geometry candidate feature까지의 real-terrain engine을 구현했고, Task 035D는 map/selection과 dependency-free local HTML/SVG를 구현했다. Task 035EF는 선택 발진기지에서 목표까지의 bounded real-terrain route recommendation을 구현한다. Waypoint interpolation과 full UI는 추가하지 않는다.
 
 ---
 
@@ -628,7 +628,8 @@ Task 034D: PR #95를 통해 diagnostic CLI stdout/file output 완료
 Task 035A: real-terrain candidate-analysis pipeline contract 완료
 Task 035B: PR #99를 통해 real-terrain candidate-analysis runtime 완료
 Task 035C: real-terrain map/selection architecture contract 완료
-Task 035D: Local Execution 구현 전
+Task 035D: PR #103을 통해 real-terrain map/selection 구현 완료
+Task 035EF: selected-launch-site real-terrain route recommendation 계약 및 구현 진행
 ```
 
 ---
@@ -653,4 +654,4 @@ Task 035D: Local Execution 구현 전
 
 Android/TMMR offline은 논문 핵심 기능이 아니라 제품화·배포 전략으로 분리한다. 해당 로드맵은 최종 빌드 이후 현장 사용자 접근성, 사전 탑재 데이터, 사전 산출 map-ready package 활용 가능성을 검토하는 별도 배포 Task로 관리한다.
 
-Task 032CD의 진단값은 실제 통신 품질을 입증하지 않는 보조 분석 proxy다. Task 033B, Task 034B와 Task 034D는 optional output projection과 diagnostic delivery를 제공하지만 scoring, color, ranking, route, waypoint 경계를 변경하지 않는다. Task 035B는 실제 DEM/DSM를 candidate record와 actual-geometry feature까지 연결했다. Task 035C는 그 결과를 EPSG:5179 polygon, WGS84 renderer geometry, MGRS popup, legend와 candidate-ID selected record로 연결할 Task 035D 계약만 정의하며, local coordinate conversion·HTML/SVG rendering·click verification·route/waypoint/full UI는 아직 완료되지 않았다.
+Task 032CD의 진단값은 실제 통신 품질을 입증하지 않는 보조 분석 proxy다. Task 033B, Task 034B와 Task 034D는 optional output projection과 diagnostic delivery를 제공하지만 scoring, color, ranking, route, waypoint 경계를 변경하지 않는다. Task 035B는 실제 DEM/DSM를 candidate record와 actual-geometry feature까지 연결했고, Task 035D는 이를 EPSG:5179 polygon, WGS84 renderer geometry, MGRS popup, legend, immutable candidate-ID selected record와 local HTML/SVG로 연결했다. Task 035EF는 선택된 발진기지를 입력으로 bounded terrain graph와 최대 3개 route proxy를 구현하되, waypoint/full UI와 field validation은 별도 범위로 유지한다.
