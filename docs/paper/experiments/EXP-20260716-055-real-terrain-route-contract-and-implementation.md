@@ -18,7 +18,9 @@ Later modes penalize prior directed edges to seek bounded diversity.
 Focused synthetic adapter tests verify configuration, selection and mission-authority
 guards, clipped graph order, snapping, explicit node invariants, deterministic Dijkstra,
 typed failures, cached public MGRS output, and performance failures. The amended focused
-suite passed 20 tests and the full local suite passed 884 tests. Local tests verify source
+suite passed 28 tests and the full local suite passed 892 tests. Complete-result tests
+also reject partial authority removal and endpoint parity mutations while accepting a
+consistent one-node, zero-distance snapped route. Local tests verify source
 behavior only. No field
 RF test, real GIS route run, browser/UI test, generated route artifact, or actual
 coordinate is recorded in the repository.

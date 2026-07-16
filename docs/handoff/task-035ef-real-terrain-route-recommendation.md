@@ -24,6 +24,8 @@ the existing real-terrain analysis boundary in Draft PR #105, pending GPT Master
 - Keep route-node source-zone metadata as `NOT_REQUESTED`; it is not copied from the
   selected launch site and no route source-zone summary is reported in this MVP.
 - Make actual launch/target MGRS distinct from snapped graph endpoints in public output.
+- Treat `RealTerrainRouteResult` as a complete runtime result: graph, summary,
+  handoffs, launch-ground, and snap authority are required and cross-validated.
 
 ## Explicit Non-Goals
 
@@ -42,8 +44,8 @@ must also pass its exact-head standard GitHub Actions run.
 
 ## Local Verification Result
 
-The amended focused Task 035EF suite passed 20 tests and the full local suite passed
-884 tests. `compileall`, Ruff, mypy, and `git diff --check` passed on the amendment
+The final result-contract focused Task 035EF suite passed 28 tests and the full local
+suite passed 892 tests. `compileall`, Ruff, mypy, and `git diff --check` passed on the amendment
 worktree before the final commit. No real GIS route smoke, generated route artifact,
 or browser/UI test is run by this task.
 

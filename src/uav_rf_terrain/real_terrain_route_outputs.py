@@ -11,6 +11,7 @@ from .fresnel_diagnostics import CandidateFresnelDiagnostics
 from .real_terrain_candidate_analysis import SourceZoneAvailability
 from .schemas import ColorClass
 from .source_zones import SourceZoneSummary, TerrainSourceZone
+from .terrain_data import TerrainDatasetMetadata
 
 
 class RealTerrainRouteOutputError(ValueError):
@@ -421,19 +422,19 @@ class RealTerrainRouteResult:
     target_mgrs: str
     route_candidates: tuple[RealTerrainRouteCandidate, ...]
     warnings: tuple[str, ...]
-    config: RealTerrainRouteConfig | None = None
-    terrain_metadata: object | None = None
-    graph_nodes: tuple[RealTerrainRouteNode, ...] = ()
-    graph_edges: tuple[RealTerrainRouteEdge, ...] = ()
-    summary: RealTerrainRouteSummary | None = None
-    waypoint_handoffs: tuple[tuple[WaypointHandoffPoint, ...], ...] = ()
-    launch_ground_msl_m: float | None = None
-    snapped_launch_node_id: str | None = None
-    snapped_target_node_id: str | None = None
-    snapped_launch_node_mgrs: str | None = None
-    snapped_target_node_mgrs: str | None = None
-    launch_snap_distance_m: float | None = None
-    target_snap_distance_m: float | None = None
+    config: RealTerrainRouteConfig
+    terrain_metadata: TerrainDatasetMetadata
+    graph_nodes: tuple[RealTerrainRouteNode, ...]
+    graph_edges: tuple[RealTerrainRouteEdge, ...]
+    summary: RealTerrainRouteSummary
+    waypoint_handoffs: tuple[tuple[WaypointHandoffPoint, ...], ...]
+    launch_ground_msl_m: float
+    snapped_launch_node_id: str
+    snapped_target_node_id: str
+    snapped_launch_node_mgrs: str
+    snapped_target_node_mgrs: str
+    launch_snap_distance_m: float
+    target_snap_distance_m: float
     path_semantics: str = "snapped_graph_path"
 
     def __post_init__(self) -> None:
@@ -456,20 +457,24 @@ class RealTerrainRouteResult:
             raise RealTerrainRouteOutputError("route candidates must retain fixed mode order.")
         if len({candidate.route_id for candidate in self.route_candidates}) != len(self.route_candidates):
             raise RealTerrainRouteOutputError("route candidate IDs must be unique.")
-        if self.config is not None and not isinstance(self.config, RealTerrainRouteConfig):
-            raise RealTerrainRouteOutputError("config must be RealTerrainRouteConfig when present.")
-        if self.summary is not None and self.summary.route_count != len(self.route_candidates):
+        if not isinstance(self.config, RealTerrainRouteConfig):
+            raise RealTerrainRouteOutputError("config must be RealTerrainRouteConfig.")
+        if not isinstance(self.terrain_metadata, TerrainDatasetMetadata):
+            raise RealTerrainRouteOutputError("terrain_metadata must be TerrainDatasetMetadata.")
+        if not self.graph_nodes:
+            raise RealTerrainRouteOutputError("graph_nodes must not be empty.")
+        if not isinstance(self.summary, RealTerrainRouteSummary):
+            raise RealTerrainRouteOutputError("summary must be RealTerrainRouteSummary.")
+        if self.summary.route_count != len(self.route_candidates):
             raise RealTerrainRouteOutputError("route summary count must match candidates.")
-        if self.waypoint_handoffs and len(self.waypoint_handoffs) != len(self.route_candidates):
+        if len(self.waypoint_handoffs) != len(self.route_candidates):
             raise RealTerrainRouteOutputError("waypoint handoffs must match route candidates.")
-        if self.launch_ground_msl_m is not None:
-            _finite("launch_ground_msl_m", self.launch_ground_msl_m)
+        _finite("launch_ground_msl_m", self.launch_ground_msl_m)
         if len(set(self.warnings)) != len(self.warnings):
             raise RealTerrainRouteOutputError("result warnings must be unique.")
-        if self.graph_nodes:
-            _validate_result_graph_contract(self)
         if self.path_semantics != "snapped_graph_path":
             raise RealTerrainRouteOutputError("path_semantics must describe snapped graph paths.")
+        _validate_result_graph_contract(self)
 
     def to_public_dict(self) -> dict[str, object]:
         """Return a user-facing dictionary without projected, raster, or WGS84 fields."""
@@ -560,6 +565,7 @@ def _validate_result_graph_contract(result: RealTerrainRouteResult) -> None:
         raise RealTerrainRouteOutputError("route-node source-zone metadata must remain not requested in this MVP.")
     if not result.waypoint_handoffs or len(result.waypoint_handoffs) != len(result.route_candidates):
         raise RealTerrainRouteOutputError("result waypoint handoffs must match route candidates.")
+    _validate_snap_metadata(result, nodes_by_id)
     for index, candidate in enumerate(result.route_candidates):
         if len(candidate.shared_edge_ratios) != index:
             raise RealTerrainRouteOutputError("shared edge ratios must follow prior-route order.")
@@ -570,11 +576,36 @@ def _validate_result_graph_contract(result: RealTerrainRouteResult) -> None:
             if node is not None
         ):
             raise RealTerrainRouteOutputError("candidate path must match graph node references.")
+        if (
+            candidate.ordered_node_ids[0] != result.snapped_launch_node_id
+            or candidate.ordered_node_ids[-1] != result.snapped_target_node_id
+            or candidate.path[0].mgrs != result.snapped_launch_node_mgrs
+            or candidate.path[-1].mgrs != result.snapped_target_node_mgrs
+            or candidate.ordered_projected_points[0] != nodes_by_id[result.snapped_launch_node_id].projected_point
+            or candidate.ordered_projected_points[-1]
+            != nodes_by_id[result.snapped_target_node_id].projected_point
+        ):
+            raise RealTerrainRouteOutputError("candidate endpoints must match snapped route authority.")
+        if result.snapped_launch_node_id == result.snapped_target_node_id and (
+            len(candidate.path) != 1
+            or abs(candidate.total_distance_3d_m) > 1e-9
+            or abs(candidate.total_cost) > 1e-9
+        ):
+            raise RealTerrainRouteOutputError("same snapped endpoints require a one-node zero-edge route.")
         handoff = result.waypoint_handoffs[index]
-        if len(handoff) != len(candidate.path):
+        if not handoff or len(handoff) != len(candidate.path):
             raise RealTerrainRouteOutputError("waypoint handoff length must match candidate path.")
+        if abs(handoff[0].cumulative_distance_3d_m) > 1e-9:
+            raise RealTerrainRouteOutputError("first waypoint cumulative distance must be zero.")
         if handoff and abs(handoff[-1].cumulative_distance_3d_m - candidate.total_distance_3d_m) > 1e-9:
             raise RealTerrainRouteOutputError("final waypoint cumulative distance must match route distance.")
+        if (
+            handoff[0].point_mgrs != result.snapped_launch_node_mgrs
+            or handoff[-1].point_mgrs != result.snapped_target_node_mgrs
+            or handoff[0].projected_point != nodes_by_id[result.snapped_launch_node_id].projected_point
+            or handoff[-1].projected_point != nodes_by_id[result.snapped_target_node_id].projected_point
+        ):
+            raise RealTerrainRouteOutputError("waypoint endpoints must match snapped route authority.")
         for sequence_index, (path_point, handoff_point) in enumerate(zip(candidate.path, handoff)):
             if (
                 handoff_point.point_mgrs != path_point.mgrs
@@ -586,33 +617,26 @@ def _validate_result_graph_contract(result: RealTerrainRouteResult) -> None:
                 or handoff_point.source_sensitive is not None
             ):
                 raise RealTerrainRouteOutputError("waypoint handoff must match candidate path MGRS and point parity.")
-    _validate_snap_metadata(result, nodes_by_id)
 
 
 def _validate_snap_metadata(
     result: RealTerrainRouteResult,
     nodes_by_id: dict[str, RealTerrainRouteNode],
 ) -> None:
-    values = (
-        result.snapped_launch_node_id,
-        result.snapped_target_node_id,
-        result.snapped_launch_node_mgrs,
-        result.snapped_target_node_mgrs,
-        result.launch_snap_distance_m,
-        result.target_snap_distance_m,
-    )
-    if any(value is not None for value in values):
-        if any(value is None for value in values):
-            raise RealTerrainRouteOutputError("snap metadata must be complete when present.")
-        launch_node = nodes_by_id.get(result.snapped_launch_node_id or "")
-        target_node = nodes_by_id.get(result.snapped_target_node_id or "")
-        if launch_node is None or target_node is None:
-            raise RealTerrainRouteOutputError("snap metadata must reference graph nodes.")
-        for name, distance in (
-            ("launch_snap_distance_m", result.launch_snap_distance_m),
-            ("target_snap_distance_m", result.target_snap_distance_m),
+    launch_node = nodes_by_id.get(result.snapped_launch_node_id)
+    target_node = nodes_by_id.get(result.snapped_target_node_id)
+    if launch_node is None or target_node is None or not launch_node.traversable or not target_node.traversable:
+        raise RealTerrainRouteOutputError("snap metadata must reference traversable graph nodes.")
+    for name, distance in (
+        ("launch_snap_distance_m", result.launch_snap_distance_m),
+        ("target_snap_distance_m", result.target_snap_distance_m),
+    ):
+        _non_negative_finite(name, distance)
+    for mgrs in (result.snapped_launch_node_mgrs, result.snapped_target_node_mgrs):
+        if (
+            not isinstance(mgrs, str)
+            or not mgrs.strip()
+            or mgrs != mgrs.upper()
+            or mgrs != mgrs.strip()
         ):
-            _non_negative_finite(name, distance)
-        for mgrs in (result.snapped_launch_node_mgrs, result.snapped_target_node_mgrs):
-            if not isinstance(mgrs, str) or not mgrs.strip() or mgrs != mgrs.upper():
-                raise RealTerrainRouteOutputError("snapped MGRS metadata must be uppercase text.")
+            raise RealTerrainRouteOutputError("snapped MGRS metadata must be uppercase text.")

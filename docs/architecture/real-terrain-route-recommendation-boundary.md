@@ -112,6 +112,13 @@ endpoint IDs/MGRS and snap distances. Candidate paths are explicitly
 connector distance. It exposes route mode, distance, aggregate score fields, warnings,
 and selected-site identity. Route-node and handoff source-zone state is intentionally
 `NOT_REQUESTED` in this MVP; no route source-zone summary is retained.
+
+`RealTerrainRouteResult` is a complete runtime result, not a partial builder. It always
+retains terrain metadata, graph nodes and edges, summary, handoffs, launch ground MSL,
+and snapped-endpoint authority. Partial graph/handoff/snap records are invalid. Every
+candidate and handoff starts and ends at the same validated snapped node IDs, MGRS
+values, and projected points; a shared snapped start/target is represented by a
+one-node, zero-distance graph path.
 It does not expose projected coordinates, raster indexes, WGS84 geometry, or raw
 terrain cells in its default user dictionary. MGRS conversion is required only for
 output path points, not all graph nodes.

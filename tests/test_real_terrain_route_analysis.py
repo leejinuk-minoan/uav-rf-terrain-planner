@@ -218,3 +218,23 @@ def test_route_mgrs_conversion_cache_reuses_each_projected_point_for_candidate_a
         for candidate, handoff in zip(result.route_candidates, result.waypoint_handoffs)
         for path_point, handoff_point in zip(candidate.path, handoff)
     )
+
+
+def test_same_snapped_launch_and_target_returns_a_one_node_zero_distance_route() -> None:
+    adapter = _FlatAdapter()
+    source, selected, config = _source_selected_and_config(adapter)
+
+    def mgrs(point: LocalPoint, *, precision: int) -> str:
+        assert precision == 5
+        return f"52SCB{int(point.x_m):05d}{int(point.y_m):05d}"
+
+    result = analyze_selected_launch_site_routes(
+        adapter,
+        selected,
+        source,
+        replace(config, graph_spacing_m=40.0),
+        projected_to_mgrs=mgrs,
+    )
+
+    assert result.snapped_launch_node_id == result.snapped_target_node_id
+    assert all(len(candidate.path) == 1 and candidate.total_distance_3d_m == 0.0 for candidate in result.route_candidates)
