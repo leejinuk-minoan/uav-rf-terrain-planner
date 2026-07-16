@@ -629,7 +629,8 @@ Task 035A: real-terrain candidate-analysis pipeline contract 완료
 Task 035B: PR #99를 통해 real-terrain candidate-analysis runtime 완료
 Task 035C: real-terrain map/selection architecture contract 완료
 Task 035D: PR #103을 통해 real-terrain map/selection 구현 완료
-Task 035EF: selected launch site → 최대 3개 real-terrain route candidate 계약 및 Draft PR #105 구현 완료, 검토 대기
+Task 035EF: PR #105를 통해 selected launch site → 최대 3개 real-terrain route candidate 구현 완료
+Task 035G: complete route result → 약 500m MGRS-facing waypoint report 구현, 검토 대기
 ```
 
 ---
