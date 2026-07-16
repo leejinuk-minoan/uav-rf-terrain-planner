@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from math import isfinite
+from math import floor, isfinite
 
 from .coordinates import LocalPoint
 from .real_terrain_candidate_analysis import SourceZoneAvailability
@@ -136,10 +136,15 @@ class RealTerrainWaypointRecord:
             self.elevation_semantics, WaypointElevationSemantics
         ):
             raise RealTerrainWaypointOutputError("waypoint semantics are invalid.")
-        if not self.left_source_point_id or not self.right_source_point_id:
-            raise RealTerrainWaypointOutputError("waypoint source references must be non-empty.")
-        if not 0.0 <= self.interpolation_fraction <= 1.0:
-            raise RealTerrainWaypointOutputError("interpolation_fraction must be within [0, 1].")
+        if (
+            not isinstance(self.left_source_point_id, str)
+            or not isinstance(self.right_source_point_id, str)
+            or not self.left_source_point_id.strip()
+            or not self.right_source_point_id.strip()
+            or self.left_source_point_id != self.left_source_point_id.strip()
+            or self.right_source_point_id != self.right_source_point_id.strip()
+        ):
+            raise RealTerrainWaypointOutputError("waypoint source references must be non-empty stripped text.")
         exact = self.value_semantics is WaypointValueSemantics.SOURCE_NODE
         if exact != (self.elevation_semantics is WaypointElevationSemantics.SOURCE_NODE):
             raise RealTerrainWaypointOutputError("value and elevation semantics must agree for exact waypoints.")
@@ -148,8 +153,13 @@ class RealTerrainWaypointRecord:
             or abs(self.interpolation_fraction) > 1e-9
         ):
             raise RealTerrainWaypointOutputError("exact source waypoints must reference one source point.")
-        if not exact and self.left_source_point_id == self.right_source_point_id:
-            raise RealTerrainWaypointOutputError("interpolated waypoints must bracket two source points.")
+        if not exact and (
+            self.left_source_point_id == self.right_source_point_id
+            or not 0.0 < self.interpolation_fraction < 1.0
+            or self.elevation_semantics
+            is not WaypointElevationSemantics.ENDPOINT_LINEAR_INTERPOLATION
+        ):
+            raise RealTerrainWaypointOutputError("interpolated waypoints require strict interior bracketing.")
         if (
             self.source_zone is not None
             or self.source_zone_state is not SourceZoneAvailability.NOT_REQUESTED
@@ -178,12 +188,17 @@ class RealTerrainRouteWaypointReport:
             raise RealTerrainWaypointOutputError("route report must retain snapped_graph_path semantics.")
         _positive_finite("waypoint_spacing_m", self.waypoint_spacing_m)
         _non_negative_finite("total_route_distance_3d_m", self.total_route_distance_3d_m)
-        if not self.waypoints or len(set(self.warnings)) != len(self.warnings):
+        if (
+            not self.waypoints
+            or len(set(self.warnings)) != len(self.warnings)
+            or any(not isinstance(warning, str) or not warning.strip() for warning in self.warnings)
+        ):
             raise RealTerrainWaypointOutputError("route report waypoints and warnings are invalid.")
         previous: RealTerrainWaypointRecord | None = None
         for index, waypoint in enumerate(self.waypoints):
             if not isinstance(waypoint, RealTerrainWaypointRecord) or waypoint.route_id != self.route_id:
                 raise RealTerrainWaypointOutputError("route report waypoint route parity is invalid.")
+            waypoint.__post_init__()
             if waypoint.sequence_index != index:
                 raise RealTerrainWaypointOutputError("route report waypoint sequence is not contiguous.")
             if previous is not None:
@@ -209,7 +224,9 @@ class RealTerrainWaypointSummary:
         for value in (self.route_count, self.waypoint_count):
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise RealTerrainWaypointOutputError("summary counts must be non-negative integers.")
-        if len(set(self.warnings)) != len(self.warnings):
+        if len(set(self.warnings)) != len(self.warnings) or any(
+            not isinstance(warning, str) or not warning.strip() for warning in self.warnings
+        ):
             raise RealTerrainWaypointOutputError("summary warnings must be unique.")
 
 
@@ -223,6 +240,12 @@ class RealTerrainWaypointResult:
     launch_site_mgrs: str
     target_mgrs: str
     config: RealTerrainWaypointConfig
+    launch_ground_msl_m: float
+    source_route_ids: tuple[str, ...]
+    source_route_modes: tuple[RouteMode, ...]
+    source_route_total_distance_3d_m: tuple[float, ...]
+    snapped_launch_node_mgrs: str
+    snapped_target_node_mgrs: str
     route_reports: tuple[RealTerrainRouteWaypointReport, ...]
     summary: RealTerrainWaypointSummary
     warnings: tuple[str, ...]
@@ -241,17 +264,86 @@ class RealTerrainWaypointResult:
             raise RealTerrainWaypointOutputError("result MGRS must be uppercase.")
         if not isinstance(self.config, RealTerrainWaypointConfig) or not self.route_reports:
             raise RealTerrainWaypointOutputError("result config and route reports are required.")
+        self.config.__post_init__()
+        _finite("launch_ground_msl_m", self.launch_ground_msl_m)
+        _validate_mgrs("snapped_launch_node_mgrs", self.snapped_launch_node_mgrs)
+        _validate_mgrs("snapped_target_node_mgrs", self.snapped_target_node_mgrs)
+        if not (
+            len(self.source_route_ids)
+            == len(self.source_route_modes)
+            == len(self.source_route_total_distance_3d_m)
+            == len(self.route_reports)
+        ):
+            raise RealTerrainWaypointOutputError("source route authority lengths must match reports.")
+        if len(set(self.source_route_ids)) != len(self.source_route_ids):
+            raise RealTerrainWaypointOutputError("source route IDs must be unique.")
         if not isinstance(self.summary, RealTerrainWaypointSummary):
             raise RealTerrainWaypointOutputError("result summary is invalid.")
+        self.summary.__post_init__()
+        if any(not isinstance(report, RealTerrainRouteWaypointReport) for report in self.route_reports):
+            raise RealTerrainWaypointOutputError("result route reports are invalid.")
+        for report in self.route_reports:
+            report.__post_init__()
+        if any(not isinstance(mode, RouteMode) for mode in self.source_route_modes):
+            raise RealTerrainWaypointOutputError("source route modes are invalid.")
         route_order = {mode: index for index, mode in enumerate(RouteMode)}
         modes = tuple(report.route_mode for report in self.route_reports)
-        if len(set(modes)) != len(modes) or tuple(sorted(modes, key=route_order.__getitem__)) != modes:
+        if (
+            len(set(modes)) != len(modes)
+            or tuple(sorted(modes, key=route_order.__getitem__)) != modes
+            or self.source_route_modes != modes
+        ):
             raise RealTerrainWaypointOutputError("route report order must follow route mode order.")
+        for index, (route_id, mode, total_distance, report) in enumerate(
+            zip(
+                self.source_route_ids,
+                self.source_route_modes,
+                self.source_route_total_distance_3d_m,
+                self.route_reports,
+            )
+        ):
+            if (
+                not isinstance(mode, RouteMode)
+                or not isinstance(route_id, str)
+                or route_id != f"route-{mode.value}"
+                or report.route_id != route_id
+                or report.route_mode is not mode
+            ):
+                raise RealTerrainWaypointOutputError("source route identity does not match report authority.")
+            _non_negative_finite(f"source_route_total_distance_3d_m[{index}]", total_distance)
+            if abs(report.total_route_distance_3d_m - total_distance) > self.config.distance_tolerance_m:
+                raise RealTerrainWaypointOutputError("route report total does not match source authority.")
+            if abs(report.waypoint_spacing_m - self.config.spacing_m) > self.config.distance_tolerance_m:
+                raise RealTerrainWaypointOutputError("route report spacing must match result config.")
+            _validate_report_targets(
+                report,
+                source_total_distance_m=float(total_distance),
+                config=self.config,
+                snapped_launch_mgrs=self.snapped_launch_node_mgrs,
+                snapped_target_mgrs=self.snapped_target_node_mgrs,
+            )
+            for waypoint in report.waypoints:
+                if abs(
+                    waypoint.height_difference_from_launch_m
+                    - (waypoint.flight_msl_m - self.launch_ground_msl_m)
+                ) > self.config.distance_tolerance_m:
+                    raise RealTerrainWaypointOutputError("waypoint height difference must match launch ground authority.")
+        waypoint_ids = tuple(
+            waypoint.waypoint_id for report in self.route_reports for waypoint in report.waypoints
+        )
+        if len(set(waypoint_ids)) != len(waypoint_ids):
+            raise RealTerrainWaypointOutputError("waypoint IDs must be globally unique across route reports.")
         if self.summary.route_count != len(self.route_reports) or self.summary.waypoint_count != sum(
             len(report.waypoints) for report in self.route_reports
         ):
             raise RealTerrainWaypointOutputError("result summary does not match reports.")
-        if len(set(self.warnings)) != len(self.warnings):
+        expected_warnings = _stable_warning_union(tuple(report.warnings for report in self.route_reports))
+        if (
+            len(set(self.warnings)) != len(self.warnings)
+            or any(not isinstance(warning, str) or not warning.strip() for warning in self.warnings)
+            or self.warnings != expected_warnings
+            or self.summary.warnings != expected_warnings
+        ):
             raise RealTerrainWaypointOutputError("result warnings must be unique.")
 
     def to_public_dict(self) -> dict[str, object]:
@@ -318,3 +410,122 @@ def _score(name: str, value: object) -> None:
     numeric = _finite(name, value)
     if numeric < 0 or numeric > 100:
         raise RealTerrainWaypointOutputError(f"{name} must be within [0, 100].")
+
+
+def _validate_mgrs(name: str, value: object) -> None:
+    if not isinstance(value, str) or not value.strip() or value != value.strip().upper():
+        raise RealTerrainWaypointOutputError(f"{name} must be non-empty uppercase MGRS text.")
+
+
+def _waypoint_targets(
+    total_distance_m: float, config: RealTerrainWaypointConfig
+) -> tuple[tuple[float, int | None], ...]:
+    """Return the reviewed target sequence without performing conversion or sampling."""
+
+    _non_negative_finite("total_distance_m", total_distance_m)
+    targets: list[tuple[float, int | None]] = []
+    if config.include_start:
+        targets.append((0.0, None))
+    interval_count = floor((total_distance_m - config.distance_tolerance_m) / config.spacing_m)
+    for interval_index in range(1, max(interval_count, 0) + 1):
+        targets.append((interval_index * config.spacing_m, interval_index))
+    if config.include_end and (
+        not targets or abs(targets[-1][0] - total_distance_m) > config.distance_tolerance_m
+    ):
+        targets.append((total_distance_m, None))
+    deduplicated: list[tuple[float, int | None]] = []
+    for target in targets:
+        if not deduplicated or abs(target[0] - deduplicated[-1][0]) > config.distance_tolerance_m:
+            deduplicated.append(target)
+    if not deduplicated:
+        raise RealTerrainWaypointOutputError("configuration produces zero route waypoints.")
+    return tuple(deduplicated)
+
+
+def _route_warnings(
+    *, route_id: str, total_distance_m: float, config: RealTerrainWaypointConfig, waypoint_count: int
+) -> tuple[str, ...]:
+    """Return stable route-scoped warnings without duplicating the zero-distance meaning."""
+
+    warnings: list[str] = []
+    if total_distance_m < config.spacing_m - config.distance_tolerance_m:
+        warnings.append(f"{route_id}: route shorter than requested waypoint spacing")
+    if total_distance_m <= config.distance_tolerance_m and waypoint_count == 1:
+        warnings.append(f"{route_id}: zero-distance route produced one waypoint")
+    elif _is_endpoint_only(total_distance_m, config, waypoint_count):
+        warnings.append(f"{route_id}: route produced endpoint-only waypoint report")
+    return tuple(warnings)
+
+
+def _is_endpoint_only(total_distance_m: float, config: RealTerrainWaypointConfig, waypoint_count: int) -> bool:
+    endpoints = int(config.include_start) + int(config.include_end)
+    return total_distance_m > config.distance_tolerance_m and waypoint_count == endpoints
+
+
+def _stable_warning_union(route_warnings: tuple[tuple[str, ...], ...]) -> tuple[str, ...]:
+    return tuple(warning for warnings in route_warnings for warning in warnings)
+
+
+def _validate_report_targets(
+    report: RealTerrainRouteWaypointReport,
+    *,
+    source_total_distance_m: float,
+    config: RealTerrainWaypointConfig,
+    snapped_launch_mgrs: str,
+    snapped_target_mgrs: str,
+) -> None:
+    try:
+        targets = _waypoint_targets(source_total_distance_m, config)
+    except RealTerrainWaypointOutputError:
+        raise
+    if len(report.waypoints) != len(targets):
+        raise RealTerrainWaypointOutputError("route report waypoint count does not match target policy.")
+    for waypoint, (target, interval_index) in zip(report.waypoints, targets):
+        if (
+            abs(waypoint.cumulative_distance_3d_m - target) > config.distance_tolerance_m
+            or waypoint.target_interval_index != interval_index
+        ):
+            raise RealTerrainWaypointOutputError("route report waypoint targets do not match config policy.")
+    zero_distance = source_total_distance_m <= config.distance_tolerance_m
+    if zero_distance:
+        if len(report.waypoints) != 1:
+            raise RealTerrainWaypointOutputError("zero-distance route must produce one waypoint.")
+        if snapped_launch_mgrs != snapped_target_mgrs or report.waypoints[0].mgrs != snapped_launch_mgrs:
+            raise RealTerrainWaypointOutputError("zero-distance route endpoints do not match snapped authority.")
+        expected_warnings = _route_warnings(
+            route_id=report.route_id,
+            total_distance_m=source_total_distance_m,
+            config=config,
+            waypoint_count=len(report.waypoints),
+        )
+        if report.warnings != expected_warnings:
+            raise RealTerrainWaypointOutputError("route report warnings do not match deterministic policy.")
+        return
+    if config.include_start:
+        if (
+            abs(report.waypoints[0].cumulative_distance_3d_m) > config.distance_tolerance_m
+            or report.waypoints[0].mgrs != snapped_launch_mgrs
+        ):
+            raise RealTerrainWaypointOutputError("route report start does not match snapped authority.")
+    elif any(abs(item.cumulative_distance_3d_m) <= config.distance_tolerance_m for item in report.waypoints):
+        raise RealTerrainWaypointOutputError("route report includes a disallowed start waypoint.")
+    if config.include_end:
+        if (
+            abs(report.waypoints[-1].cumulative_distance_3d_m - source_total_distance_m)
+            > config.distance_tolerance_m
+            or report.waypoints[-1].mgrs != snapped_target_mgrs
+        ):
+            raise RealTerrainWaypointOutputError("route report end does not match snapped authority.")
+    elif any(
+        abs(item.cumulative_distance_3d_m - source_total_distance_m) <= config.distance_tolerance_m
+        for item in report.waypoints
+    ):
+        raise RealTerrainWaypointOutputError("route report includes a disallowed end waypoint.")
+    expected_warnings = _route_warnings(
+        route_id=report.route_id,
+        total_distance_m=source_total_distance_m,
+        config=config,
+        waypoint_count=len(report.waypoints),
+    )
+    if report.warnings != expected_warnings:
+        raise RealTerrainWaypointOutputError("route report warnings do not match deterministic policy.")

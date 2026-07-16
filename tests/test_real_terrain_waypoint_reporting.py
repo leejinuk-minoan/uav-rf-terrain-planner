@@ -172,11 +172,16 @@ def test_sampling_reuses_exact_nodes_and_interpolates_conservatively() -> None:
     assert interpolated.color_class is ColorClass.RED
     assert interpolated.shielding_stability_score == 70.0
     assert interpolated.overall_score == 68.0
+    assert 0.0 < interpolated.interpolation_fraction < 1.0
 
 
-def test_short_and_zero_routes_emit_deduplicated_endpoints() -> None:
+def test_short_and_zero_routes_emit_deterministic_warnings() -> None:
     short = build_real_terrain_waypoint_reports(_result(total=300.0), projected_to_mgrs=_mgrs)
     assert [item.cumulative_distance_3d_m for item in short.route_reports[0].waypoints] == [0.0, 300.0]
+    assert short.route_reports[0].warnings == (
+        "route-shielding_minimum: route shorter than requested waypoint spacing",
+        "route-shielding_minimum: route produced endpoint-only waypoint report",
+    )
 
     zero = _result(total=0.0)
     node = zero.graph_nodes[0]
@@ -199,7 +204,13 @@ def test_short_and_zero_routes_emit_deduplicated_endpoints() -> None:
         snapped_target_node_id=node.node_id,
         snapped_target_node_mgrs=candidate.path[0].mgrs,
     )
-    assert len(build_real_terrain_waypoint_reports(zero, projected_to_mgrs=_mgrs).route_reports[0].waypoints) == 1
+    zero_report = build_real_terrain_waypoint_reports(zero, projected_to_mgrs=_mgrs)
+    assert len(zero_report.route_reports[0].waypoints) == 1
+    assert zero_report.warnings == (
+        "route-shielding_minimum: route shorter than requested waypoint spacing",
+        "route-shielding_minimum: zero-distance route produced one waypoint",
+    )
+    assert zero_report.summary.warnings == zero_report.warnings
 
 
 def test_conversion_is_cached_and_source_zone_remains_not_requested() -> None:
@@ -218,17 +229,36 @@ def test_conversion_is_cached_and_source_zone_remains_not_requested() -> None:
     assert all(item.source_zone_state is SourceZoneAvailability.NOT_REQUESTED for item in waypoints)
 
 
-def test_optional_endpoints_and_public_output_keep_the_report_boundary() -> None:
-    result = build_real_terrain_waypoint_reports(
+@pytest.mark.parametrize(
+    ("include_start", "include_end", "expected_distances"),
+    (
+        (True, True, [0.0, 500.0, 1000.0]),
+        (True, False, [0.0, 500.0]),
+        (False, True, [500.0, 1000.0]),
+        (False, False, [500.0]),
+    ),
+)
+def test_endpoint_policy_preserves_all_start_end_combinations(
+    include_start: bool, include_end: bool, expected_distances: list[float]
+) -> None:
+    report = build_real_terrain_waypoint_reports(
         _result(),
-        RealTerrainWaypointConfig(include_start=False, include_end=False),
+        RealTerrainWaypointConfig(include_start=include_start, include_end=include_end),
         projected_to_mgrs=_mgrs,
     )
-    waypoints = result.route_reports[0].waypoints
-    assert [item.cumulative_distance_3d_m for item in waypoints] == [500.0]
+    assert [item.cumulative_distance_3d_m for item in report.route_reports[0].waypoints] == expected_distances
+
+
+def test_public_output_keeps_private_route_authority_internal() -> None:
+    result = build_real_terrain_waypoint_reports(
+        _result(), RealTerrainWaypointConfig(include_start=False, include_end=False), projected_to_mgrs=_mgrs
+    )
     public = result.to_public_dict()
     assert "x_m" not in str(public)
     assert "projected" not in str(public)
+    assert "launch_ground_msl_m" not in public
+    assert "source_route_ids" not in public
+    assert "snapped_launch_node_mgrs" not in public
     assert public["routes"][0]["waypoints"][0]["source_zone_state"] == "not_requested"
     with pytest.raises(RealTerrainWaypointError, match="zero route waypoints"):
         build_real_terrain_waypoint_reports(
@@ -239,15 +269,84 @@ def test_optional_endpoints_and_public_output_keep_the_report_boundary() -> None
 
 
 def test_guards_and_malformed_handoff_are_fatal_before_partial_output() -> None:
+    calls: list[LocalPoint] = []
+
+    def counting_mgrs(point: LocalPoint, *, precision: int) -> str:
+        calls.append(point)
+        return _mgrs(point, precision=precision)
+
     with pytest.raises(RealTerrainWaypointError, match="max_waypoints_per_route"):
         build_real_terrain_waypoint_reports(
-            _result(), RealTerrainWaypointConfig(spacing_m=100.0, max_waypoints_per_route=2), projected_to_mgrs=_mgrs
+            _result(),
+            RealTerrainWaypointConfig(spacing_m=100.0, max_waypoints_per_route=2),
+            projected_to_mgrs=counting_mgrs,
         )
+    assert not calls
     with pytest.raises(RealTerrainWaypointError, match="MGRS conversion"):
         build_real_terrain_waypoint_reports(_result(), projected_to_mgrs=lambda point, *, precision: " ")
+    with pytest.raises(RealTerrainWaypointError, match="non-text"):
+        build_real_terrain_waypoint_reports(_result(), projected_to_mgrs=lambda point, *, precision: 1)  # type: ignore[arg-type]
+    with pytest.raises(RealTerrainWaypointError, match="MGRS conversion"):
+        build_real_terrain_waypoint_reports(
+            _result(),
+            projected_to_mgrs=lambda point, *, precision: (_ for _ in ()).throw(RuntimeError("bad converter")),
+        )
     bad_handoff = list(_result().waypoint_handoffs[0])
     bad_handoff[1] = replace(bad_handoff[1], source_zone_state=SourceZoneAvailability.UNAVAILABLE)
     malformed_result = _result()
     object.__setattr__(malformed_result, "waypoint_handoffs", (tuple(bad_handoff),))
-    with pytest.raises(RealTerrainWaypointError, match="source-zone"):
+    with pytest.raises(RealTerrainWaypointError, match="complete invariant"):
         build_real_terrain_waypoint_reports(malformed_result, projected_to_mgrs=_mgrs)
+
+
+def test_zero_distance_accepts_each_enabled_endpoint_and_rejects_none() -> None:
+    zero = _result(total=0.0)
+    node = zero.graph_nodes[0]
+    candidate = replace(
+        zero.route_candidates[0],
+        path=(zero.route_candidates[0].path[0],),
+        total_cost=0.0,
+        total_distance_3d_m=0.0,
+        ordered_node_ids=(node.node_id,),
+        ordered_projected_points=(node.projected_point,),
+    )
+    zero = replace(
+        zero,
+        route_candidates=(candidate,),
+        graph_nodes=(node,),
+        graph_edges=(),
+        summary=RealTerrainRouteSummary(1, 0, 1, 1),
+        waypoint_handoffs=((zero.waypoint_handoffs[0][0],),),
+        snapped_target_node_id=node.node_id,
+        snapped_target_node_mgrs=candidate.path[0].mgrs,
+    )
+    for include_start, include_end in ((True, True), (True, False), (False, True)):
+        output = build_real_terrain_waypoint_reports(
+            zero,
+            RealTerrainWaypointConfig(include_start=include_start, include_end=include_end),
+            projected_to_mgrs=_mgrs,
+        )
+        assert len(output.route_reports[0].waypoints) == 1
+    with pytest.raises(RealTerrainWaypointError, match="zero route waypoints"):
+        build_real_terrain_waypoint_reports(
+            zero,
+            RealTerrainWaypointConfig(include_start=False, include_end=False),
+            projected_to_mgrs=_mgrs,
+        )
+
+
+def test_forward_sampling_cursor_never_moves_backward(monkeypatch: pytest.MonkeyPatch) -> None:
+    import uav_rf_terrain.real_terrain_waypoint_reporting as reporting
+
+    cursors: list[int] = []
+    original = reporting._sample_at_distance
+
+    def recording_sample(*args: object, **kwargs: object) -> tuple[object, int]:
+        cursors.append(int(kwargs["cursor"]))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(reporting, "_sample_at_distance", recording_sample)
+    build_real_terrain_waypoint_reports(
+        _result(), RealTerrainWaypointConfig(spacing_m=125.0), projected_to_mgrs=_mgrs
+    )
+    assert cursors == sorted(cursors)

@@ -14,6 +14,12 @@ complete Task 035EF route results.
   retain conservative color and score values.
 - Keep fixed route AGL, launch-ground height difference, deterministic IDs, MGRS cache,
   and public-coordinate restrictions.
+- Preserve the minimum private result authority needed to revalidate source route IDs,
+  mode/order, total 3D distance, launch ground, and snapped endpoint MGRS without
+  exposing that authority in the public dictionary.
+- Treat an interpolated record as strictly interior (`0 < fraction < 1`). Apply one
+  stable warning policy for short, endpoint-only, and zero-distance reports; the
+  zero-distance warning replaces the endpoint-only warning for that case.
 
 ## Explicit Non-Goals
 
@@ -27,6 +33,10 @@ complete Task 035EF route results.
 
 Focused reporting/output tests plus full pytest, compileall, Ruff, mypy, diff check,
 and exact-head Draft PR CI are required before GPT Master re-review.
+
+Exact final-head CI is recorded in the PR completion/review comment and the Local
+Execution Agent completion report. The cumulative build ledger is reconciled after
+merge by the next Task; no commit is created merely to chase a newer final-head CI.
 
 ## Paper Record
 

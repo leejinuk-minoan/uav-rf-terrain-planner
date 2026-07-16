@@ -9,13 +9,23 @@
 | Created | 2026-07-16 |
 | Last updated | 2026-07-16 |
 | Authoritative branch | `main` for merged evidence; `agent/task-035g-real-terrain-waypoint-reporting` for current Draft evidence. |
-| Last recorded implementation commit | `816d7521071f50febf2c25d577d6b3d0e32b899c` (Task 035G implementation head before this ledger amendment). |
+| Ledger content basis | `8ac72857688ebdf0dbb29f810df2c53a81cd7baa` (Task 035G review baseline; CI #888 / run 29471833777 success). |
 | Record responsibility | GPT Master owns paper interpretation; Local Execution Agents record only verified build, test, PR, CI, and limitation evidence. |
 | Research limit | Results are terrain/surface-obstacle proxies, not actual RF, flight-feasibility, reconnaissance-success, or approval evidence. |
 
 This ledger connects, but does not replace, the historical
 `experiment-log.md`, individual [experiments](experiments/README.md),
 [decisions](decisions/README.md), and task handoffs.
+
+## Non-Recursive Final-Head Evidence Policy
+
+This ledger records the verified content basis available when it is committed. It must
+not be amended by a follow-up commit solely to chase the CI result of that new commit.
+For an open Draft PR, the exact final-head GitHub Actions run is recorded in the PR
+completion/review comment and the Local Execution Agent completion report. After merge,
+the next Task or a dedicated reconciliation records the final head, merge commit, Issue
+closure, and exact CI evidence here. This preserves an auditable record without an
+infinite commit-to-CI update cycle.
 
 ## Research System Summary
 
@@ -58,7 +68,7 @@ rather than inferred.
 | BUILD-20260713-006 | 2026-07-13 | 032AB-032CD | Dominant-obstacle and diagnostic appendix integration. | Legacy PRs; see EXP-042..047. | Legacy archive. | Synthetic diagnostics. | Individual EXP entries. | Archival CI/local evidence. | Merged historical scope. | EXP-042..047; DEC-002/003. | Diagnostic proxy does not alter primary score/color. |
 | BUILD-20260714-007 | 2026-07-14 | 034B-034D, 035A-035D | Diagnostic delivery, real-terrain contract, candidate analysis, map, and selection. | PR #103. | Final `8fb29c7`; merge `1933ce2`; merged 2026-07-16. | Synthetic adapters and renderer fakes. | 33 focused; 864 full. | Local checks passed; CI #874 / 29460010316 success. | Merged. | EXP-048..054; DEC-004..006; Task 035D handoff. | No real GIS/browser/field validation. |
 | BUILD-20260716-008 | 2026-07-16 | 035EF | Complete selected-launch route recommendation and handoff contract. | Issue #104; PR #105. | Final `4308aba`; merge `7c49c8f`; merged 2026-07-16. | Synthetic in-memory adapter. | graph 7 + pathfinding 4 + analysis 5 + outputs 12 = 28; 892 full. | Local checks passed; CI #881 / 29469082285 success. | Merged; Issue #104 closed/completed. | EXP-055; DEC-007; Task 035EF handoff. | No GIS route/browser/field validation. |
-| BUILD-20260716-009 | 2026-07-16 | 035G | Real-terrain route waypoint reporting over complete handoffs. | Issue #106; Draft PR #107. | Base `7c49c8f`; implementation head `816d752`; research-record reconciliation head `d09885d`. | Synthetic immutable route contracts. | reporting 5 + outputs 2; 899 full. | `compileall`, Ruff, mypy, diff check passed; CI #884 / 29471457599 success for implementation head and CI #886 / 29471752137 success for reconciliation head. | Draft PR pending review. | EXP-056; DEC-008; Task 035G handoff. | No terrain reanalysis, GIS report, browser/UI, or field validation. |
+| BUILD-20260716-009 | 2026-07-16 | 035G | Real-terrain route waypoint reporting over complete handoffs. | Issue #106; Draft PR #107. | Base `7c49c8f`; current ledger content basis `8ac7285` with CI #888 success; review amendment in progress. | Synthetic immutable route contracts. | Initial focused 7 and full 899; review-amendment focused 22 and full 914. | Initial exact-head CI #888 / 29471833777 success. Final amendment CI is recorded in the PR completion/review comment, then post-merge here. | Draft PR pending re-review. | EXP-056; DEC-008; Task 035G handoff. | No terrain reanalysis, GIS report, browser/UI, or field validation. |
 
 ## Experiment Evidence Ledger
 
@@ -72,7 +82,7 @@ rather than inferred.
 | EXP-051..053 | Real-terrain analysis/map contract audits. | Boundaries, synthetic adapter records, renderer-neutral map/selection contracts were recorded. | Individual records; architecture figures/tables. | BUILD-20260714-007. |
 | EXP-054 | Map/selection implementation; synthetic converter/fakes. | Final focused 33 and full 864; CI #874 success. | Candidate/map contract table; corrected below. | BUILD-20260714-007; no browser/GIS/field run. |
 | EXP-055 | Route recommendation; synthetic adapter. | Final focused 28 and full 892; CI #881 success. | Graph/route mode/verification table. | BUILD-20260716-008; no GIS route/browser/field run. |
-| EXP-056 | Waypoint reporting; synthetic complete route contract. | Exact/interpolated waypoint report checks added; local focused 7 and full 899 at initial Draft evidence. | Waypoint semantics/verification table. | BUILD-20260716-009; no GIS/UI/field run. |
+| EXP-056 | Waypoint reporting; synthetic complete route contract. | Initial focused 7/full 899 evidence plus review-amendment authority, endpoint, warning, guard, and mutation checks. | Waypoint semantics/verification table; final exact-head CI remains in PR completion until post-merge reconciliation. | BUILD-20260716-009; no GIS/UI/field run. |
 
 All individual EXP files remain the authoritative detailed method and limitation record.
 
@@ -91,10 +101,10 @@ All individual EXP files remain the authoritative detailed method and limitation
 
 | Evidence | Current verified record | Interpretation |
 |---|---|---|
-| Local focused tests | Task 035G: reporting 5, outputs 2. | Local source-contract verification only. |
-| Local full tests | Task 035G: 899 passed. | Local regression evidence only. |
-| Compileall / Ruff / mypy / diff | Passed for Task 035G implementation head. | Build-quality evidence; not field validation. |
-| GitHub Actions | Task 035G implementation head: CI #884, run 29471457599, success; research-record reconciliation head: CI #886, run 29471752137, success. | Independent hosted source checks for each recorded exact head. |
+| Local focused tests | Initial Task 035G evidence: reporting 5, outputs 2; review-amendment focused suite: 22 passed. | Local source-contract verification only. |
+| Local full tests | Initial Task 035G evidence: 899 passed; review-amendment full suite: 914 passed. | Local regression evidence only. |
+| Compileall / Ruff / mypy / diff | Passed for the initial Task 035G head and the review-amendment content basis. | Build-quality evidence; not field validation. |
+| GitHub Actions | Task 035G review baseline `8ac7285`: CI #888 / 29471833777 success. Exact amendment final-head CI is recorded in the PR completion/review comment, then after merge here. | Independent hosted source checks for each exact head without recursive ledger commits. |
 | Real GIS smoke | Local terrain preprocessing/adapter checks exist in specific handoffs; real route smoke not performed. | Do not generalize to route/waypoint validation. |
 | Browser smoke | Not performed for Task 035EF/035G. | No browser/UI claim. |
 | Field RF validation | Not performed. | No communication-performance claim. |

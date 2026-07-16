@@ -14,7 +14,14 @@ snap authority. Opening terrain, recomputing LOS/Fresnel, changing scoring, or c
 selected-site source-zone metadata would duplicate or alter reviewed Task 035EF
 semantics. The reporting layer therefore preserves fixed route AGL, converts each
 unique waypoint point to MGRS once, and keeps route source-zone metadata explicitly
-`NOT_REQUESTED`.
+`NOT_REQUESTED`. Its immutable result retains only the private route-ID/mode/total,
+launch-ground, and snapped-MGRS authority required for cross-object validation; its
+public dictionary omits those private authority fields.
+
+Interior interpolation is strict (`0 < fraction < 1`). Short, endpoint-only, and
+zero-distance route conditions emit deterministic report/summary/result warnings.
+For a zero-distance route, the explicit zero-distance warning is used instead of an
+endpoint-only warning.
 
 ## Limits and Compatibility
 

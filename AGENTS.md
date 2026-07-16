@@ -55,6 +55,10 @@ Draft PR 생성 전에는 branch head, PR, focused/full tests, compileall, Ruff,
 diff check, GitHub Actions 상태와 한계를 기록한다. merge 뒤 다음 Task 또는 별도
 reconciliation에서 merge commit, merge date, Issue closure, `merged` 상태를 확정한다.
 수치나 상태를 정정할 때는 ledger correction log에 PR/head/test/CI 근거를 남긴다.
+
+누적 ledger는 새 final head의 CI 결과만 기록하기 위한 후속 commit을 만들지 않는다.
+정확한 final-head CI는 Draft PR completion/review comment와 Local Execution Agent 완료
+보고에 기록하고, merge 후 다음 Task 또는 별도 reconciliation에서 ledger에 확정한다.
 모든 완료 보고에는 `RESEARCH_BUILD_RECORD.md updated`, Build ID, 이전 Task 정합화,
 현재 Task 상태, correction entries, local verification, GitHub Actions verification을
 포함한다.

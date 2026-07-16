@@ -40,6 +40,10 @@ focused/full tests, compileall, Ruff, mypy, diff check, GitHub Actions 상태와
 갱신 여부, Build ID, 이전 Task 정합화, 현재 상태, correction entries, local/CI
 verification을 포함한다.
 
+누적 ledger는 새 final head의 CI 결과만 기록하기 위한 후속 commit을 만들지 않는다.
+정확한 final-head CI는 Draft PR completion/review comment와 Local Execution Agent 완료
+보고에 기록하고, merge 후 다음 Task 또는 별도 reconciliation에서 ledger에 확정한다.
+
 ## 3. 권한 및 명령 실행 원칙
 
 ### 3.1 허용되는 명령

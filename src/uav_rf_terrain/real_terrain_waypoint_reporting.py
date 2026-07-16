@@ -3,17 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import floor, isfinite
-
-from .coordinate_conversion import CoordinateConversionError, ProjectedToMgrsConverter
+from .coordinate_conversion import ProjectedToMgrsConverter
 from .coordinates import LocalPoint
 from .real_terrain_candidate_analysis import SourceZoneAvailability
-from .real_terrain_route_outputs import (
-    RealTerrainRouteOutputError,
-    RealTerrainRouteResult,
-    RouteMode,
-    WaypointHandoffPoint,
-)
+from .real_terrain_route_outputs import RealTerrainRouteResult, RouteMode, WaypointHandoffPoint
 from .real_terrain_waypoint_outputs import (
     RealTerrainRouteWaypointReport,
     RealTerrainWaypointConfig,
@@ -22,6 +15,8 @@ from .real_terrain_waypoint_outputs import (
     RealTerrainWaypointSummary,
     WaypointElevationSemantics,
     WaypointValueSemantics,
+    _route_warnings,
+    _waypoint_targets,
 )
 from .schemas import ColorClass
 
@@ -71,10 +66,15 @@ def build_real_terrain_waypoint_reports(
         raise RealTerrainWaypointError("projected_to_mgrs must be callable.")
     _validate_complete_route_result(route_result)
 
-    targets_by_route = tuple(
-        _target_distances(candidate.total_distance_3d_m, config=config)
-        for candidate in route_result.route_candidates
-    )
+    try:
+        targets_by_route = tuple(
+            _waypoint_targets(candidate.total_distance_3d_m, config)
+            for candidate in route_result.route_candidates
+        )
+    except Exception as exc:
+        raise RealTerrainWaypointError(f"waypoint target policy validation failed: {exc}") from exc
+    if any(len(targets) > config.max_waypoints_per_route for targets in targets_by_route):
+        raise RealTerrainWaypointError("max_waypoints_per_route guard exceeded.")
     total_waypoints = sum(len(targets) for targets in targets_by_route)
     if total_waypoints > config.max_total_waypoints:
         raise RealTerrainWaypointError("max_total_waypoints guard exceeded.")
@@ -103,10 +103,15 @@ def build_real_terrain_waypoint_reports(
                 waypoint_spacing_m=config.spacing_m,
                 total_route_distance_3d_m=candidate.total_distance_3d_m,
                 waypoints=records,
-                warnings=(),
+                warnings=_route_warnings(
+                    route_id=candidate.route_id,
+                    total_distance_m=candidate.total_distance_3d_m,
+                    config=config,
+                    waypoint_count=len(records),
+                ),
             )
         )
-    warnings: tuple[str, ...] = ()
+    warnings = tuple(warning for report in reports for warning in report.warnings)
     return RealTerrainWaypointResult(
         scenario_name=route_result.scenario_name,
         mission_id=route_result.mission_id,
@@ -114,6 +119,14 @@ def build_real_terrain_waypoint_reports(
         launch_site_mgrs=route_result.launch_site_mgrs,
         target_mgrs=route_result.target_mgrs,
         config=config,
+        launch_ground_msl_m=route_result.launch_ground_msl_m,
+        source_route_ids=tuple(candidate.route_id for candidate in route_result.route_candidates),
+        source_route_modes=tuple(candidate.mode for candidate in route_result.route_candidates),
+        source_route_total_distance_3d_m=tuple(
+            candidate.total_distance_3d_m for candidate in route_result.route_candidates
+        ),
+        snapped_launch_node_mgrs=route_result.snapped_launch_node_mgrs,
+        snapped_target_node_mgrs=route_result.snapped_target_node_mgrs,
         route_reports=tuple(reports),
         summary=RealTerrainWaypointSummary(len(reports), total_waypoints, warnings),
         warnings=warnings,
@@ -121,18 +134,11 @@ def build_real_terrain_waypoint_reports(
 
 
 def _validate_complete_route_result(route_result: RealTerrainRouteResult) -> None:
-    for handoff in route_result.waypoint_handoffs:
-        for point in handoff:
-            if (
-                point.source_zone is not None
-                or point.source_zone_state is not SourceZoneAvailability.NOT_REQUESTED
-                or point.source_sensitive is not None
-                or point.source_zone_reason != "source-zone provider not requested"
-            ):
-                raise RealTerrainWaypointError("route waypoint source-zone policy must remain not requested.")
     try:
         route_result.__post_init__()
-    except (RealTerrainRouteOutputError, ValueError, TypeError) as exc:
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception as exc:
         raise RealTerrainWaypointError("route_result complete invariant validation failed.") from exc
     if route_result.path_semantics != "snapped_graph_path":
         raise RealTerrainWaypointError("route_result must retain snapped_graph_path semantics.")
@@ -150,29 +156,6 @@ def _validate_complete_route_result(route_result: RealTerrainRouteResult) -> Non
             handoff[-1].cumulative_distance_3d_m - candidate.total_distance_3d_m
         ) > 1e-9:
             raise RealTerrainWaypointError("handoff cumulative distance does not match route total.")
-
-
-def _target_distances(total_distance_m: float, *, config: RealTerrainWaypointConfig) -> tuple[tuple[float, int | None], ...]:
-    if not isinstance(total_distance_m, (int, float)) or isinstance(total_distance_m, bool) or not isfinite(total_distance_m) or total_distance_m < 0:
-        raise RealTerrainWaypointError("route total distance must be finite and non-negative.")
-    targets: list[tuple[float, int | None]] = []
-    if config.include_start:
-        targets.append((0.0, None))
-    interval_count = floor((total_distance_m - config.distance_tolerance_m) / config.spacing_m)
-    for interval_index in range(1, max(interval_count, 0) + 1):
-        targets.append((interval_index * config.spacing_m, interval_index))
-    if config.include_end:
-        if not targets or abs(targets[-1][0] - total_distance_m) > config.distance_tolerance_m:
-            targets.append((total_distance_m, None))
-    deduplicated: list[tuple[float, int | None]] = []
-    for target in targets:
-        if not deduplicated or abs(target[0] - deduplicated[-1][0]) > config.distance_tolerance_m:
-            deduplicated.append(target)
-    if not deduplicated:
-        raise RealTerrainWaypointError("configuration produces zero route waypoints.")
-    if len(deduplicated) > config.max_waypoints_per_route:
-        raise RealTerrainWaypointError("max_waypoints_per_route guard exceeded.")
-    return tuple(deduplicated)
 
 
 def _route_records(
@@ -322,7 +305,7 @@ def _mgrs_for_point(
         value = projected_to_mgrs(point, precision=config.mgrs_precision)
     except (KeyboardInterrupt, SystemExit):
         raise
-    except (CoordinateConversionError, Exception) as exc:
+    except Exception as exc:
         raise RealTerrainWaypointError("MGRS conversion failed.") from exc
     if not isinstance(value, str):
         raise RealTerrainWaypointError("MGRS conversion returned non-text output.")
