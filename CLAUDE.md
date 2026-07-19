@@ -23,9 +23,26 @@ README.md
 docs/master-plan.md
 docs/research/research-index.md
 docs/agent-build-feasibility.md
+docs/paper/RESEARCH_BUILD_RECORD.md
 ```
 
 작업 지시가 문서와 충돌하면 구현하지 말고 충돌 내용을 보고한다.
+
+### 2.1 누적 연구 빌드 기록
+
+모든 Task 시작 시 `docs/paper/RESEARCH_BUILD_RECORD.md`에서 직전 Task의 실제 PR
+merge 상태, final head, merge commit, merge date와 Issue closure를 확인한다. 구현
+시작 시에는 현재 Task의 branch, base commit, Issue, 계획 capability, data type,
+관련 EXP/DEC를 `in progress`로 기록한다. Draft PR 전에는 final branch head, PR,
+focused/full tests, compileall, Ruff, mypy, diff check, GitHub Actions 상태와 한계를
+기록하고, merge 뒤에는 merge commit/date와 Issue closure를 `merged`로 정합화한다.
+기존 수치나 상태 수정은 correction log에 근거와 함께 남긴다. 완료 보고에는 ledger
+갱신 여부, Build ID, 이전 Task 정합화, 현재 상태, correction entries, local/CI
+verification을 포함한다.
+
+누적 ledger는 새 final head의 CI 결과만 기록하기 위한 후속 commit을 만들지 않는다.
+정확한 final-head CI는 Draft PR completion/review comment와 Local Execution Agent 완료
+보고에 기록하고, merge 후 다음 Task 또는 별도 reconciliation에서 ledger에 확정한다.
 
 ## 3. 권한 및 명령 실행 원칙
 

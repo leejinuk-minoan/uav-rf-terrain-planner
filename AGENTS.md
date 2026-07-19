@@ -40,8 +40,28 @@
 10. `docs/prompts/claude-code-task-prompts.md`
 11. `.github/ISSUE_TEMPLATE/feature_task.md`
 12. `.github/workflows/ci.yml`
+13. `docs/paper/RESEARCH_BUILD_RECORD.md`
 
 문서를 읽지 못하면 추측하지 말고, 어떤 파일을 읽지 못했는지 보고한다.
+
+### 2.1 누적 연구 빌드 기록 규칙
+
+모든 Codex/Claude Code Task는 시작 전에 `docs/paper/RESEARCH_BUILD_RECORD.md`를 읽고,
+직전 Task의 실제 PR merge 상태, final head, merge commit, merge date, Issue closure를
+정합화한다. 구현 시작 시에는 현재 Task의 branch, base commit, Issue, 계획 capability,
+data type, 관련 EXP/DEC와 `in progress` 상태를 기록한다.
+
+Draft PR 생성 전에는 branch head, PR, focused/full tests, compileall, Ruff, mypy,
+diff check, GitHub Actions 상태와 한계를 기록한다. merge 뒤 다음 Task 또는 별도
+reconciliation에서 merge commit, merge date, Issue closure, `merged` 상태를 확정한다.
+수치나 상태를 정정할 때는 ledger correction log에 PR/head/test/CI 근거를 남긴다.
+
+누적 ledger는 새 final head의 CI 결과만 기록하기 위한 후속 commit을 만들지 않는다.
+정확한 final-head CI는 Draft PR completion/review comment와 Local Execution Agent 완료
+보고에 기록하고, merge 후 다음 Task 또는 별도 reconciliation에서 ledger에 확정한다.
+모든 완료 보고에는 `RESEARCH_BUILD_RECORD.md updated`, Build ID, 이전 Task 정합화,
+현재 Task 상태, correction entries, local verification, GitHub Actions verification을
+포함한다.
 
 ---
 
