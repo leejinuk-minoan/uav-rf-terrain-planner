@@ -32,15 +32,23 @@ from .real_terrain_minimum_altitude_outputs import (
 )
 from .real_terrain_route_outputs import (
     RealTerrainRouteCandidate,
+    RealTerrainRouteConfig,
     RealTerrainRouteEdge,
     RealTerrainRouteNode,
     RealTerrainRouteOutputError,
     RealTerrainRoutePathPoint,
     RealTerrainRouteResult,
+    RealTerrainRouteSummary,
     RouteMode,
+    RouteNodeState,
     WaypointHandoffPoint,
 )
-from .terrain_data import TerrainDataError, TerrainDatasetMetadata, validate_terrain_dataset_metadata
+from .terrain_data import (
+    TerrainDataError,
+    TerrainDatasetMetadata,
+    TerrainRasterMetadata,
+    validate_terrain_dataset_metadata,
+)
 
 
 class RealTerrainMinimumAltitudeError(ValueError):
@@ -107,16 +115,14 @@ class PreparedRealTerrainRoute:
     def __post_init__(self) -> None:
         if not isinstance(self.mode, RouteMode) or not isinstance(self.route_id, str) or self.route_id != f"route-{self.mode.value}":
             raise RealTerrainMinimumAltitudeError("prepared route identity is invalid.")
-        if not isinstance(self.samples, tuple):
+        if type(self.samples) is not tuple:
             raise RealTerrainMinimumAltitudeError("prepared route samples must be a tuple.")
         if isinstance(self.source_order, bool) or not isinstance(self.source_order, int) or self.source_order < 0 or not self.samples:
             raise RealTerrainMinimumAltitudeError("prepared route order/samples are invalid.")
         _validate_finite_values("prepared route distances", self.source_total_distance_3d_m, self.route_polyline_total_distance_2d_m)
         if self.source_total_distance_3d_m < 0.0 or self.route_polyline_total_distance_2d_m < 0.0:
             raise RealTerrainMinimumAltitudeError("prepared route distances are invalid.")
-        if type(self.terrain_metadata) is not TerrainDatasetMetadata:
-            raise RealTerrainMinimumAltitudeError("prepared terrain metadata must be TerrainDatasetMetadata.")
-        validate_terrain_dataset_metadata(self.terrain_metadata)
+        _validate_exact_terrain_metadata(self.terrain_metadata, "prepared")
         if any(not isinstance(sample, PreparedRealTerrainRouteSample) for sample in self.samples):
             raise RealTerrainMinimumAltitudeError("prepared route samples must use the approved type.")
         if tuple(sample.route_sample_index for sample in self.samples) != tuple(range(len(self.samples))):
@@ -196,7 +202,9 @@ def compute_real_terrain_minimum_altitude(
             ),
             authority,
             _authority_fingerprint(authority),
+            "pending",
         )
+        object.__setattr__(result, "_output_fingerprint", _emitted_output_fingerprint(result))
         validate_complete_real_terrain_minimum_altitude_result(result)
         return result
     except RealTerrainMinimumAltitudeError:
@@ -295,6 +303,22 @@ def _authority_fingerprint(authority: RealTerrainMinimumAltitudeAuthoritySnapsho
     return sha256(repr(authority).encode("utf-8")).hexdigest()
 
 
+def _emitted_output_fingerprint(result: RealTerrainMinimumAltitudeResult) -> str:
+    """Exact private seal for all emitted result fields before tolerant replay."""
+    return sha256(
+        repr(
+            (
+                result.selected_candidate_id,
+                result.launch_site_mgrs,
+                result.target_mgrs,
+                result.route_results,
+                result.warnings,
+                result.summary,
+            )
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 _KNOWN_CONTRACT_ERRORS = (
     RealTerrainRouteOutputError,
     LaunchSiteSelectionError,
@@ -303,8 +327,78 @@ _KNOWN_CONTRACT_ERRORS = (
     RealTerrainMinimumAltitudeOutputError,
     TerrainDataError,
     AttributeError,
+    KeyError,
     TypeError,
 )
+
+
+def _validate_exact_terrain_metadata(metadata: object, context: str) -> TerrainDatasetMetadata:
+    """Rerun exact reviewed terrain metadata validators before replay or sealing."""
+
+    if type(metadata) is not TerrainDatasetMetadata:
+        raise RealTerrainMinimumAltitudeError(f"{context} terrain metadata type is invalid.")
+    if type(metadata.dem) is not TerrainRasterMetadata or type(metadata.dsm) is not TerrainRasterMetadata:
+        raise RealTerrainMinimumAltitudeError(f"{context} terrain metadata raster type is invalid.")
+    try:
+        metadata.dem.__post_init__()
+        metadata.dsm.__post_init__()
+        metadata.__post_init__()
+        validate_terrain_dataset_metadata(metadata)
+    except (TerrainDataError, AttributeError, TypeError) as exc:
+        raise RealTerrainMinimumAltitudeError(f"{context} terrain metadata is invalid.") from exc
+    return metadata
+
+
+def _preflight_source_collections(route_result: RealTerrainRouteResult) -> None:
+    """Reject oversized or malformed source collections before deep replay."""
+
+    if type(route_result.config) is not RealTerrainRouteConfig:
+        raise RealTerrainMinimumAltitudeError("source route config type is invalid.")
+    route_result.config.__post_init__()
+    for name in (
+        "route_candidates",
+        "warnings",
+        "graph_nodes",
+        "graph_edges",
+        "waypoint_handoffs",
+    ):
+        if type(getattr(route_result, name)) is not tuple:
+            raise RealTerrainMinimumAltitudeError(f"source {name} must be an exact tuple.")
+    if len(route_result.route_candidates) > len(RouteMode):
+        raise RealTerrainMinimumAltitudeError("source route candidate count violates fixed route-mode guard.")
+    if len(route_result.graph_nodes) > route_result.config.max_graph_nodes:
+        raise RealTerrainMinimumAltitudeError("source graph node count violates resource guard.")
+    if len(route_result.graph_edges) > route_result.config.max_graph_edges:
+        raise RealTerrainMinimumAltitudeError("source graph edge count violates resource guard.")
+    if len(route_result.waypoint_handoffs) > len(RouteMode):
+        raise RealTerrainMinimumAltitudeError("source waypoint handoff count violates fixed route-mode guard.")
+
+
+def _preflight_source_nested_types(route_result: RealTerrainRouteResult) -> None:
+    """Check exact nested records before source ``__post_init__`` dereferences them."""
+
+    if type(route_result.summary) is not RealTerrainRouteSummary:
+        raise RealTerrainMinimumAltitudeError("source route summary type is invalid.")
+    for candidate in route_result.route_candidates:
+        if type(candidate) is not RealTerrainRouteCandidate or type(candidate.mode) is not RouteMode:
+            raise RealTerrainMinimumAltitudeError("source route candidate type or mode is invalid.")
+        if type(candidate.path) is not tuple or type(candidate.ordered_projected_points) is not tuple:
+            raise RealTerrainMinimumAltitudeError("source route candidate collections must be exact tuples.")
+        if any(type(path_point) is not RealTerrainRoutePathPoint for path_point in candidate.path):
+            raise RealTerrainMinimumAltitudeError("source route path point type is invalid.")
+        if any(type(point) is not LocalPoint for point in candidate.ordered_projected_points):
+            raise RealTerrainMinimumAltitudeError("source route projected point type is invalid.")
+    for node in route_result.graph_nodes:
+        if type(node) is not RealTerrainRouteNode:
+            raise RealTerrainMinimumAltitudeError("source graph node type is invalid.")
+        if type(node.state) is not RouteNodeState or type(node.projected_point) is not LocalPoint:
+            raise RealTerrainMinimumAltitudeError("source graph node state or point type is invalid.")
+    for edge in route_result.graph_edges:
+        if type(edge) is not RealTerrainRouteEdge:
+            raise RealTerrainMinimumAltitudeError("source graph edge type is invalid.")
+    for handoff in route_result.waypoint_handoffs:
+        if type(handoff) is not tuple or any(type(item) is not WaypointHandoffPoint for item in handoff):
+            raise RealTerrainMinimumAltitudeError("source waypoint handoff type is invalid.")
 
 
 def _validate_source_authority(
@@ -318,18 +412,12 @@ def _validate_source_authority(
         raise RealTerrainMinimumAltitudeError("selected_launch_site must be SelectedLaunchSiteRecord.")
     if type(config) is not RealTerrainMinimumAltitudeConfig:
         raise RealTerrainMinimumAltitudeError("config must be RealTerrainMinimumAltitudeConfig.")
-    for name in (
-        "route_candidates",
-        "warnings",
-        "graph_nodes",
-        "graph_edges",
-        "waypoint_handoffs",
-    ):
-        if not isinstance(getattr(route_result, name), tuple):
-            raise RealTerrainMinimumAltitudeError(f"source {name} must be a tuple.")
+    _preflight_source_collections(route_result)
+    _preflight_source_nested_types(route_result)
     if not isinstance(selected_launch_site.projected_point, LocalPoint):
         raise RealTerrainMinimumAltitudeError("selected launch projected point is invalid.")
     _validate_local_point(selected_launch_site.projected_point, "selected launch")
+    _validate_exact_terrain_metadata(route_result.terrain_metadata, "source")
     # Frozen dataclasses can be corrupted through object.__setattr__; rerun validators.
     route_result.__post_init__()
     route_result.config.__post_init__()
@@ -339,7 +427,7 @@ def _validate_source_authority(
             raise RealTerrainMinimumAltitudeError("source route candidate type is invalid.")
         candidate.__post_init__()
         if not all(
-            isinstance(getattr(candidate, name), tuple)
+            type(getattr(candidate, name)) is tuple
             for name in ("path", "warnings", "ordered_node_ids", "ordered_projected_points", "shared_edge_ratios")
         ):
             raise RealTerrainMinimumAltitudeError("source route candidate collections must be tuples.")
@@ -359,7 +447,7 @@ def _validate_source_authority(
             raise RealTerrainMinimumAltitudeError("source graph edge type is invalid.")
         edge.__post_init__()
     for handoff in route_result.waypoint_handoffs:
-        if not isinstance(handoff, tuple):
+        if type(handoff) is not tuple:
             raise RealTerrainMinimumAltitudeError("source waypoint handoff must be a tuple.")
         for handoff_point in handoff:
             if type(handoff_point) is not WaypointHandoffPoint:
@@ -368,7 +456,6 @@ def _validate_source_authority(
             _validate_local_point(handoff_point.projected_point, "source waypoint handoff")
     selected_launch_site.__post_init__()
     config.__post_init__()
-    validate_terrain_dataset_metadata(route_result.terrain_metadata)
     if selected_launch_site.candidate_id != route_result.selected_candidate_id:
         raise RealTerrainMinimumAltitudeError("selected launch candidate authority does not match route result.")
     if selected_launch_site.launch_site_mgrs != route_result.launch_site_mgrs:
@@ -383,8 +470,11 @@ def validate_complete_real_terrain_minimum_altitude_result(
         raise RealTerrainMinimumAltitudeError("result must be RealTerrainMinimumAltitudeResult.")
     try:
         authority = result._authority
+        _validate_exact_terrain_metadata(authority.terrain_metadata, "snapshot")
         if _authority_fingerprint(authority) != result._authority_fingerprint:
             raise RealTerrainMinimumAltitudeError("authority snapshot does not match canonical fingerprint.")
+        if _emitted_output_fingerprint(result) != result._output_fingerprint:
+            raise RealTerrainMinimumAltitudeError("emitted output does not match canonical fingerprint.")
         _validate_snapshot_authority(authority, authority.config)
         result.__post_init__()
         if result.selected_candidate_id != authority.selected_candidate_id:
@@ -408,7 +498,7 @@ def _validate_snapshot_authority(
         raise RealTerrainMinimumAltitudeError("authority snapshot type is invalid.")
     if type(config) is not RealTerrainMinimumAltitudeConfig:
         raise RealTerrainMinimumAltitudeError("config must be RealTerrainMinimumAltitudeConfig.")
-    if not isinstance(authority.source_routes, tuple) or not isinstance(authority.prepared_routes, tuple):
+    if type(authority.source_routes) is not tuple or type(authority.prepared_routes) is not tuple:
         raise RealTerrainMinimumAltitudeError("authority snapshot collections must be tuples.")
     if len(authority.source_routes) != len(authority.prepared_routes) or not authority.source_routes:
         raise RealTerrainMinimumAltitudeError("authority snapshot route count is invalid.")
@@ -423,9 +513,7 @@ def _validate_snapshot_authority(
     )
     if authority.frequency_hz <= 0.0 or authority.allowed_flight_agl_m <= 0.0 or authority.source_profile_spacing_m <= 0.0 or authority.resolved_profile_spacing_m <= 0.0:
         raise RealTerrainMinimumAltitudeError("snapshot mission authority is invalid.")
-    if not isinstance(authority.terrain_metadata, TerrainDatasetMetadata):
-        raise RealTerrainMinimumAltitudeError("snapshot terrain metadata type is invalid.")
-    validate_terrain_dataset_metadata(authority.terrain_metadata)
+    _validate_exact_terrain_metadata(authority.terrain_metadata, "snapshot")
     if config.expected_frequency_hz is not None and config.expected_frequency_hz != authority.frequency_hz:
         raise RealTerrainMinimumAltitudeError("expected frequency does not match snapshot authority.")
     if config.profile_spacing_m is not None and config.profile_spacing_m > authority.source_profile_spacing_m:
@@ -452,7 +540,7 @@ def _validate_snapshot_prepared_route(
     route: RealTerrainMinimumAltitudePreparedRouteSnapshot,
     config: RealTerrainMinimumAltitudeConfig,
 ) -> None:
-    if not isinstance(route.samples, tuple) or not route.samples:
+    if type(route.samples) is not tuple or not route.samples:
         raise RealTerrainMinimumAltitudeError("snapshot prepared samples must be a non-empty tuple.")
     tolerance = config.distance_tolerance_m
     cumulative = 0.0
@@ -506,7 +594,7 @@ def _validate_snapshot_profile(
     profile = item.radial_profile
     if type(profile) is not RealTerrainMinimumAltitudeProfileSnapshot:
         raise RealTerrainMinimumAltitudeError("snapshot nonzero radial profile is invalid.")
-    if not isinstance(profile.samples, tuple) or not profile.samples:
+    if type(profile.samples) is not tuple or not profile.samples:
         raise RealTerrainMinimumAltitudeError("snapshot profile samples must be a non-empty tuple.")
     _validate_local_point(profile.start, "snapshot profile start")
     _validate_local_point(profile.end, "snapshot profile end")
@@ -714,7 +802,7 @@ def _validate_prepared_authority(
     prepared_routes: tuple[PreparedRealTerrainRoute, ...],
     config: RealTerrainMinimumAltitudeConfig,
 ) -> None:
-    if not isinstance(prepared_routes, tuple) or not prepared_routes:
+    if type(prepared_routes) is not tuple or not prepared_routes:
         raise RealTerrainMinimumAltitudeError("prepared_routes must be a non-empty tuple.")
     if len(prepared_routes) > config.max_routes:
         raise RealTerrainMinimumAltitudeError("prepared route count violates resource guard.")
@@ -727,9 +815,7 @@ def _validate_prepared_authority(
         route.__post_init__()
         if route.source_order != expected_order or route.source_order != expected_order:
             raise RealTerrainMinimumAltitudeError("prepared route source order mismatch.")
-        if type(route.terrain_metadata) is not TerrainDatasetMetadata:
-            raise RealTerrainMinimumAltitudeError("prepared terrain metadata type is invalid.")
-        validate_terrain_dataset_metadata(route.terrain_metadata)
+        _validate_exact_terrain_metadata(route.terrain_metadata, "prepared")
         if route.terrain_metadata != route_result.terrain_metadata:
             raise RealTerrainMinimumAltitudeError("prepared terrain metadata does not match route authority.")
         if route.route_id != source.route_id or route.mode is not source.mode:
@@ -846,7 +932,7 @@ def _validate_terrain_profile(
     total = distance_2d_m(profile.start, profile.end)
     if not _near(total, item.radial_distance_2d_m, tolerance):
         raise RealTerrainMinimumAltitudeError("prepared radial profile total does not match radial distance.")
-    if not isinstance(profile.samples, tuple) or not profile.samples:
+    if type(profile.samples) is not tuple or not profile.samples:
         raise RealTerrainMinimumAltitudeError("prepared radial profile samples must be a non-empty tuple.")
     previous_from = -1.0
     previous_to = float("inf")
@@ -896,13 +982,13 @@ def _enforce_resource_guards(
     prepared_routes: tuple[PreparedRealTerrainRoute, ...],
     config: RealTerrainMinimumAltitudeConfig,
 ) -> None:
-    if not isinstance(prepared_routes, tuple) or not prepared_routes:
+    if type(prepared_routes) is not tuple or not prepared_routes:
         raise RealTerrainMinimumAltitudeError("prepared_routes must be a non-empty tuple.")
     if len(prepared_routes) > config.max_routes:
         raise RealTerrainMinimumAltitudeError("prepared route count violates resource guard.")
     total_profile_samples = 0
     for route in prepared_routes:
-        if type(route) is not PreparedRealTerrainRoute or not isinstance(route.samples, tuple):
+        if type(route) is not PreparedRealTerrainRoute or type(route.samples) is not tuple:
             raise RealTerrainMinimumAltitudeError("prepared route outer type is invalid.")
         if len(route.samples) > config.max_route_samples:
             raise RealTerrainMinimumAltitudeError("route sample count violates resource guard.")
@@ -910,7 +996,7 @@ def _enforce_resource_guards(
             if type(sample) is not PreparedRealTerrainRouteSample:
                 raise RealTerrainMinimumAltitudeError("prepared sample outer type is invalid.")
             if sample.radial_profile is not None:
-                if type(sample.radial_profile) is not TerrainProfile or not isinstance(sample.radial_profile.samples, tuple):
+                if type(sample.radial_profile) is not TerrainProfile or type(sample.radial_profile.samples) is not tuple:
                     raise RealTerrainMinimumAltitudeError("prepared profile outer type is invalid.")
                 count = len(sample.radial_profile.samples)
                 if count > config.max_profile_samples_per_link:

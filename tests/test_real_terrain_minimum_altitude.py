@@ -606,7 +606,7 @@ def test_complete_validator_uses_independent_snapshot_after_caller_alias_attack(
 def test_complete_validator_requires_exact_frequency_not_distance_tolerance() -> None:
     result = _compute(config=RealTerrainMinimumAltitudeConfig(expected_frequency_hz=300_000_000.0, distance_tolerance_m=1e-6))
     object.__setattr__(result.route_results[0], "frequency_hz", nextafter(300_000_000.0, inf))
-    with pytest.raises(RealTerrainMinimumAltitudeError, match="source"):
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="emitted output"):
         validate_complete_real_terrain_minimum_altitude_result(result)
 
 
@@ -802,6 +802,26 @@ def test_canonical_fingerprint_rejects_config_mutation() -> None:
         validate_complete_real_terrain_minimum_altitude_result(result)
 
 
+def test_emitted_output_fingerprint_rejects_subtolerance_direct_and_coordinated_mutation() -> None:
+    result = _compute(config=RealTerrainMinimumAltitudeConfig(distance_tolerance_m=1e-6))
+    route = result.route_results[0]
+    object.__setattr__(route, "minimum_required_constant_route_msl_m", route.minimum_required_constant_route_msl_m + 1e-9)
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="emitted output"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+    result = _compute(config=RealTerrainMinimumAltitudeConfig(distance_tolerance_m=1e-6))
+    route = result.route_results[0]
+    sample = route.route_samples[-1]
+    radial = sample.limiting_radial_requirement
+    assert radial is not None
+    changed_radial = replace(radial, required_endpoint_msl_m=radial.required_endpoint_msl_m + 1e-9)
+    changed_sample = replace(sample, radial_requirement_samples=(changed_radial,), limiting_radial_requirement=changed_radial, required_endpoint_msl_m=changed_radial.required_endpoint_msl_m)
+    changed_route = replace(route, route_samples=(route.route_samples[0], changed_sample), minimum_required_constant_route_msl_m=changed_radial.required_endpoint_msl_m)
+    object.__setattr__(result, "route_results", (changed_route,))
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="emitted output"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
 def test_output_target_flag_and_coordinated_warning_mutation_is_rejected() -> None:
     result = _compute()
     route = result.route_results[0]
@@ -846,12 +866,43 @@ def test_oversized_profile_guard_precedes_profile_sample_traversal(
 
     route_result = _route_result()
     prepared = _prepared_route(route_result)
-    profile = prepared.samples[-1].radial_profile
-    assert profile is not None
-    class CountingSamples(tuple):
-        def __iter__(self):
-            raise AssertionError("profile samples must not be traversed before guard")
-    object.__setattr__(profile, "samples", CountingSamples(profile.samples))
+    monkeypatch.setattr(
+        altitude,
+        "_validate_terrain_profile",
+        lambda *_: (_ for _ in ()).throw(AssertionError("profile samples must not be traversed before guard")),
+    )
     monkeypatch.setattr(altitude, "wavelength_m", lambda _: (_ for _ in ()).throw(AssertionError("Fresnel called")))
     with pytest.raises(RealTerrainMinimumAltitudeError, match="profile sample count"):
         _compute(route_result, (prepared,), RealTerrainMinimumAltitudeConfig(max_profile_samples_per_link=1))
+
+
+@pytest.mark.parametrize("mutation", ("resolution", "provider", "nested_type"))
+def test_complete_validator_revalidates_exact_nested_raster_metadata_before_seals(
+    mutation: str,
+) -> None:
+    result = _compute()
+    metadata = result._authority.terrain_metadata
+    if mutation == "resolution":
+        object.__setattr__(metadata.dem, "resolution_m", 0.0)
+    elif mutation == "provider":
+        object.__setattr__(metadata.dsm, "source_provider", "")
+    else:
+        object.__setattr__(metadata, "dem", object())
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="terrain metadata"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_source_collection_guard_precedes_deep_source_traversal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import uav_rf_terrain.real_terrain_minimum_altitude as altitude
+
+    route_result = _route_result()
+    object.__setattr__(route_result.config, "max_graph_nodes", 1)
+    monkeypatch.setattr(
+        altitude,
+        "_validate_local_point",
+        lambda *_: (_ for _ in ()).throw(AssertionError("deep source validation ran")),
+    )
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="source graph node count"):
+        _compute(route_result)

@@ -43,26 +43,28 @@ metadata internals.
 
 ## Actual Result
 
-The fourth local amendment passed focused source/selection/prepared-evidence/output
-contract tests (`101 passed`), relevant Task 035EF/035G plus legacy regression tests
-(`58 passed`), and the full suite (`1014 passed, 1 skipped`). It retains one compact
-canonical authority snapshot and a deterministic fingerprint covering the complete
-calculation config and retained evidence. Recursive validation replays radial
-requirement records, rejects collection substitution/non-finite geometry/profile
-ordering errors, and keeps private evidence out of public output. Local verification
-for this document content is complete.
+The fifth local amendment passed focused source/selection/prepared-evidence/output
+contract tests (`106 passed`), relevant Task 035EF/035G plus legacy regression tests
+(`58 passed`), and the full suite (`1019 passed, 1 skipped`). It retains one compact
+canonical authority snapshot plus an independent canonical emitted-output fingerprint.
+The seals cover retained calculation authority and every emitted nested output field;
+recursive validation checks them before tolerance-aware mathematical replay. It also
+reruns exact terrain metadata validation, rejects collection substitution/non-finite
+geometry/profile ordering errors, and keeps private evidence out of public output.
+Local verification for this document content is complete.
 
 ## Metrics
 
-- Focused categories: source authority, profile geometry, resource guard ordering,
-  typed error mapping, tolerance tie, recursive output formula, public omission, and
-  one/two/three route parity.
+- Focused categories: source authority, exact metadata, profile geometry, resource
+  guard ordering, typed error mapping, canonical authority/output fingerprints,
+  tolerance-aware formula replay and ties, recursive output formula, public omission,
+  and one/two/three route parity.
 - Regression categories: legacy minimum-altitude and complete project test suite.
 
 ## Local / CI Evidence
 
-Fresh local verification recorded `101` focused tests, `58` related regression tests,
-and `1014 passed, 1 skipped` for the full suite. Exact final-head GitHub Actions
+Fresh local verification recorded `106` focused tests, `58` related regression tests,
+and `1019 passed, 1 skipped` for the full suite. Exact final-head GitHub Actions
 evidence remains pending under the non-recursive policy: it belongs in the external
 completion report after the local final head is published, and does not justify a
 CI-only follow-up commit.
@@ -87,10 +89,11 @@ constant-MSL limiter, current-margin limiter, and public-output omission matrix.
 
 ## Sensitivity / Adversarial Cases
 
-Direct frozen-dataclass mutation, coordinated source/result mutation, fake sources,
-wrong route totals, wrong radial distance, reversed or unrelated profiles, spacing and
-endpoint terrain mismatch, zero/coincident occupancy, resource guards before Fresnel,
-and tolerance-boundary ties are test targets.
+Direct frozen-dataclass mutation, coordinated source/result mutation, sub-tolerance
+public-output mutation, fake sources, exact nested metadata mutation, wrong route
+totals, wrong radial distance, reversed or unrelated profiles, spacing and endpoint
+terrain mismatch, zero/coincident occupancy, resource guards before Fresnel, and
+tolerance-boundary ties are test targets.
 
 ## Public Repository Sensitivity
 
