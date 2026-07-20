@@ -16,3 +16,4 @@ Legacy accumulated decisions remain in `docs/paper/decision-log.md` as historica
 - [DEC-20260714-006 - real-terrain launch-area map and selection policy](DEC-20260714-006-real-terrain-launch-area-map-selection-policy.md)
 - [DEC-20260716-007 - real-terrain route recommendation policy](DEC-20260716-007-real-terrain-route-recommendation-policy.md)
 - [DEC-20260716-008 - real-terrain waypoint reporting policy](DEC-20260716-008-real-terrain-waypoint-reporting-policy.md)
+- [DEC-20260716-009 - real-terrain minimum-altitude policy](DEC-20260716-009-real-terrain-minimum-altitude-policy.md)

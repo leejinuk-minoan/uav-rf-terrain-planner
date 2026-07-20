@@ -6,7 +6,10 @@
 
 ## Related Task/Issue/PR
 
-Task 035G; Issue #106; Draft PR #107.
+Task 035G; Issue #106; PR #107. Final head
+`36935ace9c6fd76680bfe07de87362f40de84935` merged through
+`7b39a2191c94ce1fe6140ab069aa6c2bfe3e3dc6` on 2026-07-19; Issue #106 is
+closed/completed.
 
 ## Experiment Purpose
 
@@ -66,8 +69,8 @@ in the next post-merge ledger reconciliation.
 Initial Draft evidence before the review amendment: reporting 5 + outputs 2 focused
 tests, 899 full tests, and CI #888 / run 29471833777 success for head
 `8ac72857688ebdf0dbb29f810df2c53a81cd7baa`. The review-amendment local focused 22,
-full 914, `compileall`, Ruff, mypy, and diff checks passed. Exact final-head CI is
-pending at this record revision.
+full 914, `compileall`, Ruff, mypy, and diff checks passed. Exact final-head CI #890
+/ run 29473229092 succeeded for `36935ace9c6fd76680bfe07de87362f40de84935`.
 
 ## Interpretation
 
@@ -95,7 +98,6 @@ credential, external-device instruction, or flight-control file is committed.
 
 ## Follow-up
 
-After PR #107 merges, reconcile final head, merge commit, Issue closure, final local
-test count, and exact hosted CI in `RESEARCH_BUILD_RECORD.md` during the next Task.
-Future work may separately study waypoint-report usability, GIS-backed smoke tests,
-and field RF validation.
+PR #107 final head, merge commit, Issue closure, local tests, and hosted CI were
+reconciled in `RESEARCH_BUILD_RECORD.md` by Task 036A. Future work may separately
+study waypoint-report usability, GIS-backed smoke tests, and field RF validation.
