@@ -51,7 +51,7 @@ infinite commit-to-CI update cycle.
 | Route modes | Shielding minimum 0.90/0.10, balanced 0.70/0.30, detour stability 0.85/0.15 with reviewed risk multiplier. | `real_terrain_route_outputs.py`; EXP-055; DEC-007 |
 | Dijkstra/diversity | Deterministic ordering, bounded expansion, duplicate rejection, and directed-edge overlap retry. | `route_pathfinding.py`; EXP-055; DEC-007 |
 | Waypoint sampling | Cumulative route 3D handoff distance, exact-node reuse, linear elevation interpolation, conservative color/min-score interpolation. | `real_terrain_waypoint_reporting.py`; EXP-056; DEC-008 |
-| Future route altitude | Complete route authority plus dedicated bounded radial DSM/DEM profiles; one comparison-only constant MSL per source route. | Task 036A architecture; EXP-057; DEC-009 |
+| Future route altitude | Proposed complete route authority plus authoritative actual selected launch, exact-parity terrain session, and dedicated bounded radial DSM/DEM profiles; one constant-MSL result plus independent fixed-AGL margin assessment per source route. | Task 036A architecture; EXP-057; DEC-009 |
 
 ## Build Chronology
 
@@ -70,7 +70,7 @@ rather than inferred.
 | BUILD-20260714-007 | 2026-07-14 | 034B-034D, 035A-035D | Diagnostic delivery, real-terrain contract, candidate analysis, map, and selection. | PR #103. | Final `8fb29c7`; merge `1933ce2`; merged 2026-07-16. | Synthetic adapters and renderer fakes. | 33 focused; 864 full. | Local checks passed; CI #874 / 29460010316 success. | Merged. | EXP-048..054; DEC-004..006; Task 035D handoff. | No real GIS/browser/field validation. |
 | BUILD-20260716-008 | 2026-07-16 | 035EF | Complete selected-launch route recommendation and handoff contract. | Issue #104; PR #105. | Final `4308aba`; merge `7c49c8f`; merged 2026-07-16. | Synthetic in-memory adapter. | graph 7 + pathfinding 4 + analysis 5 + outputs 12 = 28; 892 full. | Local checks passed; CI #881 / 29469082285 success. | Merged; Issue #104 closed/completed. | EXP-055; DEC-007; Task 035EF handoff. | No GIS route/browser/field validation. |
 | BUILD-20260716-009 | 2026-07-16 | 035G | Real-terrain route waypoint reporting over complete handoffs. | Issue #106; PR #107. | Final `36935ac`; merge `7b39a21`; merged 2026-07-19. | Synthetic immutable route contracts. | Initial focused 7/full 899; review-amendment focused 22/full 914. | Exact final-head CI #890 / 29473229092 success. | Merged; Issue #106 closed/completed. | EXP-056; DEC-008; Task 035G handoff. | No terrain reanalysis, GIS report, browser/UI, or field validation. |
-| BUILD-20260716-010 | 2026-07-20 | 036A | Define real-terrain minimum-altitude analysis boundary. | Issue #108; Draft PR #109. | Head `fa5cdb4`; contract audit complete. | Documentation and existing synthetic contracts only. | Focused 19; full 913 passed, 1 skipped; compileall/Ruff/mypy/diff passed. | Exact final-head CI will be recorded in the Draft PR completion/review comment. | Draft pending hosted CI and review. | EXP-057; DEC-009; Task 036A handoff. | No runtime, GIS, field, browser/UI, or operational output. |
+| BUILD-20260716-010 | 2026-07-20 | 036A | Propose real-terrain minimum-altitude analysis boundary. | Issue #108; Draft PR #109. | Base main `7b39a21`; ledger content basis before draft-evidence commit `fa5cdb4`; GPT Master amendment in progress. | Documentation and existing synthetic contracts only. | Initial focused 19; full 913 passed, 1 skipped; compileall/Ruff/mypy/diff passed. | Exact amendment final-head CI will be recorded in the Draft PR completion/review comment. | Draft pending hosted CI and GPT Master review. | EXP-057; proposed DEC-009; Task 036A handoff. | No runtime, GIS, field, browser/UI, or operational output. |
 
 ## Experiment Evidence Ledger
 
@@ -85,7 +85,7 @@ rather than inferred.
 | EXP-054 | Map/selection implementation; synthetic converter/fakes. | Final focused 33 and full 864; CI #874 success. | Candidate/map contract table; corrected below. | BUILD-20260714-007; no browser/GIS/field run. |
 | EXP-055 | Route recommendation; synthetic adapter. | Final focused 28 and full 892; CI #881 success. | Graph/route mode/verification table. | BUILD-20260716-008; no GIS route/browser/field run. |
 | EXP-056 | Waypoint reporting; synthetic complete route contract. | Initial focused 7/full 899 plus review-amendment authority, endpoint, warning, guard, and mutation checks. | Final focused 22/full 914; CI #890 success; waypoint semantics/verification table. | BUILD-20260716-009; no GIS/UI/field run. |
-| EXP-057 | Real-terrain minimum-altitude contract audit; documentation and synthetic-contract sources. | Selected complete route authority plus dedicated radial profile boundary; no runtime added. | Future altitude architecture/formula table only. | BUILD-20260716-010; no GIS/UI/field run. |
+| EXP-057 | Real-terrain minimum-altitude contract audit; documentation and synthetic-contract sources. | Proposed actual selected-launch, exact-parity session, dedicated radial profile, constant-MSL, and independent fixed-AGL baseline boundary; no runtime added. | Future authority/distance/formula table only. | BUILD-20260716-010; no GIS/UI/field run. |
 
 All individual EXP files remain the authoritative detailed method and limitation record.
 
@@ -122,7 +122,7 @@ All individual EXP files remain the authoritative detailed method and limitation
 | System: map/selection | Renderer-neutral candidate map and immutable selection exist. | BUILD-20260714-007; EXP-054; DEC-006. | Package/selection architecture diagram. | No browser or real GIS rendering result. |
 | System: route | Deterministic bounded route candidates exist. | BUILD-20260716-008; EXP-055; DEC-007. | Route mode and guard table. | No real route or flight validation. |
 | System: waypoint | Deterministic handoff-based reports exist. | BUILD-20260716-009; EXP-056; DEC-008. | Sampling/value-semantics table. | No waypoint usability study or field data. |
-| Future system: altitude | A route-authority and dedicated-profile contract is defined. | BUILD-20260716-010; EXP-057; DEC-009. | Authority and MSL/AGL formula table. | No altitude runtime, GIS smoke, or field evidence. |
+| Future system: altitude | A proposed actual-launch, route-authority, exact-parity-session, and dedicated-profile contract is recorded. | BUILD-20260716-010; EXP-057; DEC-009. | Authority, distance, MSL/AGL, and baseline-margin table. | No altitude runtime, GIS smoke, or field evidence. |
 
 ## Open Research Questions
 

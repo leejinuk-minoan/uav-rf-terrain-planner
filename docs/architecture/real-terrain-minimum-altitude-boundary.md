@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Task 036A defines, but does not implement, the future real-terrain
+Task 036A proposes, but does not implement, the future real-terrain
 minimum-required-altitude analysis boundary. The future feature is an offline
 DSM/LOS/Fresnel clearance proxy for reviewed route candidates. It is not obstacle
 clearance certification, flight-safety approval, communication-success evidence,
@@ -14,12 +14,14 @@ single endpoint inversion is already a real-terrain route implementation.
 
 ## Selected Architecture
 
-The selected architecture is **E: complete route authority plus dedicated altitude
-profiles**. A future public entry point is:
+The proposed architecture is **F: complete route authority plus authoritative actual
+launch record, exact-parity terrain session, and dedicated altitude profiles**. A
+future public entry point is:
 
 ```python
 def analyze_real_terrain_minimum_altitude(
     route_result: RealTerrainRouteResult,
+    selected_launch_site: SelectedLaunchSiteRecord,
     *,
     terrain_adapter: TerrainDataAdapter,
     config: RealTerrainMinimumAltitudeConfig,
@@ -27,142 +29,197 @@ def analyze_real_terrain_minimum_altitude(
 ) -> RealTerrainMinimumAltitudeResult: ...
 ```
 
-`RealTerrainRouteResult` is the immutable authority for mission frequency, current
-allowed AGL, route order, route totals, snapped endpoints, terrain metadata, launch
-ground, and public MGRS identifiers. The future implementation revalidates that
-result, opens exactly one terrain session, and builds new bounded DEM/DSM profiles.
-It must not use `RealTerrainWaypointResult` values as clearance-profile samples.
+`RealTerrainRouteResult` is the immutable authority for route candidates and source
+order, reviewed 3D route totals, mission frequency, current fixed AGL, terrain
+metadata, snapped route endpoints, actual selected-point ground MSL, and snap
+distances. `SelectedLaunchSiteRecord` is separately authoritative for the actual
+selected launch projected point and MGRS. It must satisfy all of the following before
+a terrain session starts:
+
+- `selected_launch_site.candidate_id == route_result.selected_candidate_id`;
+- `selected_launch_site.launch_site_mgrs == route_result.launch_site_mgrs`; and
+- conversion of the selected projected point exactly equals `launch_site_mgrs`.
+
+The selected projected point, not the snapped graph node, is the radial-profile
+origin. The route result's `launch_ground_msl_m` is the DEM sampled at that actual
+selected point. It must never be described as snapped-node ground MSL.
 
 ```mermaid
 flowchart LR
   R[Complete RealTerrainRouteResult] --> V[Revalidate route and mission authority]
-  A[TerrainDataAdapter] --> S[One resolved terrain session]
-  V --> P[Resample each route polyline]
+  L[SelectedLaunchSiteRecord] --> V
+  A[TerrainDataAdapter] --> S[One exact-parity terrain session]
+  V --> P[Resample snapped route polyline in 2D]
   S --> P
-  P --> L[Radial DSM/DEM profiles from snapped launch to each route sample]
-  L --> I[LOS/Fresnel MSL inversion]
-  I --> M[Per-route maximum constant MSL]
-  M --> O[MGRS-facing comparison-only result]
+  L --> D[Dedicated radial DSM/DEM profiles from actual launch]
+  P --> D
+  D --> I[LOS/Fresnel endpoint inversion]
+  I --> C[Constant-MSL and fixed-AGL assessments]
+  C --> O[MGRS-facing comparison-only result]
 ```
+
+`RealTerrainWaypointResult` remains report-oriented and must not supply
+clearance-profile samples.
 
 ## Alternatives Considered
 
 | Alternative | Input authority | Reason rejected or selected |
 |---|---|---|
-| A. Complete route result only | Route result and existing handoffs | Rejected alone: handoffs are route vertices, not a dense DSM/DEM clearance profile. |
-| B. Waypoint result | Approximate 500 m report records | Rejected: report interpolation is intentionally display-oriented and may be sparse or conservative for color/score rather than terrain clearance. |
-| C. Route handoff only | Per-route handoff tuples | Rejected: drops mission, metadata, snap, route-order, and public-output authority. |
-| D. Separate profile only | Newly sampled terrain profile | Rejected alone: cannot prove parity with the reviewed route candidates, frequency, AGL, or route order. |
-| E. Route authority plus dedicated profiles | Complete result plus one terrain session | Selected: preserves reviewed authority while sampling the DSM/DEM evidence needed for a clearance proxy. |
+| A. Complete route result only | Route result and existing handoffs | Rejected alone: handoffs are route vertices, not dense DSM/DEM clearance profiles. |
+| B. Waypoint result | Approximate 500 m report records | Rejected: reporting interpolation is not terrain-clearance evidence. |
+| C. Route handoff only | Per-route handoff tuples | Rejected: drops mission, metadata, snap, and selected-point authority. |
+| D. Separate profile only | Newly sampled terrain profile | Rejected alone: cannot prove parity with reviewed routes, frequency, or AGL. |
+| E. Route authority plus dedicated profiles | Complete result plus one session | Rejected: leaves actual selected launch versus snapped-node origin ambiguous. |
+| F. Route authority plus actual launch record and dedicated profiles | Complete result, selected record, one exact-parity session | Proposed: preserves route authority and actual-launch parity while sampling required clearance evidence. |
 
-## Authoritative Inputs and Validation
+A snapped-only origin was rejected. It would require a separately sampled
+`snapped_launch_ground_msl_m` and would change parity with the current Task 035EF
+node LOS/Fresnel origin. Reusing actual-point ground MSL with a snapped-point radial
+origin is prohibited.
 
-The future analyzer accepts only a complete `RealTerrainRouteResult`, a
-`TerrainDataAdapter`, a config, and a MGRS converter. Before a terrain session starts
-it must re-run the route-result validator and require:
+## Authoritative Inputs and Terrain-Session Parity
 
-- one or more route candidates and handoffs in the existing `RouteMode` order;
-- candidate, handoff, snapped endpoint, MGRS, total-distance, and terrain-metadata
+Before opening or sampling the one required terrain session, the future analyzer must
+re-run the complete route-result validator and require:
+
+- one or more route candidates and handoffs in existing `RouteMode` order;
+- candidate, handoff, snapped endpoint, MGRS, source 3D total, and selected-record
   parity;
-- finite `launch_ground_msl_m`, positive source frequency, and positive current
-  allowed AGL;
-- supported aligned DEM/DSM metadata with EPSG:5179, common bounds, compatible
-  resolution/dimensions, and a documented MSL vertical convention;
-- config frequency, if explicitly supplied, equal to the source route frequency;
-- a public-safe scenario label and a callable MGRS converter.
+- finite `route_result.launch_ground_msl_m`, positive source frequency, and positive
+  current allowed AGL;
+- a public-safe scenario label and a callable MGRS converter; and
+- a session metadata exact-policy match with `route_result.terrain_metadata`.
 
-The sole current frequency authority is `route_result.config.frequency_hz`. A future
-config may carry `expected_frequency_hz=None` to inherit it or a finite positive
-value that must match it exactly; a mismatch is fatal.
+Compatible geometry is insufficient. The exact policy covers dataset label or
+identifier, DEM and DSM metadata, CRS, bounds, width and height, resolution, NoData
+semantics, vertical datum or convention, represented source/provider/license terms,
+processing summary/version/date fields, and redistribution or synthetic flags where
+present. A future implementation must use stable authoritative dataclass equality when
+available, otherwise an explicit equality helper over this field list. A mismatch is
+fatal before sampling with:
 
-## Altitude Terms and Primary Semantics
+```text
+terrain session metadata does not match source route terrain authority
+```
+
+The sole frequency authority is `route_result.config.frequency_hz`. A future config
+may carry `expected_frequency_hz=None` to inherit it or a finite positive value that
+must match it exactly; a mismatch is fatal.
+
+## Altitude and Distance Terms
 
 | Term | Frozen meaning |
 |---|---|
-| `launch_ground_msl_m` | DEM MSL at the snapped launch node, retained by the route result. |
-| `launch_antenna_msl_m` | `launch_ground_msl_m + route_result.config.allowed_flight_agl_m`; the fixed launch-side line endpoint for this proxy. |
-| Current allowed flight AGL | Existing fixed value `route_result.config.allowed_flight_agl_m`; it is not a newly recommended altitude. |
-| Current route flight MSL | At each resampled route point: local DEM MSL plus current allowed AGL. It is a comparison baseline and therefore varies by terrain. |
-| Minimum required endpoint MSL | Legacy Task 015 single-profile endpoint result only. It is not the primary real-terrain route output. |
-| Minimum required constant-route MSL | The selected primary future result: one MSL that is at least every eligible radial-profile sample requirement for one route candidate. |
-| Minimum required per-waypoint MSL | Diagnostic comparison values only; not a recommended flight command. |
-| AGL over highest route DEM | Constant-route MSL minus the maximum DEM MSL among route-polyline samples. |
-| AGL over target DEM | Constant-route MSL minus DEM MSL at that route's snapped target endpoint. |
+| `actual_launch_ground_msl_m` | `route_result.launch_ground_msl_m`: DEM MSL sampled at the actual selected launch point. |
+| `launch_antenna_msl_m` | `actual_launch_ground_msl_m + route_result.config.allowed_flight_agl_m`; fixed actual-launch line endpoint. |
+| Actual radial-profile origin | `selected_launch_site.projected_point`. |
+| Snapped route origin | First graph point of each route candidate; it can differ from the actual launch point by `launch_snap_distance_m`. |
+| Actual-to-snapped connector | The radial profile from the actual selected point to the first snapped route sample; it is evaluated before the remaining route samples. |
+| `source_total_distance_3d_m` | Reviewed source candidate total used only for source identity and parity. |
+| `route_polyline_total_distance_2d_m` | Horizontal sum of snapped route-polyline segments used for target resampling. |
+| `cumulative_route_distance_2d_m` | Horizontal route-sample location used for ordering, spacing, guards, and ties. |
+| `radial_distance_2d_m` | Horizontal distance from actual selected origin to a radial endpoint or radial profile sample. |
 
-The primary MVP computes **one minimum required constant-route MSL per available
-route candidate**. It does not produce constant-AGL terrain following, per-segment
-commands, a final route choice, or automatic route ranking changes. Per-sample values
-exist only to explain the route-level maximum.
+`profile_spacing_m` operates only on horizontal 2D distance. Route-sample guards use
+the 2D route estimate; per-link and aggregate profile guards use radial 2D estimates.
+The source 3D total is never compared to a resampled 2D total. Both totals are
+retained and validated independently, and future schema names use `_2d_m` or `_3d_m`.
 
-## Dedicated Profile Sampling and Inversion
+## Dedicated Profile Sampling and Constant-MSL Requirement
 
-For each source candidate, the future implementation resamples its snapped-graph
-polyline in cumulative 2D route distance at a resolved positive profile spacing. It
-includes the snapped launch and target once, orders samples by increasing cumulative
-route distance, and samples local DEM/DSM at each point.
+For each source candidate, resample its snapped-graph polyline in increasing
+`cumulative_route_distance_2d_m` at resolved positive spacing. Include each snapped
+route endpoint once. For every route sample, including the first snapped sample,
+extract a bounded radial DEM/DSM profile from the actual selected projected point to
+that sample through the same exact-parity terrain session. This evaluates the
+actual-to-snapped connector rather than silently skipping it.
 
-For every non-launch route sample, it extracts a dedicated radial profile from the
-snapped launch projected point to that route sample through the same terrain session.
 The resolved spacing is `config.profile_spacing_m` when provided; otherwise it is
 `route_result.config.profile_spacing_m`. An explicit spacing must be positive and no
-larger than the source route profile spacing. This avoids treating route handoffs or
-500 m report interpolation as terrain-clearance evidence.
+larger than the source route profile spacing. For a coincident actual and snapped
+origin, the implementation validates endpoint occupancy without creating an invalid
+zero-length inversion profile.
 
-For every radial-profile sample with path ratio `t > epsilon`, let `A` be launch
-antenna MSL, `D` be DSM MSL, `q` be required clearance ratio, and `r` be first
-Fresnel radius. The requirement is:
+For route sample `j`, let `A` be launch antenna MSL. For each eligible radial profile
+sample `i` with path ratio `t_i > epsilon`, DSM MSL `D_i`, first Fresnel radius `r_i`,
+and configured clearance ratio `q`, compute:
 
 ```text
-required_clearance_m = q * r
-required_los_msl = D + required_clearance_m
-required_endpoint_msl = A + (required_los_msl - A) / t
-route_constant_msl = max(required_endpoint_msl for all eligible radial samples)
+required_endpoint_msl_j = max(
+    A + (D_i + q * r_i - A) / t_i
+    for eligible radial samples i on link j
+)
+
+minimum_required_constant_route_msl_m = max(
+    required_endpoint_msl_j for all route samples j
+)
 ```
 
 `r = 0` at a radial endpoint is valid and contributes LOS-only DSM clearance. The
-launch endpoint is excluded from inversion because `t = 0`; its DSM must instead be
-at or below `launch_antenna_msl_m`. The snapped target endpoint is eligible, so a
-target limiting sample is possible and produces a warning. A launch or target DSM
-surface above its current fixed-AGL flight MSL is fatal because the source route's
-current endpoint occupancy invariant is broken.
+actual launch endpoint has `t = 0` and is excluded from inversion; its DSM must be at
+or below `launch_antenna_msl_m`. Every route sample is a radial endpoint and is
+eligible. A snapped target endpoint may therefore be a constant-MSL limiting sample.
+
+The constant-MSL limiting sample is the `argmax(required_endpoint_msl_j)`. Values
+within `1e-9` m are tied, then choose lower `cumulative_route_distance_2d_m`, lower
+route-sample index, lower radial-profile sample index, and lower source route order.
+This selection is independent of the current fixed-AGL deficit-limiting sample.
 
 ## Fresnel Policy
 
-- Frequency uses the source route authority as above.
-- `required_fresnel_clearance_ratio` defaults to `0.6`, preserving the legacy proxy
-  default without claiming measured link performance.
+- `required_fresnel_clearance_ratio` defaults to `0.6` as a proxy default, not a
+  measured link-performance threshold.
 - The future config permits an explicit finite ratio in `[0.0, 1.0]`.
-- `0.0` is allowed and means DSM LOS-only clearance for this proxy; it does not mean
-  communication is guaranteed.
-- Radius-zero endpoint samples remain eligible with zero Fresnel margin.
-- The launch radial endpoint is excluded from inversion; the target radial endpoint
-  is included. Invalid, non-finite, or negative radius values are fatal.
+- `0.0` means DSM LOS-only clearance for this proxy; it does not guarantee
+  communication.
+- Invalid, non-finite, or negative radius values are fatal.
 
-## Limiting Sample and Tie Policy
+## Current Fixed-AGL Baseline Assessment
 
-The limiting sample is the eligible radial-profile sample with the maximum required
-endpoint MSL. Requirements within `1e-9` m are tied. Ties select the lower route
-cumulative distance, then lower route-sample index, then lower radial-profile sample
-index, then lower source route order. This makes the limiting MGRS-facing diagnostic
-stable without changing candidate order or route cost.
-
-## MSL-to-AGL Conversions
-
-For each route result, with `H` equal to the highest route-polyline DEM MSL and `T`
-equal to the snapped target DEM MSL:
+The primary result remains one comparison-only constant MSL per source route. A
+separate fixed-AGL baseline assessment evaluates every route sample; it must not infer
+sufficiency from only the constant-MSL limiting sample. For every route sample `j`:
 
 ```text
-raw_agl_over_highest_route_dem_m = minimum_required_constant_route_msl_m - H
-display_agl_over_highest_route_dem_m = max(0, raw_agl_over_highest_route_dem_m)
-raw_agl_over_target_dem_m = minimum_required_constant_route_msl_m - T
-display_agl_over_target_dem_m = max(0, raw_agl_over_target_dem_m)
+current_route_flight_msl_j = local_dem_msl_j + allowed_flight_agl_m
+current_clearance_margin_m_j = current_route_flight_msl_j - required_endpoint_msl_j
 ```
 
-An optional local diagnostic AGL is `minimum_required_constant_route_msl_m - local
-route-sample DEM MSL`; it is not a command. Negative raw AGL is mathematically
-possible when the reference route DEM is higher than the route-level requirement.
-Display clamping is presentation-only and must not change the raw calculation or
-clearance decision.
+Then:
+
+```text
+minimum_current_clearance_margin_m = min(current_clearance_margin_m_j)
+current_fixed_agl_meets_proxy = minimum_current_clearance_margin_m >= -tolerance
+```
+
+The current-AGL deficit-limiting sample is the `argmin(current_clearance_margin_m_j)`.
+Ties use lower `cumulative_route_distance_2d_m`, lower route-sample index, and lower
+source route order; the associated radial-profile provenance remains available for
+diagnostics. It is distinct from the constant-MSL limiting sample and can identify a
+different point.
+
+## Nonnegative AGL Conversions
+
+With `H` equal to the highest route-sample DEM MSL and `T` equal to the snapped target
+route-sample DEM MSL:
+
+```text
+agl_over_highest_route_dem_m = minimum_required_constant_route_msl_m - H
+agl_over_target_dem_m = minimum_required_constant_route_msl_m - T
+```
+
+Every route sample is a radial endpoint, so `t = 1` and `r = 0` there. Thus its
+requirement is at least local DSM and local DSM is at least local DEM. The route-level
+maximum is therefore at least both `H` and `T`. Required invariants are:
+
+```text
+agl_over_highest_route_dem_m >= -tolerance
+agl_over_target_dem_m >= -tolerance
+```
+
+Values within tolerance of zero normalize to `0.0`. The future result exposes only
+these nonnegative AGL values: there is no negative raw-AGL state, display clamp, or
+negative-AGL warning.
 
 ## Future Immutable Result Contract
 
@@ -178,52 +235,57 @@ max_profile_samples_per_link: int = 10_000
 max_total_profile_samples: int = 50_000
 ```
 
-`RealTerrainAltitudeRequirementSample` retains private projected/profile provenance
-for validation plus route ID/mode, route sample index and cumulative distance,
-radial-profile sample index, DEM/DSM, Fresnel radius, clearance ratio, required MSL,
-and a MGRS-facing limiting-point field. It must validate finite values, `DSM >= DEM`,
-and source-route parity.
+`RealTerrainRouteAltitudeSample` retains route ID/mode, route-sample MGRS and index,
+`cumulative_route_distance_2d_m`, local DEM/DSM, current route flight MSL,
+`required_endpoint_msl_m`, `current_clearance_margin_m`, radial-profile sample count,
+and its constant-MSL limiting radial sample. Private projected/profile provenance is
+retained for validation and must validate finite values, `DSM >= DEM`, selected-record
+parity, and source-route parity.
 
-`RealTerrainRouteMinimumAltitudeResult` retains one source route ID/mode/total, source
-sample count, resolved frequency/ratio/spacing, launch ground/antenna MSL, current
-allowed AGL, minimum constant-route MSL, highest/target DEM conversions, limiting
-sample, warnings, and terrain-profile provenance.
+`RealTerrainRouteMinimumAltitudeResult` retains source route ID/mode/order,
+`source_total_distance_3d_m`, `route_polyline_total_distance_2d_m`, resolved
+frequency/ratio/spacing, actual selected launch authority, launch antenna MSL, minimum
+constant-route MSL, highest and target DEM, nonnegative AGL conversions,
+constant-MSL limiting sample, `minimum_current_clearance_margin_m`,
+`current_fixed_agl_meets_proxy`, current-AGL deficit-limiting sample, warnings,
+terrain provenance, and ordered route samples.
 
-`RealTerrainMinimumAltitudeSummary` retains route count, eligible requirement count,
-warning count, and deterministic source-order totals. `RealTerrainMinimumAltitudeResult`
-retains ordered route results, the source route ID/mode/order/totals, frequency,
-launch ground/antenna MSL, terrain metadata/provenance, and summary. These private
-authority fields are required for cross-object validation and are omitted from the
-default public dictionary.
+The top-level result retains selected candidate ID/MGRS/private projected authority,
+source route IDs/modes/order/3D totals, exact terrain-metadata authority,
+config/frequency, ordered route results, and summary/warning parity. Default public
+output remains MGRS-facing and omits projected points, WGS84 geometry, raster indices,
+raw profile cells, and private local paths.
 
-Default public output is MGRS-facing: route ID/mode, MGRS launch/target/limiting point,
-constant MSL, raw/display AGL conversions, warning text, and interpretation limit. It
-must omit projected points, WGS84 geometry, raster indices, raw profile cells, and
-private local paths.
+## Resource Guards, Failure, and Warning Policy
 
-## Failure and Warning Policy
+Before profile extraction, estimate route 2D sample counts and radial profile sample
+counts from the actual selected launch point. Enforce per-route route-sample,
+per-link radial-profile, and global radial-profile limits in this order:
 
-Fatal typed errors return no partial result for wrong or incomplete route input,
-authority/frequency mismatch, invalid ratio, unresolved or unsupported terrain
-metadata, missing profile, raster extent/NoData, non-finite values, `DSM < DEM`,
-endpoint occupancy failure, resource guards, MGRS conversion failure, and any
-cross-object invariant failure.
+```text
+route-sample guard
+then aggregate radial preflight guard
+then first extract_profile call
+```
+
+The complexity boundary is `O(route samples + total radial profile samples)`. Resource
+guard, authority, metadata, missing profile, raster extent/NoData, non-finite value,
+`DSM < DEM`, endpoint occupancy, MGRS conversion, and cross-object invariant failures
+are fatal and return no partial result.
 
 Future warning strings are frozen in this order per source route:
 
 ```text
-{route_id}: required constant-route MSL is below current route flight MSL at limiting route sample.
-{route_id}: required constant-route MSL exceeds current route flight MSL at limiting route sample.
-{route_id}: raw AGL over highest route DEM is negative; display value is clamped to zero.
-{route_id}: raw AGL over target DEM is negative; display value is clamped to zero.
-{route_id}: limiting sample is the target endpoint.
+{route_id}: current fixed-AGL route is below the configured clearance proxy at one or more route samples.
+{route_id}: constant-MSL limiting sample is the snapped target endpoint.
+{route_id}: current-AGL deficit-limiting sample is the snapped target endpoint.
 {route_id}: requested source-zone metadata is unavailable.
 ```
 
-Only applicable strings are emitted, in the listed order, and result/summary warning
-parity is mandatory. The current MVP does not request route source-zone data and
-retains `NOT_REQUESTED`; the final warning is reserved for a separately reviewed
-future provider-enabled contract.
+Only applicable strings are emitted in this order; result and summary warning parity
+is mandatory. The current MVP does not request route source-zone data and retains
+`NOT_REQUESTED`; the final warning is reserved for a separately reviewed provider
+contract.
 
 ## Compatibility, Limits, and Follow-up
 
@@ -233,6 +295,7 @@ does not add GIS data, generated artifacts, private paths, operational coordinat
 route selection, device control, or autopilot behavior.
 
 The next implementation task must add a separate real-terrain altitude module and
-TDD coverage for authority, profile spacing/bounds, inversion, ratio endpoints,
-resource guards, MGRS conversion, warning order, and public-output omission before
-any runtime behavior is claimed.
+TDD coverage for selected-launch authority, exact metadata parity, 2D/3D distance
+semantics, profile bounds, inversion, ratio endpoints, resource guards, independent
+limiting samples, nonnegative AGL invariants, warning order, MGRS output, and
+public-coordinate omission before any runtime behavior is claimed.

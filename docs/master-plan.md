@@ -631,7 +631,7 @@ Task 035C: real-terrain map/selection architecture contract 완료
 Task 035D: PR #103을 통해 real-terrain map/selection 구현 완료
 Task 035EF: PR #105를 통해 selected launch site → 최대 3개 real-terrain route candidate 구현 완료
 Task 035G: PR #107을 통해 complete route result → 약 500m MGRS-facing waypoint report 구현 완료
-Task 036A: future real-terrain minimum-required constant-route MSL boundary contract 정의, runtime 미구현
+Task 036A: actual selected-launch authority, exact terrain-session metadata parity, 2D profile sampling/3D source-total separation, constant-MSL and current fixed-AGL assessments를 포함하는 proposed real-terrain minimum-altitude boundary contract 정의, runtime 미구현
 ```
 
 ---

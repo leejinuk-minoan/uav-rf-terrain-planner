@@ -2,31 +2,35 @@
 
 ## Current Task
 
-Task 036A is a contract and audit task for future real-terrain minimum-required MSL
-and AGL proxy analysis. It creates no runtime implementation.
+Task 036A is a proposed contract and audit for future real-terrain minimum-required
+MSL and AGL proxy analysis. It creates no runtime implementation.
 
-## Current Branch
+## Current Branch / Draft PR
 
-`agent/task-036a-real-terrain-minimum-altitude-contract`
+`agent/task-036a-real-terrain-minimum-altitude-contract`; Draft PR #109.
 
-## Draft PR
+## Proposed Contract
 
-Draft PR #109: `docs: define real-terrain minimum-altitude boundary`.
+- Consume a complete `RealTerrainRouteResult`, authoritative
+  `SelectedLaunchSiteRecord`, one exact-parity `TerrainDataAdapter` session, and a
+  MGRS converter.
+- The selected record's projected point is the actual radial-profile origin.
+  `route_result.launch_ground_msl_m` is DEM at that actual point, not snapped-node
+  ground. The profile to the first snapped route sample evaluates the connector.
+- Require selected candidate/MGRS/conversion parity and exact session metadata parity
+  with `route_result.terrain_metadata` before sampling.
+- Keep reviewed `source_total_distance_3d_m` distinct from resampling, guard, tie,
+  and radial `_2d_m` distances.
+- Return comparison-only constant-route MSL per available source route. Separately
+  evaluate current fixed AGL at every route sample, retaining minimum margin, meets
+  proxy boolean, and a deficit-limiting sample independent of constant-MSL limiting.
+- AGL over highest route DEM and target DEM is nonnegative by contract; no negative
+  clamp or warning exists.
 
-## Selected Contract
+## Decision Governance
 
-- Consume a complete `RealTerrainRouteResult` as mission/route authority plus a
-  `TerrainDataAdapter` and one terrain session.
-- Build dedicated bounded DSM/DEM radial profiles from the snapped launch to each
-  resampled route point; route handoffs and 500 m waypoint reports are not sufficient
-  clearance-profile authority.
-- Return one comparison-only minimum required constant-route MSL for every available
-  route candidate in source order. Do not choose a final route or produce a flight
-  command.
-- Derive launch antenna MSL from launch ground plus the source fixed AGL. Use source
-  route frequency and a configurable `[0, 1]` clearance ratio whose default is 0.6.
-- Retain private route/frequency/launch/terrain/profile authority for validation and
-  expose MGRS-facing values only by default.
+DEC-009 is `Proposed contract - pending GPT Master approval.` It is not changed to
+approved until exact-head CI succeeds and GPT Master completes review.
 
 ## Legacy Compatibility
 
@@ -35,21 +39,19 @@ API. No source, test, workflow, dependency, or GIS change is part of Task 036A.
 
 ## Verification
 
-The required local test commands are regression verification only because source and
-tests remain unchanged. `compileall`, Ruff, mypy, and diff checks passed; the legacy
-minimum-altitude focused suite passed 19 tests and the full suite passed 913 with 1
-skip. Exact final-head CI is recorded in the Draft PR completion comment and
+The required local commands are regression checks because source and tests remain
+unchanged. Exact final-head CI is recorded in the Draft PR completion comment and
 completion report under the non-recursive ledger policy.
 
-## Paper Record
+## Paper and Safety Boundary
 
-This feature is an offline DSM/LOS/Fresnel clearance proxy. It is not obstacle
+This is an offline DSM/LOS/Fresnel clearance proxy proposal. It is not obstacle
 clearance certification, flight-safety approval, communication-success evidence,
 regulatory approval, airspace authorization, or autopilot output.
 
 ## Next Implementation Task
 
-Implement a separate runtime module only after review of the architecture, DEC-009,
-and EXP-057. Required future coverage includes terrain profile provenance, resource
-bounds, input authority, MSL inversion, AGL conversions, warning order, MGRS output,
-and public-coordinate omission.
+Implement a separate runtime module only after GPT Master approval. Required coverage
+includes selected-launch authority, exact terrain metadata parity, 2D/3D distances,
+profile provenance and guards, MSL inversion, all-sample baseline margins, nonnegative
+AGL, warning order, MGRS output, and public-coordinate omission.

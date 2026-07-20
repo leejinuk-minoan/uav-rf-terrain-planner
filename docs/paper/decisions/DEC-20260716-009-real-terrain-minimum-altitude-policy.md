@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved contract for a future implementation task.
+Proposed contract - pending GPT Master approval.
 
 ## Date
 
@@ -14,32 +14,45 @@ Task 036A, Issue #108, Draft PR #109.
 
 ## Decision Owner
 
-GPT Master defines research interpretation; Codex records the audited implementation
-boundary and local verification evidence.
+GPT Master owns approval and research interpretation. Codex records the audited
+implementation boundary and local verification evidence only.
 
-## Decision
+## Proposed Decision
 
-Future real-terrain altitude analysis consumes a complete `RealTerrainRouteResult`
-plus one `TerrainDataAdapter` session and dedicated bounded DSM/DEM radial profiles.
-It returns a comparison-only minimum required constant-route MSL for each source route
-candidate. The source route result owns mission frequency, fixed AGL, route order,
-totals, launch ground, snap, and terrain metadata. Dedicated profiles provide terrain
-clearance evidence; waypoint-report interpolation is not reused for that purpose.
+The future real-terrain altitude analyzer consumes a complete
+`RealTerrainRouteResult`, an authoritative `SelectedLaunchSiteRecord`, one
+exact-parity `TerrainDataAdapter` session, and dedicated bounded DSM/DEM radial
+profiles. It returns one comparison-only minimum required constant-route MSL per
+source route candidate, plus a separate all-route-sample current fixed-AGL baseline
+assessment.
+
+The selected record's projected point is the actual radial-profile origin.
+`route_result.launch_ground_msl_m` is the DEM sampled at that actual point, not at
+the snapped graph node. The actual-to-snapped connector is evaluated by the radial
+profile to the first snapped route sample.
+
+The route result owns route order, source 3D totals, frequency, allowed AGL, terrain
+metadata, snapped endpoints, actual launch ground, and snap distances. The selected
+record must match its selected candidate ID and launch MGRS, including exact projected
+point-to-MGRS conversion. Terrain sampling is permitted only if session metadata
+exactly matches `route_result.terrain_metadata`; geometry compatibility alone is not
+sufficient.
 
 ## Context
 
 Task 015 provides a synthetic single-profile endpoint inversion. Tasks 035EF and 035G
-now provide complete route/handoff authority and MGRS-facing reports, but their graph
-vertices and reporting interpolation are not dense DSM/DEM clearance profiles. A
-future implementation needs both authorities without changing existing route, waypoint,
-score, or legacy synthetic behavior.
+provide complete route/handoff authority and MGRS-facing reports, but graph vertices
+and report interpolation are not dense DSM/DEM clearance profiles. Task 035EF retains
+the distinction between the actual selected launch point and a potentially different
+snapped graph node, so the future altitude boundary must retain that distinction too.
 
 ## Rationale
 
-This hybrid boundary prevents sparse/report-oriented data from being interpreted as
-clearance evidence while preserving immutable route and mission parity. A constant MSL
-per route gives one reviewable proxy value without creating terrain-following or
-per-waypoint flight commands. The 0.6 default remains an initial clearance proxy,
+This proposed hybrid contract prevents report-oriented data or geometry-compatible but
+different datasets from being interpreted as clearance evidence. Constant MSL gives
+one reviewable proxy value without terrain-following or per-waypoint flight commands.
+The independent fixed-AGL assessment avoids inferring present-route sufficiency from
+only the constant-MSL limiting sample. The 0.6 ratio remains an initial proxy default,
 not a measured link-performance threshold.
 
 ## Alternatives Considered
@@ -48,7 +61,22 @@ not a measured link-performance threshold.
 - Waypoint result only: rejected because 500 m interpolation has reporting semantics.
 - Handoff tuples only: rejected because route/mission/metadata authority is lost.
 - Dedicated profile only: rejected because it cannot prove source-route parity.
-- Complete route authority plus dedicated profiles: selected.
+- Route result plus dedicated profiles: rejected because actual-launch versus snapped
+  launch authority remains ambiguous.
+- Complete route result, selected launch record, exact-parity session, and dedicated
+  profiles: proposed.
+
+## Contract Consequences
+
+- `source_total_distance_3d_m` is source identity/parity only; horizontal sampling,
+  guards, and ties use explicit `_2d_m` route and radial fields.
+- Constant-MSL limiting and current-AGL deficit-limiting samples are separate.
+- Every route sample receives a current clearance margin. The route result exposes the
+  minimum margin and `current_fixed_agl_meets_proxy`.
+- AGL over highest route DEM and target DEM is nonnegative by contract, normalized to
+  zero within tolerance, and never display-clamped from a negative raw value.
+- Metadata mismatch fails before sampling with `terrain session metadata does not
+  match source route terrain authority`.
 
 ## Impacted Documents
 
@@ -69,7 +97,7 @@ are methodological assumptions, not calibrated performance evidence.
 ## Product / Deployment Boundary
 
 No UI, route-selection change, device integration, autopilot command, Android/TMMR
-work, workflow, dependency, or GIS artifact is introduced by this decision.
+work, workflow, dependency, or GIS artifact is introduced by this proposed decision.
 
 ## Public Repository Sensitivity Check
 
@@ -78,12 +106,12 @@ or external-device instruction is recorded.
 
 ## Safety / Non-goals
 
-The contract does not define a safe altitude, an approved altitude, guaranteed
-communications, a flight-ready path, or regulatory guidance. It does not implement
-the future runtime.
+The contract does not define a safe or approved altitude, guaranteed communications,
+a flight-ready path, or regulatory guidance. It does not implement the future runtime.
 
 ## Follow-up Tasks
 
-1. Implement the separate bounded real-terrain altitude module with TDD.
-2. Add synthetic and local adapter smoke evidence without committing GIS data.
-3. Review human-facing report wording and field-validation limits separately.
+1. Obtain GPT Master approval after exact-head CI and review resolution.
+2. Implement the separate bounded real-terrain altitude module with TDD.
+3. Add synthetic and local adapter smoke evidence without committing GIS data.
+4. Review human-facing report wording and field-validation limits separately.
