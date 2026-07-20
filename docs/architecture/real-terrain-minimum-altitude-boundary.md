@@ -77,21 +77,36 @@ A snapped-only origin was rejected. It would require a separately sampled
 node LOS/Fresnel origin. Reusing actual-point ground MSL with a snapped-point radial
 origin is prohibited.
 
-## Authoritative Inputs and Terrain-Session Parity
+## Authoritative Inputs and Terrain-Session Sequencing
 
-Before opening or sampling the one required terrain session, the future analyzer must
-re-run the complete route-result validator and require:
+The future analyzer freezes the following fail-before-profile-sampling sequence:
 
-- one or more route candidates and handoffs in existing `RouteMode` order;
-- candidate, handoff, snapped endpoint, MGRS, source 3D total, and selected-record
-  parity;
-- finite `route_result.launch_ground_msl_m`, positive source frequency, and positive
-  current allowed AGL;
-- a public-safe scenario label and a callable MGRS converter; and
-- a session metadata exact-policy match with `route_result.terrain_metadata`.
+1. **No terrain access.** Re-run the complete route-result validator; validate the
+   `SelectedLaunchSiteRecord` type, candidate/MGRS/conversion parity, config and
+   frequency inputs, resource-input values, public-safe scenario label, and callable
+   MGRS converter. Require one or more route candidates and handoffs in existing
+   `RouteMode` order, candidate/handoff/snapped-endpoint/source-3D-total parity,
+   finite `route_result.launch_ground_msl_m`, and positive current allowed AGL.
+2. **Exactly one terrain session.** Open one session and retain it for all remaining
+   checks and sampling.
+3. **Before the first `sample_point` or `extract_profile`.** Compare
+   `session.metadata` with `route_result.terrain_metadata` under the exact policy
+   below. A mismatch is fatal, produces no partial result, and permits no sampling.
+4. **Actual selected-launch DEM parity.** Sample
+   `selected_launch_site.projected_point`; its DEM must equal
+   `route_result.launch_ground_msl_m` within numeric tolerance. A mismatch is fatal
+   before any route or radial-profile extraction.
+5. **Actual selected-launch DSM occupancy.** The DSM from that same selected-point
+   sample must not exceed `launch_antenna_msl_m`. An occupancy failure is fatal before
+   any route or radial-profile extraction.
+6. **Preflight.** Compute route 2D sample targets, enforce the route-sample guard,
+   estimate radial-profile counts from the actual selected point, and enforce
+   per-link/global aggregate guards.
+7. **Profile sampling.** Only after every prior check passes may route `sample_point`
+   calls and radial `extract_profile` calls begin.
 
-Compatible geometry is insufficient. The exact policy covers dataset label or
-identifier, DEM and DSM metadata, CRS, bounds, width and height, resolution, NoData
+Compatible geometry is insufficient for step 3. The exact policy covers dataset label
+or identifier, DEM and DSM metadata, CRS, bounds, width and height, resolution, NoData
 semantics, vertical datum or convention, represented source/provider/license terms,
 processing summary/version/date fields, and redistribution or synthetic flags where
 present. A future implementation must use stable authoritative dataclass equality when
@@ -258,14 +273,15 @@ raw profile cells, and private local paths.
 
 ## Resource Guards, Failure, and Warning Policy
 
-Before profile extraction, estimate route 2D sample counts and radial profile sample
-counts from the actual selected launch point. Enforce per-route route-sample,
-per-link radial-profile, and global radial-profile limits in this order:
+After session metadata parity and the actual selected-launch sample pass, but before
+any route or radial profile extraction, estimate route 2D sample counts and radial
+profile sample counts from the actual selected launch point. Enforce per-route
+route-sample, per-link radial-profile, and global radial-profile limits in this order:
 
 ```text
 route-sample guard
 then aggregate radial preflight guard
-then first extract_profile call
+then route sample_point and radial extract_profile calls
 ```
 
 The complexity boundary is `O(route samples + total radial profile samples)`. Resource

@@ -31,6 +31,14 @@ The selected record's projected point is the actual radial-profile origin.
 the snapped graph node. The actual-to-snapped connector is evaluated by the radial
 profile to the first snapped route sample.
 
+The proposed session sequence is fixed: validate route/selected/config/frequency/MGRS
+authority without terrain access; open exactly one session; before any `sample_point`
+or `extract_profile`, verify exact-policy `session.metadata ==
+route_result.terrain_metadata`; sample the actual selected point to verify DEM parity
+with `launch_ground_msl_m` within tolerance; then verify DSM occupancy below launch
+antenna MSL; run route and aggregate radial guards; then begin route and radial sampling. Any
+metadata, ground-parity, or occupancy failure is fatal before profile extraction.
+
 The route result owns route order, source 3D totals, frequency, allowed AGL, terrain
 metadata, snapped endpoints, actual launch ground, and snap distances. The selected
 record must match its selected candidate ID and launch MGRS, including exact projected
@@ -77,6 +85,8 @@ not a measured link-performance threshold.
   zero within tolerance, and never display-clamped from a negative raw value.
 - Metadata mismatch fails before sampling with `terrain session metadata does not
   match source route terrain authority`.
+- Exact metadata parity is evaluated after the sole session opens and before its first
+  terrain sample; it is not a pre-session metadata lookup.
 
 ## Impacted Documents
 

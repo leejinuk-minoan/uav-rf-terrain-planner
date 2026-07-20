@@ -35,9 +35,13 @@ minimum required constant MSL. The proposed ratio default is 0.6 with an allowed
    AGL, 3D route totals, terrain metadata, handoffs, and MGRS through Task 035EF.
 3. Compare route-only, waypoint, handoff, profile-only, and selected-launch hybrid
    input architectures against authority, parity, mathematical meaning, and safety.
-4. Freeze exact terrain-session metadata parity, separate 2D sampling from 3D source
-   totals, radial profile guards, constant-MSL inversion, independent current fixed-AGL
-   margins, nonnegative AGL invariants, schemas, warnings, and fatal boundaries.
+4. Freeze the sequencing: no-terrain-access authority validation; exactly one session;
+   exact metadata parity before the first terrain call; actual selected-launch DEM
+   parity; selected-launch DSM occupancy; 2D resource preflight; then route/radial
+   sampling.
+5. Freeze separate 2D sampling from 3D source totals, constant-MSL inversion,
+   independent current fixed-AGL margins, nonnegative AGL invariants, schemas,
+   warnings, and fatal boundaries.
 
 ## Expected Result
 
@@ -52,6 +56,11 @@ radial DSM/DEM profiles from the actual selected launch point. The primary futur
 output is one comparison-only constant MSL per source route. Every route sample also
 receives an independent current fixed-AGL clearance margin. Waypoint interpolation was
 explicitly rejected as terrain-clearance evidence.
+
+Exact metadata parity is checked only after opening that one session and before its
+first terrain call. The selected launch point is then sampled first to establish DEM
+parity with the route result, then to establish launch-antenna DSM occupancy, before
+resource guards and profile extraction.
 
 ## Metrics
 
