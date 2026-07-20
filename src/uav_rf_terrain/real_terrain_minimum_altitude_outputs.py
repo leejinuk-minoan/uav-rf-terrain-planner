@@ -153,6 +153,7 @@ class RealTerrainMinimumAltitudeAuthoritySnapshot:
     launch_site_mgrs: str
     target_mgrs: str
     selected_projected_point: LocalPoint
+    config: RealTerrainMinimumAltitudeConfig
     frequency_hz: float
     allowed_flight_agl_m: float
     source_profile_spacing_m: float
@@ -310,9 +311,8 @@ class RealTerrainMinimumAltitudeResult:
     route_results: tuple[RealTerrainRouteMinimumAltitudeResult, ...]
     warnings: tuple[str, ...]
     summary: RealTerrainMinimumAltitudeSummary
-    _config: RealTerrainMinimumAltitudeConfig
     _authority: RealTerrainMinimumAltitudeAuthoritySnapshot
-    _authority_seal: RealTerrainMinimumAltitudeAuthoritySnapshot
+    _authority_fingerprint: str
 
     def __post_init__(self) -> None:
         validate_real_terrain_minimum_altitude_result(self)
@@ -354,18 +354,16 @@ def validate_real_terrain_minimum_altitude_result(result: RealTerrainMinimumAlti
     _text("target_mgrs", result.target_mgrs, mgrs=True)
     if type(result) is not RealTerrainMinimumAltitudeResult:
         raise RealTerrainMinimumAltitudeOutputError("result type is invalid.")
-    if type(result._config) is not RealTerrainMinimumAltitudeConfig:
-        raise RealTerrainMinimumAltitudeOutputError("private config authority is invalid.")
     if type(result._authority) is not RealTerrainMinimumAltitudeAuthoritySnapshot:
         raise RealTerrainMinimumAltitudeOutputError("private authority snapshot is invalid.")
-    if type(result._authority_seal) is not RealTerrainMinimumAltitudeAuthoritySnapshot:
-        raise RealTerrainMinimumAltitudeOutputError("private authority seal is invalid.")
+    if not isinstance(result._authority_fingerprint, str) or not result._authority_fingerprint:
+        raise RealTerrainMinimumAltitudeOutputError("private authority fingerprint is invalid.")
     if not isinstance(result.route_results, tuple) or not isinstance(result.warnings, tuple):
         raise RealTerrainMinimumAltitudeOutputError("result collections must be tuples.")
     if type(result.summary) is not RealTerrainMinimumAltitudeSummary or not result.route_results:
         raise RealTerrainMinimumAltitudeOutputError("route results and summary are required.")
     try:
-        result._config.__post_init__()
+        result._authority.config.__post_init__()
         if not isinstance(result._authority.terrain_metadata, TerrainDatasetMetadata):
             raise RealTerrainMinimumAltitudeOutputError("private terrain metadata authority is invalid.")
         validate_terrain_dataset_metadata(result._authority.terrain_metadata)
@@ -388,9 +386,9 @@ def validate_real_terrain_minimum_altitude_result(result: RealTerrainMinimumAlti
             raise RealTerrainMinimumAltitudeOutputError("source route snapshot type is invalid.")
         route.__post_init__()
         source.__post_init__()
-        if source.source_order != order or route.source_order != order or route.route_id != source.route_id or route.mode is not source.mode or not _near(route.source_total_distance_3d_m, source.source_total_distance_3d_m, result._config.distance_tolerance_m):
+        if source.source_order != order or route.source_order != order or route.route_id != source.route_id or route.mode is not source.mode or not _near(route.source_total_distance_3d_m, source.source_total_distance_3d_m, result._authority.config.distance_tolerance_m):
             raise RealTerrainMinimumAltitudeOutputError("route source authority parity failed.")
-        _validate_route_result(route, result._config)
+        _validate_route_result(route, result._authority.config)
         all_samples.extend(route.route_samples)
         all_radial.extend(radial for sample in route.route_samples for radial in sample.radial_requirement_samples)
         warnings.extend(route.warnings)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from hashlib import sha256
 from math import isfinite
 
 from .coordinates import LocalPoint, distance_2d_m
@@ -100,7 +101,7 @@ class PreparedRealTerrainRoute:
     source_order: int
     source_total_distance_3d_m: float
     route_polyline_total_distance_2d_m: float
-    terrain_metadata: object
+    terrain_metadata: TerrainDatasetMetadata
     samples: tuple[PreparedRealTerrainRouteSample, ...]
 
     def __post_init__(self) -> None:
@@ -113,6 +114,9 @@ class PreparedRealTerrainRoute:
         _validate_finite_values("prepared route distances", self.source_total_distance_3d_m, self.route_polyline_total_distance_2d_m)
         if self.source_total_distance_3d_m < 0.0 or self.route_polyline_total_distance_2d_m < 0.0:
             raise RealTerrainMinimumAltitudeError("prepared route distances are invalid.")
+        if type(self.terrain_metadata) is not TerrainDatasetMetadata:
+            raise RealTerrainMinimumAltitudeError("prepared terrain metadata must be TerrainDatasetMetadata.")
+        validate_terrain_dataset_metadata(self.terrain_metadata)
         if any(not isinstance(sample, PreparedRealTerrainRouteSample) for sample in self.samples):
             raise RealTerrainMinimumAltitudeError("prepared route samples must use the approved type.")
         if tuple(sample.route_sample_index for sample in self.samples) != tuple(range(len(self.samples))):
@@ -132,6 +136,7 @@ def compute_real_terrain_minimum_altitude(
 
     try:
         _validate_source_authority(route_result, selected_launch_site, config)
+        _enforce_resource_guards(prepared_routes, config)
         _validate_prepared_authority(route_result, selected_launch_site, prepared_routes, config)
     except RealTerrainMinimumAltitudeError:
         raise
@@ -150,8 +155,6 @@ def compute_real_terrain_minimum_altitude(
         raise RealTerrainMinimumAltitudeError("expected frequency does not match route authority.")
     if config.profile_spacing_m is not None and config.profile_spacing_m > source_config.profile_spacing_m:
         raise RealTerrainMinimumAltitudeError("explicit profile spacing cannot exceed route profile spacing.")
-    _enforce_resource_guards(prepared_routes, config)
-
     resolved_spacing = float(config.profile_spacing_m or source_config.profile_spacing_m)
     try:
         route_results = tuple(
@@ -173,6 +176,7 @@ def compute_real_terrain_minimum_altitude(
             selected_launch_site,
             prepared_routes,
             resolved_spacing,
+            config,
         )
         result = RealTerrainMinimumAltitudeResult(
             route_result.selected_candidate_id,
@@ -190,9 +194,8 @@ def compute_real_terrain_minimum_altitude(
                 ),
                 warnings,
             ),
-            deepcopy(config),
             authority,
-            deepcopy(authority),
+            _authority_fingerprint(authority),
         )
         validate_complete_real_terrain_minimum_altitude_result(result)
         return result
@@ -232,6 +235,7 @@ def _snapshot_authority(
     selected_launch_site: SelectedLaunchSiteRecord,
     prepared_routes: tuple[PreparedRealTerrainRoute, ...],
     resolved_spacing: float,
+    config: RealTerrainMinimumAltitudeConfig,
 ) -> RealTerrainMinimumAltitudeAuthoritySnapshot:
     """Copy only the authority required for later recursive revalidation."""
 
@@ -240,6 +244,7 @@ def _snapshot_authority(
         route_result.launch_site_mgrs,
         route_result.target_mgrs,
         _copy_point(selected_launch_site.projected_point),
+        deepcopy(config),
         route_result.config.frequency_hz,
         route_result.config.allowed_flight_agl_m,
         route_result.config.profile_spacing_m,
@@ -283,6 +288,11 @@ def _snapshot_authority(
             for route in prepared_routes
         ),
     )
+
+
+def _authority_fingerprint(authority: RealTerrainMinimumAltitudeAuthoritySnapshot) -> str:
+    """Canonical local invariant seal, not a hostile in-process security boundary."""
+    return sha256(repr(authority).encode("utf-8")).hexdigest()
 
 
 _KNOWN_CONTRACT_ERRORS = (
@@ -372,22 +382,22 @@ def validate_complete_real_terrain_minimum_altitude_result(
     if type(result) is not RealTerrainMinimumAltitudeResult:
         raise RealTerrainMinimumAltitudeError("result must be RealTerrainMinimumAltitudeResult.")
     try:
-        _validate_snapshot_authority(result._authority_seal, result._config)
-        if result._authority != result._authority_seal:
-            raise RealTerrainMinimumAltitudeError("authority snapshot does not match independent seal.")
+        authority = result._authority
+        if _authority_fingerprint(authority) != result._authority_fingerprint:
+            raise RealTerrainMinimumAltitudeError("authority snapshot does not match canonical fingerprint.")
+        _validate_snapshot_authority(authority, authority.config)
         result.__post_init__()
+        if result.selected_candidate_id != authority.selected_candidate_id:
+            raise RealTerrainMinimumAltitudeError("result selected candidate does not match source authority.")
+        if result.launch_site_mgrs != authority.launch_site_mgrs:
+            raise RealTerrainMinimumAltitudeError("result selected launch MGRS does not match selected launch authority.")
+        if result.target_mgrs != authority.target_mgrs:
+            raise RealTerrainMinimumAltitudeError("result target MGRS does not match source authority.")
+        _validate_complete_output_authority_parity(result)
     except RealTerrainMinimumAltitudeError:
         raise
     except _KNOWN_CONTRACT_ERRORS as exc:
         raise RealTerrainMinimumAltitudeError("complete result authority validation failed.") from exc
-    authority = result._authority_seal
-    if result.selected_candidate_id != authority.selected_candidate_id:
-        raise RealTerrainMinimumAltitudeError("result selected candidate does not match source authority.")
-    if result.launch_site_mgrs != authority.launch_site_mgrs:
-        raise RealTerrainMinimumAltitudeError("result selected launch MGRS does not match selected launch authority.")
-    if result.target_mgrs != authority.target_mgrs:
-        raise RealTerrainMinimumAltitudeError("result target MGRS does not match source authority.")
-    _validate_complete_output_authority_parity(result)
 
 
 def _validate_snapshot_authority(
@@ -552,21 +562,21 @@ def _validate_complete_output_authority_parity(
 ) -> None:
     """Bind every public computation field to retained source/prepared authority."""
 
-    authority = result._authority_seal
-    tolerance = result._config.distance_tolerance_m
+    authority = result._authority
+    tolerance = authority.config.distance_tolerance_m
     resolved_spacing = authority.resolved_profile_spacing_m
     if (
-        result._config.expected_frequency_hz is not None
+        authority.config.expected_frequency_hz is not None
         and not _near(
-            result._config.expected_frequency_hz,
+            authority.config.expected_frequency_hz,
             authority.frequency_hz,
             0.0,
         )
     ):
         raise RealTerrainMinimumAltitudeError("expected frequency does not match retained source authority.")
     if (
-        result._config.profile_spacing_m is not None
-        and result._config.profile_spacing_m > authority.source_profile_spacing_m
+        authority.config.profile_spacing_m is not None
+        and authority.config.profile_spacing_m > authority.source_profile_spacing_m
     ):
         raise RealTerrainMinimumAltitudeError("configured profile spacing exceeds retained source authority.")
     for output, prepared, source_record in zip(
@@ -591,6 +601,11 @@ def _validate_complete_output_authority_parity(
             raise RealTerrainMinimumAltitudeError("output route/source authority parity failed.")
         if len(output.route_samples) != len(prepared.samples):
             raise RealTerrainMinimumAltitudeError("output route sample count does not match prepared authority.")
+        if (
+            sum(sample.is_snapped_target_endpoint for sample in output.route_samples) != 1
+            or not output.route_samples[-1].is_snapped_target_endpoint
+        ):
+            raise RealTerrainMinimumAltitudeError("output route target endpoint policy is invalid.")
         for output_sample, prepared_sample in zip(output.route_samples, prepared.samples):
             if (
                 output_sample.route_sample_id != prepared_sample.route_sample_id
@@ -599,9 +614,10 @@ def _validate_complete_output_authority_parity(
                 or not _near(output_sample.cumulative_route_distance_2d_m, prepared_sample.cumulative_route_distance_2d_m, tolerance)
                 or not _near(output_sample.local_dem_msl_m, prepared_sample.local_dem_msl_m, tolerance)
                 or not _near(output_sample.local_dsm_msl_m, prepared_sample.local_dsm_msl_m, tolerance)
+                or output_sample.is_snapped_target_endpoint != prepared_sample.is_snapped_target_endpoint
             ):
                 raise RealTerrainMinimumAltitudeError("output route sample/prepared authority parity failed.")
-            _validate_emitted_radial_requirements(output, output_sample, prepared_sample, authority, result._config)
+            _validate_emitted_radial_requirements(output, output_sample, prepared_sample, authority, authority.config)
 
 
 def _expected_snapshot_requirements(
@@ -711,6 +727,9 @@ def _validate_prepared_authority(
         route.__post_init__()
         if route.source_order != expected_order or route.source_order != expected_order:
             raise RealTerrainMinimumAltitudeError("prepared route source order mismatch.")
+        if type(route.terrain_metadata) is not TerrainDatasetMetadata:
+            raise RealTerrainMinimumAltitudeError("prepared terrain metadata type is invalid.")
+        validate_terrain_dataset_metadata(route.terrain_metadata)
         if route.terrain_metadata != route_result.terrain_metadata:
             raise RealTerrainMinimumAltitudeError("prepared terrain metadata does not match route authority.")
         if route.route_id != source.route_id or route.mode is not source.mode:
@@ -877,12 +896,22 @@ def _enforce_resource_guards(
     prepared_routes: tuple[PreparedRealTerrainRoute, ...],
     config: RealTerrainMinimumAltitudeConfig,
 ) -> None:
+    if not isinstance(prepared_routes, tuple) or not prepared_routes:
+        raise RealTerrainMinimumAltitudeError("prepared_routes must be a non-empty tuple.")
+    if len(prepared_routes) > config.max_routes:
+        raise RealTerrainMinimumAltitudeError("prepared route count violates resource guard.")
     total_profile_samples = 0
     for route in prepared_routes:
+        if type(route) is not PreparedRealTerrainRoute or not isinstance(route.samples, tuple):
+            raise RealTerrainMinimumAltitudeError("prepared route outer type is invalid.")
         if len(route.samples) > config.max_route_samples:
             raise RealTerrainMinimumAltitudeError("route sample count violates resource guard.")
         for sample in route.samples:
+            if type(sample) is not PreparedRealTerrainRouteSample:
+                raise RealTerrainMinimumAltitudeError("prepared sample outer type is invalid.")
             if sample.radial_profile is not None:
+                if type(sample.radial_profile) is not TerrainProfile or not isinstance(sample.radial_profile.samples, tuple):
+                    raise RealTerrainMinimumAltitudeError("prepared profile outer type is invalid.")
                 count = len(sample.radial_profile.samples)
                 if count > config.max_profile_samples_per_link:
                     raise RealTerrainMinimumAltitudeError("profile sample count violates resource guard.")

@@ -669,7 +669,9 @@ def test_calculation_uses_reviewed_clearance_ratio_boundaries() -> None:
         for ratio in (0.0, 0.6, 1.0)
     }
     assert values[0.0] == pytest.approx(122.0)
-    assert values[0.0] < values[0.6] < values[1.0]
+    radius = sqrt(wavelength_m(300_000_000.0) * 2.5)
+    assert values[0.6] == pytest.approx(122.0 + 1.2 * radius)
+    assert values[1.0] == pytest.approx(122.0 + 2.0 * radius)
 
 
 @pytest.mark.parametrize(("distance", "expected_count"), ((0.005, 1), (0.01, 1), (0.02, 2)))
@@ -791,3 +793,65 @@ def test_wrong_nested_types_map_to_typed_minimum_altitude_error(target: str) -> 
     object.__setattr__(result, "route_results", (object(),))
     with pytest.raises(RealTerrainMinimumAltitudeError):
         validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_canonical_fingerprint_rejects_config_mutation() -> None:
+    result = _compute()
+    object.__setattr__(result._authority.config, "max_total_profile_samples", 1)
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="fingerprint"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_output_target_flag_and_coordinated_warning_mutation_is_rejected() -> None:
+    result = _compute()
+    route = result.route_results[0]
+    first, last = route.route_samples
+    changed_first = replace(first, is_snapped_target_endpoint=True)
+    changed_last = replace(last, is_snapped_target_endpoint=False)
+    warnings = (f"{route.route_id}: current fixed-AGL route is below the configured clearance proxy at one or more route samples.",)
+    changed_route = replace(route, route_samples=(changed_first, changed_last), warnings=warnings)
+    object.__setattr__(result, "route_results", (changed_route,))
+    object.__setattr__(result, "warnings", warnings)
+    object.__setattr__(result, "summary", replace(result.summary, warnings=warnings))
+    with pytest.raises(RealTerrainMinimumAltitudeError):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_prepared_metadata_requires_exact_reviewed_type() -> None:
+    route_result = _route_result()
+    prepared = _prepared_route(route_result)
+    object.__setattr__(prepared, "terrain_metadata", object())
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="metadata"):
+        _compute(route_result, (prepared,))
+
+
+def test_no_eligible_radial_profile_is_fatal() -> None:
+    route_result = _route_result()
+    profile = TerrainProfile(
+        "prepared", LAUNCH_POINT, TARGET_POINT, 10.0,
+        (
+            TerrainProfileSample(0, 0, 0, LAUNCH_POINT, 0.0, 10.0, 100.0, 100.0, 0.0),
+            TerrainProfileSample(1, 1, 0, LocalPoint(5.0, 0.0), 5.0, 5.0, 110.0, 110.0, 0.0),
+            TerrainProfileSample(2, 2, 0, TARGET_POINT, 10.0, 0.0, 120.0, 120.0, 0.0),
+        ),
+    )
+    with pytest.raises(RealTerrainMinimumAltitudeError):
+        _compute(route_result, (_prepared_route(route_result, target_profile=profile),), RealTerrainMinimumAltitudeConfig(epsilon_m=1.0))
+
+
+def test_oversized_profile_guard_precedes_profile_sample_traversal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import uav_rf_terrain.real_terrain_minimum_altitude as altitude
+
+    route_result = _route_result()
+    prepared = _prepared_route(route_result)
+    profile = prepared.samples[-1].radial_profile
+    assert profile is not None
+    class CountingSamples(tuple):
+        def __iter__(self):
+            raise AssertionError("profile samples must not be traversed before guard")
+    object.__setattr__(profile, "samples", CountingSamples(profile.samples))
+    monkeypatch.setattr(altitude, "wavelength_m", lambda _: (_ for _ in ()).throw(AssertionError("Fresnel called")))
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="profile sample count"):
+        _compute(route_result, (prepared,), RealTerrainMinimumAltitudeConfig(max_profile_samples_per_link=1))
