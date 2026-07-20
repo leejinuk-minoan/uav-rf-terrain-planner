@@ -189,6 +189,21 @@ from .minimum_altitude import (
     compute_minimum_required_altitude,
     summarize_minimum_altitude_result,
 )
+from .real_terrain_minimum_altitude import (
+    PreparedRealTerrainRoute,
+    PreparedRealTerrainRouteSample,
+    RealTerrainMinimumAltitudeError,
+    compute_real_terrain_minimum_altitude,
+)
+from .real_terrain_minimum_altitude_outputs import (
+    RealTerrainMinimumAltitudeConfig,
+    RealTerrainMinimumAltitudeOutputError,
+    RealTerrainMinimumAltitudeResult as RealTerrainMinimumAltitudeCoreResult,
+    RealTerrainMinimumAltitudeSummary,
+    RealTerrainRadialRequirementSample,
+    RealTerrainRouteAltitudeSample,
+    RealTerrainRouteMinimumAltitudeResult,
+)
 from .profile import (
     TerrainProfile,
     TerrainProfileError,
@@ -376,6 +391,16 @@ __all__ = [
     "MinimumAltitudeConfig",
     "MinimumAltitudeError",
     "MinimumAltitudeResult",
+    "PreparedRealTerrainRoute",
+    "PreparedRealTerrainRouteSample",
+    "RealTerrainMinimumAltitudeConfig",
+    "RealTerrainMinimumAltitudeCoreResult",
+    "RealTerrainMinimumAltitudeError",
+    "RealTerrainMinimumAltitudeOutputError",
+    "RealTerrainMinimumAltitudeSummary",
+    "RealTerrainRadialRequirementSample",
+    "RealTerrainRouteAltitudeSample",
+    "RealTerrainRouteMinimumAltitudeResult",
     "MissingOptionalDependencyError",
     "MissionInput",
     "OutputMode",
@@ -461,6 +486,7 @@ __all__ = [
     "compute_flight_msl_m",
     "compute_height_difference_from_launch_m",
     "compute_minimum_required_altitude",
+    "compute_real_terrain_minimum_altitude",
     "compute_overall_score",
     "compute_route_cost",
     "compute_route_mean_shielding_score",

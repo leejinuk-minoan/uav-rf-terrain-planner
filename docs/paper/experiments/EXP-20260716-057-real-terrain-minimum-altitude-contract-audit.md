@@ -6,7 +6,7 @@
 
 ## Related Task / Issue / PR
 
-Task 036A, Issue #108, Draft PR #109.
+Task 036A, Issue #108, merged PR #109.
 
 ## Experiment Purpose
 
@@ -88,7 +88,8 @@ flight feasibility, or approval outcome.
 
 No runtime module, GIS-backed smoke, browser/UI validation, field RF measurement, or
 flight test is included. The 0.6 ratio is a proxy default rather than a calibrated
-physical performance threshold. DEC-009 remains proposed pending GPT Master approval.
+physical performance threshold. DEC-009 was approved by GPT Master after PR #109
+review resolution and exact-head CI #899 success.
 
 ## Paper Figure / Table Candidate
 
@@ -104,6 +105,6 @@ credential, external-device instruction, or autopilot content is committed.
 
 ## Follow-up Tasks
 
-Obtain GPT Master approval, implement and test the separate future runtime, then
+Implement and test the separate future runtime, then
 collect local adapter smoke and separately review field-validation and human-report
 limits.

@@ -65,3 +65,4 @@ Legacy accumulated experiment records remain in `docs/paper/experiment-log.md` a
 - [EXP-20260716-055 - real-terrain route contract and implementation](EXP-20260716-055-real-terrain-route-contract-and-implementation.md)
 - [EXP-20260716-056 - real-terrain waypoint reporting](EXP-20260716-056-real-terrain-waypoint-reporting.md)
 - [EXP-20260716-057 - real-terrain minimum-altitude contract audit](EXP-20260716-057-real-terrain-minimum-altitude-contract-audit.md)
+- [EXP-20260720-058 - real-terrain minimum-altitude pure core](EXP-20260720-058-real-terrain-minimum-altitude-core.md)
