@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from math import isfinite
 
 from .coordinates import LocalPoint
-from .real_terrain_route_outputs import RouteMode
+from .launch_site_selection import SelectedLaunchSiteRecord
+from .real_terrain_route_outputs import RealTerrainRouteResult, RouteMode
 from .terrain_data import TerrainDataError, TerrainDatasetMetadata, validate_terrain_dataset_metadata
 
 
@@ -32,7 +33,19 @@ def _text(name: str, value: object, *, mgrs: bool = False) -> str:
 
 
 def _near(left: float, right: float, tolerance: float) -> bool:
-    return abs(left - right) <= tolerance
+    return (
+        isinstance(left, (int, float))
+        and not isinstance(left, bool)
+        and isfinite(left)
+        and isinstance(right, (int, float))
+        and not isinstance(right, bool)
+        and isfinite(right)
+        and isinstance(tolerance, (int, float))
+        and not isinstance(tolerance, bool)
+        and isfinite(tolerance)
+        and tolerance >= 0.0
+        and abs(left - right) <= tolerance
+    )
 
 
 @dataclass(frozen=True)
@@ -145,6 +158,12 @@ class RealTerrainRouteAltitudeSample:
             raise RealTerrainMinimumAltitudeOutputError("route sample terrain/distance values are invalid.")
         if not isinstance(self.is_snapped_target_endpoint, bool):
             raise RealTerrainMinimumAltitudeOutputError("is_snapped_target_endpoint must be bool.")
+        if not isinstance(self.radial_requirement_samples, tuple):
+            raise RealTerrainMinimumAltitudeOutputError("radial requirement samples must be a tuple.")
+        if self.limiting_radial_requirement is not None and not isinstance(
+            self.limiting_radial_requirement, RealTerrainRadialRequirementSample
+        ):
+            raise RealTerrainMinimumAltitudeOutputError("limiting radial requirement type is invalid.")
         if self.sample_semantics == "coincident_launch_occupancy":
             if self.radial_requirement_samples or self.limiting_radial_requirement is not None:
                 raise RealTerrainMinimumAltitudeOutputError("coincident sample cannot expose radial requirements.")
@@ -188,6 +207,8 @@ class RealTerrainRouteMinimumAltitudeResult:
             _finite(name, getattr(self, name))
         if self.source_total_distance_3d_m < 0.0 or self.route_polyline_total_distance_2d_m < 0.0 or self.frequency_hz <= 0.0:
             raise RealTerrainMinimumAltitudeOutputError("route distance/frequency values are invalid.")
+        if not isinstance(self.route_samples, tuple) or not isinstance(self.warnings, tuple):
+            raise RealTerrainMinimumAltitudeOutputError("route samples and warnings must be tuples.")
         if not self.route_samples or not isinstance(self.current_fixed_agl_meets_proxy, bool):
             raise RealTerrainMinimumAltitudeOutputError("route samples and proxy state are required.")
         _text("constant_msl_limiting_sample_id", self.constant_msl_limiting_sample_id)
@@ -210,6 +231,8 @@ class RealTerrainMinimumAltitudeSummary:
                 raise RealTerrainMinimumAltitudeOutputError(f"{name} must be non-negative integer.")
         if self.route_count <= 0:
             raise RealTerrainMinimumAltitudeOutputError("route_count must be positive integer.")
+        if not isinstance(self.warnings, tuple):
+            raise RealTerrainMinimumAltitudeOutputError("summary warnings must be a tuple.")
         if len(set(self.warnings)) != len(self.warnings):
             raise RealTerrainMinimumAltitudeOutputError("summary warnings must be unique.")
 
@@ -226,6 +249,9 @@ class RealTerrainMinimumAltitudeResult:
     _selected_projected_point: LocalPoint
     _config: RealTerrainMinimumAltitudeConfig
     _source_route_authority: tuple[RealTerrainMinimumAltitudeSourceRoute, ...]
+    _source_route_result: RealTerrainRouteResult
+    _selected_launch_site: SelectedLaunchSiteRecord
+    _prepared_routes: tuple[object, ...]
 
     def __post_init__(self) -> None:
         validate_real_terrain_minimum_altitude_result(self)
@@ -271,6 +297,14 @@ def validate_real_terrain_minimum_altitude_result(result: RealTerrainMinimumAlti
         raise RealTerrainMinimumAltitudeOutputError("private terrain metadata authority is invalid.")
     if not isinstance(result._selected_projected_point, LocalPoint):
         raise RealTerrainMinimumAltitudeOutputError("private selected projected authority is invalid.")
+    if not isinstance(result._source_route_result, RealTerrainRouteResult):
+        raise RealTerrainMinimumAltitudeOutputError("private source route authority is invalid.")
+    if not isinstance(result._selected_launch_site, SelectedLaunchSiteRecord):
+        raise RealTerrainMinimumAltitudeOutputError("private selected launch authority is invalid.")
+    if not isinstance(result.route_results, tuple) or not isinstance(result.warnings, tuple):
+        raise RealTerrainMinimumAltitudeOutputError("result collections must be tuples.")
+    if not isinstance(result._source_route_authority, tuple) or not isinstance(result._prepared_routes, tuple):
+        raise RealTerrainMinimumAltitudeOutputError("private authority collections must be tuples.")
     if not isinstance(result.summary, RealTerrainMinimumAltitudeSummary) or not result.route_results:
         raise RealTerrainMinimumAltitudeOutputError("route results and summary are required.")
     try:
@@ -278,7 +312,7 @@ def validate_real_terrain_minimum_altitude_result(result: RealTerrainMinimumAlti
         validate_terrain_dataset_metadata(result._terrain_metadata)
     except TerrainDataError as exc:
         raise RealTerrainMinimumAltitudeOutputError("terrain metadata authority is invalid.") from exc
-    if len(result._source_route_authority) != len(result.route_results):
+    if len(result._source_route_authority) != len(result.route_results) or len(result._prepared_routes) != len(result.route_results):
         raise RealTerrainMinimumAltitudeOutputError("source route authority count does not match results.")
     all_samples: list[RealTerrainRouteAltitudeSample] = []
     all_radial: list[RealTerrainRadialRequirementSample] = []

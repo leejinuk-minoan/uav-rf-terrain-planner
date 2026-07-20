@@ -15,6 +15,7 @@ from uav_rf_terrain.real_terrain_minimum_altitude import (
     PreparedRealTerrainRouteSample,
     RealTerrainMinimumAltitudeError,
     compute_real_terrain_minimum_altitude,
+    validate_complete_real_terrain_minimum_altitude_result,
 )
 from uav_rf_terrain.real_terrain_minimum_altitude_outputs import (
     RealTerrainMinimumAltitudeConfig,
@@ -409,3 +410,179 @@ def test_result_rejects_coordinated_source_authority_mutation() -> None:
     )
     with pytest.raises(RealTerrainMinimumAltitudeOutputError, match="source authority"):
         result.__post_init__()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("candidate_id", "candidate-other"),
+        ("launch_site_mgrs", TARGET_MGRS),
+    ),
+)
+def test_complete_result_validator_rejects_selected_authority_mutation(
+    field: str, value: str
+) -> None:
+    result = _compute()
+    object.__setattr__(result._selected_launch_site, field, value)
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="selected launch"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_complete_result_validator_rejects_prepared_profile_geometry_mutation() -> None:
+    result = _compute()
+    prepared = result._prepared_routes[0]
+    malformed_sample = replace(
+        prepared.samples[-1], projected_point=LocalPoint(11.0, 0.0)
+    )
+    object.__setattr__(
+        result,
+        "_prepared_routes",
+        (replace(prepared, samples=(prepared.samples[0], malformed_sample)),),
+    )
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="geometry"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_complete_result_validator_rejects_list_substitution() -> None:
+    result = _compute()
+    object.__setattr__(result, "route_results", [result.route_results[0]])
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="tuple"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_complete_validator_rejects_nonfinite_selected_geometry() -> None:
+    result = _compute()
+    object.__setattr__(result._selected_launch_site, "projected_point", LocalPoint(float("nan"), 0.0))
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="point"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_complete_validator_rejects_noninterpolated_profile_sample_geometry() -> None:
+    route_result = _route_result()
+    result = _compute(
+        route_result,
+        (_prepared_route(route_result, target_profile=_profile(middle_dsm_msl=120.0)),),
+    )
+    prepared = result._prepared_routes[0]
+    profile = prepared.samples[-1].radial_profile
+    assert profile is not None
+    malformed_middle = replace(profile.samples[1], point=LocalPoint(7.0, 0.0))
+    malformed_profile = replace(profile, samples=(profile.samples[0], malformed_middle, profile.samples[-1]))
+    malformed_sample = replace(prepared.samples[-1], radial_profile=malformed_profile)
+    object.__setattr__(result, "_prepared_routes", (replace(prepared, samples=(prepared.samples[0], malformed_sample)),))
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="interpolation"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        (lambda result: object.__setattr__(result._source_route_result.config, "frequency_hz", 310_000_000.0), "output route/source"),
+        (lambda result: object.__setattr__(result._source_route_result.config, "profile_spacing_m", 11.0), "spacing"),
+        (lambda result: object.__setattr__(result._source_route_result, "launch_ground_msl_m", 101.0), "output route/source"),
+        (lambda result: object.__setattr__(result._prepared_routes[0], "terrain_metadata", "not-metadata"), "terrain metadata"),
+        (lambda result: object.__setattr__(result._prepared_routes[0].samples[-1], "local_dem_msl_m", 121.0), "output route sample"),
+        (lambda result: object.__setattr__(result._prepared_routes[0].samples[-1].radial_profile.samples[-1], "dsm_msl", 121.0), "endpoint parity"),
+        (lambda result: object.__setattr__(result.route_results[0], "constant_msl_limiting_sample_id", "wrong"), "constant-MSL"),
+        (lambda result: object.__setattr__(result.summary, "route_count", 2), "summary count"),
+    ),
+)
+def test_complete_validator_rejects_authority_and_output_mutations(
+    mutation, message: str
+) -> None:
+    result = _compute()
+    mutation(result)
+    assert message
+    with pytest.raises((RealTerrainMinimumAltitudeError, RealTerrainMinimumAltitudeOutputError)):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+@pytest.mark.parametrize(
+    ("target", "field"),
+    (
+        ("prepared", "samples"),
+        ("profile", "samples"),
+        ("route", "route_samples"),
+        ("sample", "radial_requirement_samples"),
+        ("result", "warnings"),
+        ("summary", "warnings"),
+    ),
+)
+def test_complete_validator_rejects_list_substitution_for_immutable_collections(
+    target: str, field: str
+) -> None:
+    result = _compute()
+    route = result.route_results[0]
+    sample = route.route_samples[-1]
+    targets = {
+        "prepared": result._prepared_routes[0],
+        "profile": result._prepared_routes[0].samples[-1].radial_profile,
+        "route": route,
+        "sample": sample,
+        "result": result,
+        "summary": result.summary,
+    }
+    target_object = targets[target]
+    assert target_object is not None
+    object.__setattr__(target_object, field, list(getattr(target_object, field)))
+    with pytest.raises((RealTerrainMinimumAltitudeError, RealTerrainMinimumAltitudeOutputError)):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+@pytest.mark.parametrize("coordinate", (float("nan"), float("inf"), True))
+@pytest.mark.parametrize("field", ("x_m", "y_m", "z_m"))
+def test_complete_validator_rejects_nonfinite_or_bool_local_point_components(
+    field: str, coordinate: object
+) -> None:
+    result = _compute()
+    point = result._selected_launch_site.projected_point
+    values = {"x_m": point.x_m, "y_m": point.y_m, "z_m": point.z_m}
+    values[field] = coordinate
+    object.__setattr__(
+        result._selected_launch_site,
+        "projected_point",
+        LocalPoint(**values),
+    )
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="point"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+@pytest.mark.parametrize("authority", ("source", "prepared", "profile_start", "profile_end", "profile_sample"))
+def test_complete_validator_rejects_authority_geometry_mutations(authority: str) -> None:
+    result = _compute()
+    prepared = result._prepared_routes[0]
+    profile = prepared.samples[-1].radial_profile
+    assert profile is not None
+    if authority == "source":
+        candidate = result._source_route_result.route_candidates[0]
+        object.__setattr__(
+            candidate,
+            "ordered_projected_points",
+            (LocalPoint(1.0, 0.0),) + candidate.ordered_projected_points[1:],
+        )
+    elif authority == "prepared":
+        object.__setattr__(prepared.samples[-1], "projected_point", LocalPoint(11.0, 0.0))
+    elif authority == "profile_start":
+        object.__setattr__(profile, "start", LocalPoint(1.0, 0.0))
+    elif authority == "profile_end":
+        object.__setattr__(profile, "end", LocalPoint(11.0, 0.0))
+    else:
+        object.__setattr__(profile.samples[-1], "point", LocalPoint(9.0, 0.0))
+    with pytest.raises(RealTerrainMinimumAltitudeError):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_complete_validator_rejects_coordinated_public_and_private_mutation() -> None:
+    result = _compute()
+    source = result._source_route_result
+    object.__setattr__(source, "selected_candidate_id", "candidate-other")
+    object.__setattr__(result, "selected_candidate_id", "candidate-other")
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="selected launch"):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_public_output_does_not_expose_private_authority() -> None:
+    public = _compute().to_public_dict()
+    rendered = repr(public)
+    for forbidden in ("_source_route_result", "_selected_launch_site", "_prepared_routes", "LocalPoint", "TerrainDatasetMetadata"):
+        assert forbidden not in rendered

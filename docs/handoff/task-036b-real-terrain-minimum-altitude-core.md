@@ -21,8 +21,12 @@ call `sample_point` or `extract_profile`, or load GIS data.
 - Task 036B amendment work is local-only under Issue #110 and Draft PR #111.
 - The pure core validates exact route/selection authority, prepared 2D and radial
   profile parity, bounded resource inputs, tolerance-aware limiters, and recursive
-  immutable MGRS-facing result contracts. Final local verification and Codex Master
-  review remain required before a single final push.
+  immutable MGRS-facing result contracts. The local amendment additionally retains
+  private exact source/prepared authority, rejects direct/coordinated mutation and
+  list substitution, and validates finite LocalPoint/profile interpolation parity.
+- Fresh local evidence: minimum-altitude focused `70 passed`; related Task 035EF/035G
+  and legacy regression `58 passed`; full suite `983 passed, 1 skipped`. Exact final
+  head CI remains pending until the permitted one-time publish step.
 - The target output remains an offline DSM/LOS/Fresnel clearance proxy, not terrain
   clearance certification, flight-safety approval, communication-success evidence, or
   regulatory authorization.

@@ -43,9 +43,12 @@ metadata internals.
 
 ## Actual Result
 
-Local amendment implementation is in progress. The final local verification counts,
-commit, and exact-head CI result are intentionally not recorded here until the final
-local head is frozen under the non-recursive CI policy.
+The local amendment passed focused source/selection/prepared-evidence/output contract
+tests (`70 passed`), relevant Task 035EF/035G plus legacy regression tests (`58
+passed`), and the full suite (`983 passed, 1 skipped`). It retains private exact
+source and prepared-profile authority for recursive validation, rejects collection
+substitution and non-finite geometry, and keeps that authority out of public output.
+The amendment remains local-only pending final local commit and review.
 
 ## Metrics
 
@@ -56,9 +59,11 @@ local head is frozen under the non-recursive CI policy.
 
 ## Local / CI Evidence
 
-Local commands and exact counts are recorded in the worker completion report after
-the final local head is frozen. Exact final-head GitHub Actions evidence belongs in
-the Draft PR completion comment; no CI-only follow-up commit is created.
+Fresh local verification recorded `70` focused tests, `58` related regression tests,
+and `983 passed, 1 skipped` for the full suite. Exact final-head GitHub Actions
+evidence remains pending under the non-recursive policy: it belongs in the Draft PR
+completion comment after the local final head is published, and does not justify a
+CI-only follow-up commit.
 
 ## Interpretation
 
