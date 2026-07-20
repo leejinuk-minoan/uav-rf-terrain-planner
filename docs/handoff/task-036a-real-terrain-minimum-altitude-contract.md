@@ -9,6 +9,10 @@ and AGL proxy analysis. It creates no runtime implementation.
 
 `agent/task-036a-real-terrain-minimum-altitude-contract`
 
+## Draft PR
+
+Draft PR #109: `docs: define real-terrain minimum-altitude boundary`.
+
 ## Selected Contract
 
 - Consume a complete `RealTerrainRouteResult` as mission/route authority plus a
@@ -32,8 +36,10 @@ API. No source, test, workflow, dependency, or GIS change is part of Task 036A.
 ## Verification
 
 The required local test commands are regression verification only because source and
-tests remain unchanged. Exact final-head CI is recorded in the Draft PR completion
-comment and completion report under the non-recursive ledger policy.
+tests remain unchanged. `compileall`, Ruff, mypy, and diff checks passed; the legacy
+minimum-altitude focused suite passed 19 tests and the full suite passed 913 with 1
+skip. Exact final-head CI is recorded in the Draft PR completion comment and
+completion report under the non-recursive ledger policy.
 
 ## Paper Record
 

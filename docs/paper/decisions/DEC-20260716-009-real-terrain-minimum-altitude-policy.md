@@ -10,7 +10,7 @@ Approved contract for a future implementation task.
 
 ## Related Task / Issue / PR
 
-Task 036A, Issue #108, Draft PR pending creation.
+Task 036A, Issue #108, Draft PR #109.
 
 ## Decision Owner
 

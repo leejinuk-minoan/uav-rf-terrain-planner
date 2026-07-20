@@ -6,7 +6,7 @@
 
 ## Related Task / Issue / PR
 
-Task 036A, Issue #108, Draft PR pending creation.
+Task 036A, Issue #108, Draft PR #109.
 
 ## Experiment Purpose
 
@@ -59,8 +59,10 @@ explicitly rejected as terrain-clearance evidence.
 ## CI / Local Test Result
 
 The Task 036A required commands are regression checks only because source and tests
-are unchanged. Their local and exact final-head CI outcomes are recorded in the PR
-completion evidence under the non-recursive ledger policy.
+are unchanged. Local `compileall`, Ruff, mypy, and diff checks passed; the legacy
+minimum-altitude focused suite passed 19 tests and the full suite passed 913 with 1
+skip. Exact final-head CI is recorded in the PR completion evidence under the
+non-recursive ledger policy.
 
 ## Interpretation
 
