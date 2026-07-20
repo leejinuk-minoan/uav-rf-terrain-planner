@@ -1,6 +1,6 @@
 # 드론 주파수 차폐 기반 발진기지 및 경로추천 프로그램 Master Plan 초안
 
-Task 032AB와 Task 032CD는 완료됐고, Task 033A/033B의 dominant-obstacle output integration, Task 034B의 diagnostic appendix formatter, Task 034D의 diagnostic CLI stdout/file delivery가 `main`에 완료됐다. Task 035A가 정의한 real-terrain candidate-analysis 계약은 Task 035B와 PR #99를 통해 구현됐고, Task 035D는 PR #103을 통해 실제 후보 셀 polygon, WGS84 renderer geometry, MGRS popup, candidate-ID selection과 optional local HTML/SVG output을 구현했다. Task 035EF는 PR #105를 통해 선택된 발진기지에서 목표까지의 bounded EPSG:5179 real-terrain graph, deterministic route search, three-route diversity, and MGRS-facing output을 구현했다. Task 035G는 complete route handoff를 약 500m MGRS-facing waypoint report로 변환하되 기존 scoring, color, preview/report contracts와 legacy route/waypoint scaffold는 변경하지 않는다.
+Task 032AB와 Task 032CD는 완료됐고, Task 033A/033B의 dominant-obstacle output integration, Task 034B의 diagnostic appendix formatter, Task 034D의 diagnostic CLI stdout/file delivery가 `main`에 완료됐다. Task 035A가 정의한 real-terrain candidate-analysis 계약은 Task 035B와 PR #99를 통해 구현됐고, Task 035D는 PR #103을 통해 실제 후보 셀 polygon, WGS84 renderer geometry, MGRS popup, candidate-ID selection과 optional local HTML/SVG output을 구현했다. Task 035EF는 PR #105를 통해 선택된 발진기지에서 목표까지의 bounded EPSG:5179 real-terrain graph, deterministic route search, three-route diversity를 구현했고, Task 035G는 PR #107을 통해 complete route handoff를 약 500m MGRS-facing waypoint report로 변환했다. Task 036A는 future minimum-required constant-route MSL proxy의 complete route authority와 dedicated DSM/DEM profile boundary를 정의하며 runtime은 구현하지 않는다.
 
 작성일: 2026-07-08  
 개정일: 2026-07-14  
@@ -214,7 +214,7 @@ Radio map 기반 UAV 경로계획 연구는 공간 격자마다 통신품질 점
 
 Dominant obstacle 보조 진단은 11~14단계의 점수·분류 결과를 변경하지 않는다.
 
-Task 035B는 14단계 결과를 production-neutral candidate record와 actual projected rendering-independent candidate feature로 구현했고, Task 035D는 explicit cell size, EPSG:5179 counter-clockwise cell polygon, WGS84 renderer geometry, MGRS popup, fixed legend, candidate-ID selection과 optional local HTML/SVG output을 구현했다. Task 035EF는 PR #105를 통해 선택된 발진기지와 목표를 잇는 EPSG:5179 terrain graph, 3D 운용반경, deterministic Dijkstra, 최대 3개 route diversity와 MGRS-facing route output을 구현했다. Task 035G는 complete route handoff에서 fixed AGL, conservative interpolation과 MGRS cache를 사용한 약 500m waypoint reporting을 구현한다.
+Task 035B는 14단계 결과를 production-neutral candidate record와 actual projected rendering-independent candidate feature로 구현했고, Task 035D는 explicit cell size, EPSG:5179 counter-clockwise cell polygon, WGS84 renderer geometry, MGRS popup, fixed legend, candidate-ID selection과 optional local HTML/SVG output을 구현했다. Task 035EF는 PR #105를 통해 선택된 발진기지와 목표를 잇는 EPSG:5179 terrain graph, 3D 운용반경, deterministic Dijkstra, 최대 3개 route diversity와 MGRS-facing route output을 구현했고, Task 035G는 PR #107을 통해 complete route handoff에서 fixed AGL, conservative interpolation과 MGRS cache를 사용한 약 500m waypoint reporting을 구현했다. Task 036A는 complete route authority와 dedicated profile을 결합한 future minimum-required constant-route MSL proxy 계약만 정의한다.
 
 ### 6.2 발진 가능구역 종합점수
 
@@ -429,7 +429,7 @@ frequency_hz
  - 경유점 표
 ```
 
-Task 033B가 optional preview/report diagnostic bridge를 구현했고 Task 034D가 diagnostic-table CLI delivery를 구현했다. Task 035B는 지형 데이터 로딩부터 색상 등급 분류와 rendering-independent actual-geometry candidate feature까지의 real-terrain engine을 구현했고, Task 035D는 map/selection과 dependency-free local HTML/SVG를 구현했다. Task 035EF는 PR #105를 통해 선택 발진기지에서 목표까지의 bounded real-terrain route recommendation을 구현했고, Task 035G는 이 결과의 complete handoff를 약 500m waypoint reporting으로 변환한다. Full UI는 추가하지 않는다.
+Task 033B가 optional preview/report diagnostic bridge를 구현했고 Task 034D가 diagnostic-table CLI delivery를 구현했다. Task 035B는 지형 데이터 로딩부터 색상 등급 분류와 rendering-independent actual-geometry candidate feature까지의 real-terrain engine을 구현했고, Task 035D는 map/selection과 dependency-free local HTML/SVG를 구현했다. Task 035EF는 PR #105를 통해 선택 발진기지에서 목표까지의 bounded real-terrain route recommendation을 구현했고, Task 035G는 PR #107을 통해 이 결과의 complete handoff를 약 500m waypoint reporting으로 변환했다. Task 036A는 future route-level altitude proxy 계약을 정의하지만 Full UI와 altitude runtime은 추가하지 않는다.
 
 ---
 
@@ -630,7 +630,8 @@ Task 035B: PR #99를 통해 real-terrain candidate-analysis runtime 완료
 Task 035C: real-terrain map/selection architecture contract 완료
 Task 035D: PR #103을 통해 real-terrain map/selection 구현 완료
 Task 035EF: PR #105를 통해 selected launch site → 최대 3개 real-terrain route candidate 구현 완료
-Task 035G: complete route result → 약 500m MGRS-facing waypoint report 구현, 검토 대기
+Task 035G: PR #107을 통해 complete route result → 약 500m MGRS-facing waypoint report 구현 완료
+Task 036A: future real-terrain minimum-required constant-route MSL boundary contract 정의, runtime 미구현
 ```
 
 ---

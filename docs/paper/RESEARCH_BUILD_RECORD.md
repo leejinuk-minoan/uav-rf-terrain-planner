@@ -8,8 +8,8 @@
 | Research purpose | Offline research, education, and simulation support for DSM-based terrain/RF shielding proxy analysis, launch-area visualization, route analysis, and waypoint reporting. |
 | Created | 2026-07-16 |
 | Last updated | 2026-07-16 |
-| Authoritative branch | `main` for merged evidence; `agent/task-035g-real-terrain-waypoint-reporting` for current Draft evidence. |
-| Ledger content basis | `8ac72857688ebdf0dbb29f810df2c53a81cd7baa` (Task 035G review baseline; CI #888 / run 29471833777 success). |
+| Authoritative branch | `main` for merged evidence; `agent/task-036a-real-terrain-minimum-altitude-contract` for current Draft contract evidence. |
+| Ledger content basis | `7b39a2191c94ce1fe6140ab069aa6c2bfe3e3dc6` (PR #107 merge commit; Task 035G final head `36935ac`, CI #890 / run 29473229092 success). |
 | Record responsibility | GPT Master owns paper interpretation; Local Execution Agents record only verified build, test, PR, CI, and limitation evidence. |
 | Research limit | Results are terrain/surface-obstacle proxies, not actual RF, flight-feasibility, reconnaissance-success, or approval evidence. |
 
@@ -32,9 +32,9 @@ infinite commit-to-CI update cycle.
 | Boundary | Current evidence |
 |---|---|
 | Input | MGRS user-facing coordinates; internally projected EPSG:5179 points; synthetic or local prepared DEM/DSM through adapters. |
-| Processing | DSM profile, LOS/Fresnel proxy, heuristic score/color, selected launch area, deterministic route graph/Dijkstra, and handoff-based waypoint reporting. |
+| Processing | DSM profile, LOS/Fresnel proxy, heuristic score/color, selected launch area, deterministic route graph/Dijkstra, handoff-based waypoint reporting, and a documented future route-level altitude-proxy boundary. |
 | Output | Color launch-area records, MGRS-facing selected site, route candidates, and approximately 500 m MGRS waypoint reports. |
-| Implemented scope | Task 035G Draft PR #107 adds reporting only over Task 035EF complete route handoffs. |
+| Implemented scope | Task 035G merged through PR #107 adds reporting only over Task 035EF complete route handoffs. Task 036A is a contract/audit record only and adds no altitude runtime. |
 | Explicit non-claims | No autopilot, route execution, field RF validation, real flight validation, obstacle absence proof, or airspace approval. |
 
 ## Core Formula and Policy Ledger
@@ -51,6 +51,7 @@ infinite commit-to-CI update cycle.
 | Route modes | Shielding minimum 0.90/0.10, balanced 0.70/0.30, detour stability 0.85/0.15 with reviewed risk multiplier. | `real_terrain_route_outputs.py`; EXP-055; DEC-007 |
 | Dijkstra/diversity | Deterministic ordering, bounded expansion, duplicate rejection, and directed-edge overlap retry. | `route_pathfinding.py`; EXP-055; DEC-007 |
 | Waypoint sampling | Cumulative route 3D handoff distance, exact-node reuse, linear elevation interpolation, conservative color/min-score interpolation. | `real_terrain_waypoint_reporting.py`; EXP-056; DEC-008 |
+| Future route altitude | Complete route authority plus dedicated bounded radial DSM/DEM profiles; one comparison-only constant MSL per source route. | Task 036A architecture; EXP-057; DEC-009 |
 
 ## Build Chronology
 
@@ -68,7 +69,8 @@ rather than inferred.
 | BUILD-20260713-006 | 2026-07-13 | 032AB-032CD | Dominant-obstacle and diagnostic appendix integration. | Legacy PRs; see EXP-042..047. | Legacy archive. | Synthetic diagnostics. | Individual EXP entries. | Archival CI/local evidence. | Merged historical scope. | EXP-042..047; DEC-002/003. | Diagnostic proxy does not alter primary score/color. |
 | BUILD-20260714-007 | 2026-07-14 | 034B-034D, 035A-035D | Diagnostic delivery, real-terrain contract, candidate analysis, map, and selection. | PR #103. | Final `8fb29c7`; merge `1933ce2`; merged 2026-07-16. | Synthetic adapters and renderer fakes. | 33 focused; 864 full. | Local checks passed; CI #874 / 29460010316 success. | Merged. | EXP-048..054; DEC-004..006; Task 035D handoff. | No real GIS/browser/field validation. |
 | BUILD-20260716-008 | 2026-07-16 | 035EF | Complete selected-launch route recommendation and handoff contract. | Issue #104; PR #105. | Final `4308aba`; merge `7c49c8f`; merged 2026-07-16. | Synthetic in-memory adapter. | graph 7 + pathfinding 4 + analysis 5 + outputs 12 = 28; 892 full. | Local checks passed; CI #881 / 29469082285 success. | Merged; Issue #104 closed/completed. | EXP-055; DEC-007; Task 035EF handoff. | No GIS route/browser/field validation. |
-| BUILD-20260716-009 | 2026-07-16 | 035G | Real-terrain route waypoint reporting over complete handoffs. | Issue #106; Draft PR #107. | Base `7c49c8f`; current ledger content basis `8ac7285` with CI #888 success; review amendment in progress. | Synthetic immutable route contracts. | Initial focused 7 and full 899; review-amendment focused 22 and full 914. | Initial exact-head CI #888 / 29471833777 success. Final amendment CI is recorded in the PR completion/review comment, then post-merge here. | Draft PR pending re-review. | EXP-056; DEC-008; Task 035G handoff. | No terrain reanalysis, GIS report, browser/UI, or field validation. |
+| BUILD-20260716-009 | 2026-07-16 | 035G | Real-terrain route waypoint reporting over complete handoffs. | Issue #106; PR #107. | Final `36935ac`; merge `7b39a21`; merged 2026-07-19. | Synthetic immutable route contracts. | Initial focused 7/full 899; review-amendment focused 22/full 914. | Exact final-head CI #890 / 29473229092 success. | Merged; Issue #106 closed/completed. | EXP-056; DEC-008; Task 035G handoff. | No terrain reanalysis, GIS report, browser/UI, or field validation. |
+| BUILD-20260716-010 | 2026-07-20 | 036A | Define real-terrain minimum-altitude analysis boundary. | Issue #108; Draft PR pending. | Base `7b39a21`; contract audit in progress. | Documentation and existing synthetic contracts only. | Regression verification pending final local run. | Exact final-head CI will be recorded in the Draft PR completion/review comment. | In progress. | EXP-057; DEC-009; Task 036A handoff. | No runtime, GIS, field, browser/UI, or operational output. |
 
 ## Experiment Evidence Ledger
 
@@ -82,7 +84,8 @@ rather than inferred.
 | EXP-051..053 | Real-terrain analysis/map contract audits. | Boundaries, synthetic adapter records, renderer-neutral map/selection contracts were recorded. | Individual records; architecture figures/tables. | BUILD-20260714-007. |
 | EXP-054 | Map/selection implementation; synthetic converter/fakes. | Final focused 33 and full 864; CI #874 success. | Candidate/map contract table; corrected below. | BUILD-20260714-007; no browser/GIS/field run. |
 | EXP-055 | Route recommendation; synthetic adapter. | Final focused 28 and full 892; CI #881 success. | Graph/route mode/verification table. | BUILD-20260716-008; no GIS route/browser/field run. |
-| EXP-056 | Waypoint reporting; synthetic complete route contract. | Initial focused 7/full 899 evidence plus review-amendment authority, endpoint, warning, guard, and mutation checks. | Waypoint semantics/verification table; final exact-head CI remains in PR completion until post-merge reconciliation. | BUILD-20260716-009; no GIS/UI/field run. |
+| EXP-056 | Waypoint reporting; synthetic complete route contract. | Initial focused 7/full 899 plus review-amendment authority, endpoint, warning, guard, and mutation checks. | Final focused 22/full 914; CI #890 success; waypoint semantics/verification table. | BUILD-20260716-009; no GIS/UI/field run. |
+| EXP-057 | Real-terrain minimum-altitude contract audit; documentation and synthetic-contract sources. | Selected complete route authority plus dedicated radial profile boundary; no runtime added. | Future altitude architecture/formula table only. | BUILD-20260716-010; no GIS/UI/field run. |
 
 All individual EXP files remain the authoritative detailed method and limitation record.
 
@@ -104,7 +107,7 @@ All individual EXP files remain the authoritative detailed method and limitation
 | Local focused tests | Initial Task 035G evidence: reporting 5, outputs 2; review-amendment focused suite: 22 passed. | Local source-contract verification only. |
 | Local full tests | Initial Task 035G evidence: 899 passed; review-amendment full suite: 914 passed. | Local regression evidence only. |
 | Compileall / Ruff / mypy / diff | Passed for the initial Task 035G head and the review-amendment content basis. | Build-quality evidence; not field validation. |
-| GitHub Actions | Task 035G review baseline `8ac7285`: CI #888 / 29471833777 success. Exact amendment final-head CI is recorded in the PR completion/review comment, then after merge here. | Independent hosted source checks for each exact head without recursive ledger commits. |
+| GitHub Actions | Task 035G final `36935ac`: CI #890 / 29473229092 success; merged through `7b39a21`. | Independent hosted source checks; exact final head confirmed after merge. |
 | Real GIS smoke | Local terrain preprocessing/adapter checks exist in specific handoffs; real route smoke not performed. | Do not generalize to route/waypoint validation. |
 | Browser smoke | Not performed for Task 035EF/035G. | No browser/UI claim. |
 | Field RF validation | Not performed. | No communication-performance claim. |
@@ -119,6 +122,7 @@ All individual EXP files remain the authoritative detailed method and limitation
 | System: map/selection | Renderer-neutral candidate map and immutable selection exist. | BUILD-20260714-007; EXP-054; DEC-006. | Package/selection architecture diagram. | No browser or real GIS rendering result. |
 | System: route | Deterministic bounded route candidates exist. | BUILD-20260716-008; EXP-055; DEC-007. | Route mode and guard table. | No real route or flight validation. |
 | System: waypoint | Deterministic handoff-based reports exist. | BUILD-20260716-009; EXP-056; DEC-008. | Sampling/value-semantics table. | No waypoint usability study or field data. |
+| Future system: altitude | A route-authority and dedicated-profile contract is defined. | BUILD-20260716-010; EXP-057; DEC-009. | Authority and MSL/AGL formula table. | No altitude runtime, GIS smoke, or field evidence. |
 
 ## Open Research Questions
 
@@ -136,3 +140,4 @@ All individual EXP files remain the authoritative detailed method and limitation
 | 2026-07-16 | EXP-054 | focused 32; full 863 | focused 33; full 864 | PR #103 final `8fb29c7`; merge `1933ce2`; CI #874 / 29460010316 success | Final amendment test counts were not reflected. |
 | 2026-07-16 | EXP-055, master plan, research index | PR #105 Draft/pending phrasing or incomplete reproduction fields | PR #105 merged; Issue #104 completed; final 28 focused, 892 full, CI #881 | PR #105 final `4308aba`; merge `7c49c8f`; CI #881 / 29469082285 | Final merge and reproduction evidence required reconciliation. |
 | 2026-07-16 | This ledger | No cumulative build ledger | Build chronology and verification ledger added | Current repository, Git history, and read-only GitHub metadata | Preserve auditable cross-task research evidence. |
+| 2026-07-20 | BUILD-20260716-009 and EXP-056 | Draft/pending PR #107 evidence | Final `36935ac`; merge `7b39a21`; Issue #106 completed; CI #890 / 29473229092 success | GitHub PR #107 and Issue #106 state | Post-merge reconciliation required by the non-recursive policy. |
