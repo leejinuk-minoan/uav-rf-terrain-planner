@@ -6,9 +6,9 @@ the route and radial-profile evidence after the approved terrain-session checks.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from math import isfinite
-from typing import cast
 
 from .coordinates import LocalPoint, distance_2d_m
 from .fresnel import FresnelAnalysisError, first_fresnel_radius_m, wavelength_m
@@ -16,7 +16,12 @@ from .launch_site_selection import LaunchSiteSelectionError, SelectedLaunchSiteR
 from .profile import TerrainProfile, TerrainProfileError, TerrainProfileSample
 from .real_terrain_minimum_altitude_outputs import (
     RealTerrainMinimumAltitudeConfig,
+    RealTerrainMinimumAltitudeAuthoritySnapshot,
     RealTerrainMinimumAltitudeOutputError,
+    RealTerrainMinimumAltitudePreparedRouteSnapshot,
+    RealTerrainMinimumAltitudePreparedSampleSnapshot,
+    RealTerrainMinimumAltitudeProfileSampleSnapshot,
+    RealTerrainMinimumAltitudeProfileSnapshot,
     RealTerrainMinimumAltitudeResult,
     RealTerrainMinimumAltitudeSourceRoute,
     RealTerrainMinimumAltitudeSummary,
@@ -25,11 +30,16 @@ from .real_terrain_minimum_altitude_outputs import (
     RealTerrainRouteMinimumAltitudeResult,
 )
 from .real_terrain_route_outputs import (
+    RealTerrainRouteCandidate,
+    RealTerrainRouteEdge,
+    RealTerrainRouteNode,
     RealTerrainRouteOutputError,
+    RealTerrainRoutePathPoint,
     RealTerrainRouteResult,
     RouteMode,
+    WaypointHandoffPoint,
 )
-from .terrain_data import TerrainDataError, validate_terrain_dataset_metadata
+from .terrain_data import TerrainDataError, TerrainDatasetMetadata, validate_terrain_dataset_metadata
 
 
 class RealTerrainMinimumAltitudeError(ValueError):
@@ -158,6 +168,12 @@ def compute_real_terrain_minimum_altitude(
             for route in prepared_routes
         )
         warnings = tuple(warning for route in route_results for warning in route.warnings)
+        authority = _snapshot_authority(
+            route_result,
+            selected_launch_site,
+            prepared_routes,
+            resolved_spacing,
+        )
         result = RealTerrainMinimumAltitudeResult(
             route_result.selected_candidate_id,
             route_result.launch_site_mgrs,
@@ -174,21 +190,9 @@ def compute_real_terrain_minimum_altitude(
                 ),
                 warnings,
             ),
-            route_result.terrain_metadata,
-            selected_launch_site.projected_point,
-            config,
-            tuple(
-                RealTerrainMinimumAltitudeSourceRoute(
-                    candidate.route_id,
-                    candidate.mode,
-                    index,
-                    candidate.total_distance_3d_m,
-                )
-                for index, candidate in enumerate(route_result.route_candidates)
-            ),
-            route_result,
-            selected_launch_site,
-            prepared_routes,
+            deepcopy(config),
+            authority,
+            deepcopy(authority),
         )
         validate_complete_real_terrain_minimum_altitude_result(result)
         return result
@@ -198,6 +202,89 @@ def compute_real_terrain_minimum_altitude(
         raise RealTerrainMinimumAltitudeError("minimum-altitude calculation failed.") from exc
 
 
+def _copy_point(point: LocalPoint) -> LocalPoint:
+    return LocalPoint(point.x_m, point.y_m, point.z_m)
+
+
+def _snapshot_profile(profile: TerrainProfile) -> RealTerrainMinimumAltitudeProfileSnapshot:
+    return RealTerrainMinimumAltitudeProfileSnapshot(
+        profile.scenario_name,
+        _copy_point(profile.start),
+        _copy_point(profile.end),
+        profile.sample_spacing_m,
+        tuple(
+            RealTerrainMinimumAltitudeProfileSampleSnapshot(
+                item.sample_index,
+                _copy_point(item.point),
+                item.distance_from_start_m,
+                item.distance_to_end_m,
+                item.dem_msl,
+                item.dsm_msl,
+                item.surface_delta_m,
+            )
+            for item in profile.samples
+        ),
+    )
+
+
+def _snapshot_authority(
+    route_result: RealTerrainRouteResult,
+    selected_launch_site: SelectedLaunchSiteRecord,
+    prepared_routes: tuple[PreparedRealTerrainRoute, ...],
+    resolved_spacing: float,
+) -> RealTerrainMinimumAltitudeAuthoritySnapshot:
+    """Copy only the authority required for later recursive revalidation."""
+
+    return RealTerrainMinimumAltitudeAuthoritySnapshot(
+        route_result.selected_candidate_id,
+        route_result.launch_site_mgrs,
+        route_result.target_mgrs,
+        _copy_point(selected_launch_site.projected_point),
+        route_result.config.frequency_hz,
+        route_result.config.allowed_flight_agl_m,
+        route_result.config.profile_spacing_m,
+        resolved_spacing,
+        route_result.launch_ground_msl_m,
+        deepcopy(route_result.terrain_metadata),
+        tuple(
+            RealTerrainMinimumAltitudeSourceRoute(
+                candidate.route_id,
+                candidate.mode,
+                index,
+                candidate.total_distance_3d_m,
+            )
+            for index, candidate in enumerate(route_result.route_candidates)
+        ),
+        tuple(
+            RealTerrainMinimumAltitudePreparedRouteSnapshot(
+                route.route_id,
+                route.mode,
+                route.source_order,
+                route.source_total_distance_3d_m,
+                route.route_polyline_total_distance_2d_m,
+                tuple(
+                    RealTerrainMinimumAltitudePreparedSampleSnapshot(
+                        sample.route_sample_id,
+                        sample.route_id,
+                        sample.mode,
+                        sample.route_sample_index,
+                        sample.route_sample_mgrs,
+                        _copy_point(sample.projected_point),
+                        sample.cumulative_route_distance_2d_m,
+                        sample.local_dem_msl_m,
+                        sample.local_dsm_msl_m,
+                        sample.is_snapped_target_endpoint,
+                        sample.radial_distance_2d_m,
+                        None if sample.radial_profile is None else _snapshot_profile(sample.radial_profile),
+                    )
+                    for sample in route.samples
+                ),
+            )
+            for route in prepared_routes
+        ),
+    )
+
+
 _KNOWN_CONTRACT_ERRORS = (
     RealTerrainRouteOutputError,
     LaunchSiteSelectionError,
@@ -205,6 +292,8 @@ _KNOWN_CONTRACT_ERRORS = (
     FresnelAnalysisError,
     RealTerrainMinimumAltitudeOutputError,
     TerrainDataError,
+    AttributeError,
+    TypeError,
 )
 
 
@@ -213,11 +302,11 @@ def _validate_source_authority(
     selected_launch_site: SelectedLaunchSiteRecord,
     config: RealTerrainMinimumAltitudeConfig,
 ) -> None:
-    if not isinstance(route_result, RealTerrainRouteResult):
+    if type(route_result) is not RealTerrainRouteResult:
         raise RealTerrainMinimumAltitudeError("route_result must be RealTerrainRouteResult.")
-    if not isinstance(selected_launch_site, SelectedLaunchSiteRecord):
+    if type(selected_launch_site) is not SelectedLaunchSiteRecord:
         raise RealTerrainMinimumAltitudeError("selected_launch_site must be SelectedLaunchSiteRecord.")
-    if not isinstance(config, RealTerrainMinimumAltitudeConfig):
+    if type(config) is not RealTerrainMinimumAltitudeConfig:
         raise RealTerrainMinimumAltitudeError("config must be RealTerrainMinimumAltitudeConfig.")
     for name in (
         "route_candidates",
@@ -236,6 +325,8 @@ def _validate_source_authority(
     route_result.config.__post_init__()
     route_result.summary.__post_init__()
     for candidate in route_result.route_candidates:
+        if type(candidate) is not RealTerrainRouteCandidate:
+            raise RealTerrainMinimumAltitudeError("source route candidate type is invalid.")
         candidate.__post_init__()
         if not all(
             isinstance(getattr(candidate, name), tuple)
@@ -245,16 +336,24 @@ def _validate_source_authority(
         for projected_point in candidate.ordered_projected_points:
             _validate_local_point(projected_point, "source route")
         for path_point in candidate.path:
+            if type(path_point) is not RealTerrainRoutePathPoint:
+                raise RealTerrainMinimumAltitudeError("source route path point type is invalid.")
             path_point.__post_init__()
     for node in route_result.graph_nodes:
+        if type(node) is not RealTerrainRouteNode:
+            raise RealTerrainMinimumAltitudeError("source graph node type is invalid.")
         node.__post_init__()
         _validate_local_point(node.projected_point, "source graph node")
     for edge in route_result.graph_edges:
+        if type(edge) is not RealTerrainRouteEdge:
+            raise RealTerrainMinimumAltitudeError("source graph edge type is invalid.")
         edge.__post_init__()
     for handoff in route_result.waypoint_handoffs:
         if not isinstance(handoff, tuple):
             raise RealTerrainMinimumAltitudeError("source waypoint handoff must be a tuple.")
         for handoff_point in handoff:
+            if type(handoff_point) is not WaypointHandoffPoint:
+                raise RealTerrainMinimumAltitudeError("source waypoint handoff item type is invalid.")
             handoff_point.__post_init__()
             _validate_local_point(handoff_point.projected_point, "source waypoint handoff")
     selected_launch_site.__post_init__()
@@ -270,38 +369,182 @@ def validate_complete_real_terrain_minimum_altitude_result(
     result: RealTerrainMinimumAltitudeResult,
 ) -> None:
     """Revalidate private source/prepared evidence and recursive public output parity."""
-    if not isinstance(result, RealTerrainMinimumAltitudeResult):
+    if type(result) is not RealTerrainMinimumAltitudeResult:
         raise RealTerrainMinimumAltitudeError("result must be RealTerrainMinimumAltitudeResult.")
-    if not isinstance(result.route_results, tuple) or not isinstance(result.warnings, tuple):
-        raise RealTerrainMinimumAltitudeError("result collections must be tuples.")
-    if not isinstance(result._prepared_routes, tuple):
-        raise RealTerrainMinimumAltitudeError("prepared route authority must be a tuple.")
     try:
-        _validate_source_authority(
-            result._source_route_result,
-            result._selected_launch_site,
-            result._config,
-        )
-        _validate_prepared_authority(
-            result._source_route_result,
-            result._selected_launch_site,
-            cast(tuple[PreparedRealTerrainRoute, ...], result._prepared_routes),
-            result._config,
-        )
+        _validate_snapshot_authority(result._authority_seal, result._config)
+        if result._authority != result._authority_seal:
+            raise RealTerrainMinimumAltitudeError("authority snapshot does not match independent seal.")
         result.__post_init__()
     except RealTerrainMinimumAltitudeError:
         raise
     except _KNOWN_CONTRACT_ERRORS as exc:
         raise RealTerrainMinimumAltitudeError("complete result authority validation failed.") from exc
-    if result.selected_candidate_id != result._source_route_result.selected_candidate_id:
+    authority = result._authority_seal
+    if result.selected_candidate_id != authority.selected_candidate_id:
         raise RealTerrainMinimumAltitudeError("result selected candidate does not match source authority.")
-    if result.launch_site_mgrs != result._selected_launch_site.launch_site_mgrs:
+    if result.launch_site_mgrs != authority.launch_site_mgrs:
         raise RealTerrainMinimumAltitudeError("result selected launch MGRS does not match selected launch authority.")
-    if result._selected_projected_point != result._selected_launch_site.projected_point:
-        raise RealTerrainMinimumAltitudeError("result selected projected point does not match selected launch authority.")
-    if result._terrain_metadata != result._source_route_result.terrain_metadata:
-        raise RealTerrainMinimumAltitudeError("result terrain metadata does not match source authority.")
+    if result.target_mgrs != authority.target_mgrs:
+        raise RealTerrainMinimumAltitudeError("result target MGRS does not match source authority.")
     _validate_complete_output_authority_parity(result)
+
+
+def _validate_snapshot_authority(
+    authority: RealTerrainMinimumAltitudeAuthoritySnapshot,
+    config: RealTerrainMinimumAltitudeConfig,
+) -> None:
+    if type(authority) is not RealTerrainMinimumAltitudeAuthoritySnapshot:
+        raise RealTerrainMinimumAltitudeError("authority snapshot type is invalid.")
+    if type(config) is not RealTerrainMinimumAltitudeConfig:
+        raise RealTerrainMinimumAltitudeError("config must be RealTerrainMinimumAltitudeConfig.")
+    if not isinstance(authority.source_routes, tuple) or not isinstance(authority.prepared_routes, tuple):
+        raise RealTerrainMinimumAltitudeError("authority snapshot collections must be tuples.")
+    if len(authority.source_routes) != len(authority.prepared_routes) or not authority.source_routes:
+        raise RealTerrainMinimumAltitudeError("authority snapshot route count is invalid.")
+    _validate_local_point(authority.selected_projected_point, "snapshot selected launch")
+    _validate_finite_values(
+        "snapshot mission authority",
+        authority.frequency_hz,
+        authority.allowed_flight_agl_m,
+        authority.source_profile_spacing_m,
+        authority.resolved_profile_spacing_m,
+        authority.launch_ground_msl_m,
+    )
+    if authority.frequency_hz <= 0.0 or authority.allowed_flight_agl_m <= 0.0 or authority.source_profile_spacing_m <= 0.0 or authority.resolved_profile_spacing_m <= 0.0:
+        raise RealTerrainMinimumAltitudeError("snapshot mission authority is invalid.")
+    if not isinstance(authority.terrain_metadata, TerrainDatasetMetadata):
+        raise RealTerrainMinimumAltitudeError("snapshot terrain metadata type is invalid.")
+    validate_terrain_dataset_metadata(authority.terrain_metadata)
+    if config.expected_frequency_hz is not None and config.expected_frequency_hz != authority.frequency_hz:
+        raise RealTerrainMinimumAltitudeError("expected frequency does not match snapshot authority.")
+    if config.profile_spacing_m is not None and config.profile_spacing_m > authority.source_profile_spacing_m:
+        raise RealTerrainMinimumAltitudeError("configured profile spacing exceeds snapshot authority.")
+    for order, (source, route) in enumerate(zip(authority.source_routes, authority.prepared_routes)):
+        if type(source) is not RealTerrainMinimumAltitudeSourceRoute:
+            raise RealTerrainMinimumAltitudeError("snapshot source route type is invalid.")
+        if type(route) is not RealTerrainMinimumAltitudePreparedRouteSnapshot:
+            raise RealTerrainMinimumAltitudeError("snapshot prepared route type is invalid.")
+        source.__post_init__()
+        if (
+            source.source_order != order
+            or route.source_order != order
+            or route.route_id != source.route_id
+            or route.mode is not source.mode
+            or not _near(route.source_total_distance_3d_m, source.source_total_distance_3d_m, config.distance_tolerance_m)
+        ):
+            raise RealTerrainMinimumAltitudeError("snapshot source route parity failed.")
+        _validate_snapshot_prepared_route(authority, route, config)
+
+
+def _validate_snapshot_prepared_route(
+    authority: RealTerrainMinimumAltitudeAuthoritySnapshot,
+    route: RealTerrainMinimumAltitudePreparedRouteSnapshot,
+    config: RealTerrainMinimumAltitudeConfig,
+) -> None:
+    if not isinstance(route.samples, tuple) or not route.samples:
+        raise RealTerrainMinimumAltitudeError("snapshot prepared samples must be a non-empty tuple.")
+    tolerance = config.distance_tolerance_m
+    cumulative = 0.0
+    for index, sample in enumerate(route.samples):
+        if type(sample) is not RealTerrainMinimumAltitudePreparedSampleSnapshot:
+            raise RealTerrainMinimumAltitudeError("snapshot prepared sample type is invalid.")
+        _validate_local_point(sample.projected_point, "snapshot prepared sample")
+        _validate_finite_values(
+            "snapshot prepared sample",
+            sample.cumulative_route_distance_2d_m,
+            sample.local_dem_msl_m,
+            sample.local_dsm_msl_m,
+            sample.radial_distance_2d_m,
+        )
+        if (
+            sample.route_id != route.route_id
+            or sample.mode is not route.mode
+            or sample.route_sample_index != index
+            or sample.route_sample_id != f"{route.route_id}-sample-{index:03d}"
+        ):
+            raise RealTerrainMinimumAltitudeError("snapshot prepared sample identity is invalid.")
+        if index:
+            cumulative += distance_2d_m(route.samples[index - 1].projected_point, sample.projected_point)
+        if not _near(sample.cumulative_route_distance_2d_m, cumulative, tolerance):
+            raise RealTerrainMinimumAltitudeError("snapshot cumulative route geometry is invalid.")
+        if not _near(sample.radial_distance_2d_m, distance_2d_m(authority.selected_projected_point, sample.projected_point), tolerance):
+            raise RealTerrainMinimumAltitudeError("snapshot radial geometry is invalid.")
+        _validate_snapshot_profile(authority, sample, config)
+    if not _near(route.route_polyline_total_distance_2d_m, cumulative, tolerance):
+        raise RealTerrainMinimumAltitudeError("snapshot route total geometry is invalid.")
+    if sum(sample.is_snapped_target_endpoint for sample in route.samples) != 1 or not route.samples[-1].is_snapped_target_endpoint:
+        raise RealTerrainMinimumAltitudeError("snapshot target endpoint is invalid.")
+
+
+def _validate_snapshot_profile(
+    authority: RealTerrainMinimumAltitudeAuthoritySnapshot,
+    item: RealTerrainMinimumAltitudePreparedSampleSnapshot,
+    config: RealTerrainMinimumAltitudeConfig,
+) -> None:
+    tolerance = config.distance_tolerance_m
+    launch_antenna = authority.launch_ground_msl_m + authority.allowed_flight_agl_m
+    if item.radial_distance_2d_m <= tolerance:
+        if (
+            not _points_within_tolerance(item.projected_point, authority.selected_projected_point, tolerance)
+            or item.radial_profile is not None
+            or not _near(item.local_dem_msl_m, authority.launch_ground_msl_m, tolerance)
+            or item.local_dsm_msl_m > launch_antenna + tolerance
+        ):
+            raise RealTerrainMinimumAltitudeError("snapshot coincident occupancy is invalid.")
+        return
+    profile = item.radial_profile
+    if type(profile) is not RealTerrainMinimumAltitudeProfileSnapshot:
+        raise RealTerrainMinimumAltitudeError("snapshot nonzero radial profile is invalid.")
+    if not isinstance(profile.samples, tuple) or not profile.samples:
+        raise RealTerrainMinimumAltitudeError("snapshot profile samples must be a non-empty tuple.")
+    _validate_local_point(profile.start, "snapshot profile start")
+    _validate_local_point(profile.end, "snapshot profile end")
+    _validate_finite_values("snapshot profile spacing", profile.sample_spacing_m)
+    if (
+        not _near(profile.sample_spacing_m, authority.resolved_profile_spacing_m, tolerance)
+        or not _points_within_tolerance(profile.start, authority.selected_projected_point, tolerance)
+        or not _points_within_tolerance(profile.end, item.projected_point, tolerance)
+    ):
+        raise RealTerrainMinimumAltitudeError("snapshot profile endpoint/spacing parity failed.")
+    total = distance_2d_m(profile.start, profile.end)
+    if not _near(total, item.radial_distance_2d_m, tolerance):
+        raise RealTerrainMinimumAltitudeError("snapshot profile total is invalid.")
+    previous_from = -1.0
+    previous_to = float("inf")
+    for index, sample in enumerate(profile.samples):
+        if type(sample) is not RealTerrainMinimumAltitudeProfileSampleSnapshot:
+            raise RealTerrainMinimumAltitudeError("snapshot profile sample type is invalid.")
+        _validate_local_point(sample.point, "snapshot profile sample")
+        _validate_finite_values("snapshot profile sample", sample.distance_from_start_m, sample.distance_to_end_m, sample.dem_msl_m, sample.dsm_msl_m, sample.surface_delta_m)
+        if (
+            sample.sample_index != index
+            or sample.distance_from_start_m <= previous_from
+            or sample.distance_to_end_m >= previous_to
+            or sample.dsm_msl_m < sample.dem_msl_m
+            or not _near(sample.dsm_msl_m - sample.dem_msl_m, sample.surface_delta_m, tolerance)
+            or not _near(sample.distance_from_start_m + sample.distance_to_end_m, total, tolerance)
+        ):
+            raise RealTerrainMinimumAltitudeError("snapshot profile sample order/parity is invalid.")
+        ratio = sample.distance_from_start_m / total
+        expected = LocalPoint(
+            profile.start.x_m + (profile.end.x_m - profile.start.x_m) * ratio,
+            profile.start.y_m + (profile.end.y_m - profile.start.y_m) * ratio,
+            profile.start.z_m + (profile.end.z_m - profile.start.z_m) * ratio,
+        )
+        if not _points_within_tolerance(sample.point, expected, tolerance):
+            raise RealTerrainMinimumAltitudeError("snapshot profile interpolation parity failed.")
+        previous_from, previous_to = sample.distance_from_start_m, sample.distance_to_end_m
+    first, last = profile.samples[0], profile.samples[-1]
+    if (
+        not _near(first.distance_from_start_m, 0.0, tolerance)
+        or not _near(first.dem_msl_m, authority.launch_ground_msl_m, tolerance)
+        or first.dsm_msl_m > launch_antenna + tolerance
+        or not _near(last.distance_to_end_m, 0.0, tolerance)
+        or not _near(last.dem_msl_m, item.local_dem_msl_m, tolerance)
+        or not _near(last.dsm_msl_m, item.local_dsm_msl_m, tolerance)
+    ):
+        raise RealTerrainMinimumAltitudeError("snapshot profile endpoint terrain parity failed.")
 
 
 def _validate_complete_output_authority_parity(
@@ -309,51 +552,40 @@ def _validate_complete_output_authority_parity(
 ) -> None:
     """Bind every public computation field to retained source/prepared authority."""
 
-    source = result._source_route_result
+    authority = result._authority_seal
     tolerance = result._config.distance_tolerance_m
-    source_config = source.config
-    resolved_spacing = result._config.profile_spacing_m or source_config.profile_spacing_m
+    resolved_spacing = authority.resolved_profile_spacing_m
     if (
         result._config.expected_frequency_hz is not None
         and not _near(
             result._config.expected_frequency_hz,
-            source_config.frequency_hz,
-            tolerance,
+            authority.frequency_hz,
+            0.0,
         )
     ):
         raise RealTerrainMinimumAltitudeError("expected frequency does not match retained source authority.")
     if (
         result._config.profile_spacing_m is not None
-        and result._config.profile_spacing_m > source_config.profile_spacing_m
+        and result._config.profile_spacing_m > authority.source_profile_spacing_m
     ):
         raise RealTerrainMinimumAltitudeError("configured profile spacing exceeds retained source authority.")
-    if not _points_within_tolerance(
-        result._selected_projected_point,
-        result._selected_launch_site.projected_point,
-        tolerance,
-    ):
-        raise RealTerrainMinimumAltitudeError("selected projected authority does not match selected launch.")
-    for output, prepared, candidate, source_record in zip(
+    for output, prepared, source_record in zip(
         result.route_results,
-        result._prepared_routes,
-        source.route_candidates,
-        result._source_route_authority,
+        authority.prepared_routes,
+        authority.source_routes,
     ):
-        if not isinstance(prepared, PreparedRealTerrainRoute):
+        if not isinstance(prepared, RealTerrainMinimumAltitudePreparedRouteSnapshot):
             raise RealTerrainMinimumAltitudeError("prepared route authority type is invalid.")
         if (
-            output.route_id != candidate.route_id
-            or output.mode is not candidate.mode
+            output.route_id != source_record.route_id
+            or output.mode is not source_record.mode
             or output.source_order != prepared.source_order
-            or source_record.route_id != candidate.route_id
-            or source_record.mode is not candidate.mode
             or source_record.source_order != output.source_order
-            or not _near(source_record.source_total_distance_3d_m, candidate.total_distance_3d_m, tolerance)
-            or not _near(output.source_total_distance_3d_m, candidate.total_distance_3d_m, tolerance)
+            or not _near(output.source_total_distance_3d_m, source_record.source_total_distance_3d_m, tolerance)
             or not _near(output.route_polyline_total_distance_2d_m, prepared.route_polyline_total_distance_2d_m, tolerance)
-            or not _near(output.frequency_hz, source_config.frequency_hz, tolerance)
-            or not _near(output.allowed_flight_agl_m, source_config.allowed_flight_agl_m, tolerance)
-            or not _near(output.actual_launch_ground_msl_m, source.launch_ground_msl_m, tolerance)
+            or output.frequency_hz != authority.frequency_hz
+            or output.allowed_flight_agl_m != authority.allowed_flight_agl_m
+            or not _near(output.actual_launch_ground_msl_m, authority.launch_ground_msl_m, tolerance)
             or not _near(output.profile_spacing_m, resolved_spacing, tolerance)
         ):
             raise RealTerrainMinimumAltitudeError("output route/source authority parity failed.")
@@ -369,6 +601,95 @@ def _validate_complete_output_authority_parity(
                 or not _near(output_sample.local_dsm_msl_m, prepared_sample.local_dsm_msl_m, tolerance)
             ):
                 raise RealTerrainMinimumAltitudeError("output route sample/prepared authority parity failed.")
+            _validate_emitted_radial_requirements(output, output_sample, prepared_sample, authority, result._config)
+
+
+def _expected_snapshot_requirements(
+    item: RealTerrainMinimumAltitudePreparedSampleSnapshot,
+    authority: RealTerrainMinimumAltitudeAuthoritySnapshot,
+    config: RealTerrainMinimumAltitudeConfig,
+) -> tuple[RealTerrainRadialRequirementSample, ...]:
+    profile = item.radial_profile
+    if profile is None:
+        return ()
+    wavelength = wavelength_m(authority.frequency_hz)
+    antenna = authority.launch_ground_msl_m + authority.allowed_flight_agl_m
+    expected: list[RealTerrainRadialRequirementSample] = []
+    for profile_sample in profile.samples:
+        total = profile_sample.distance_from_start_m + profile_sample.distance_to_end_m
+        ratio = profile_sample.distance_from_start_m / total
+        if ratio <= config.epsilon_m:
+            continue
+        radius = first_fresnel_radius_m(
+            wavelength_m=wavelength,
+            d1_m=profile_sample.distance_from_start_m,
+            d2_m=profile_sample.distance_to_end_m,
+        )
+        clearance = config.required_fresnel_clearance_ratio * radius
+        los = profile_sample.dsm_msl_m + clearance
+        endpoint = antenna + (los - antenna) / ratio
+        expected.append(
+            RealTerrainRadialRequirementSample(
+                f"{item.route_sample_id}-radial-{profile_sample.sample_index:03d}",
+                item.route_sample_id,
+                profile_sample.sample_index,
+                profile_sample.distance_from_start_m,
+                profile_sample.distance_to_end_m,
+                ratio,
+                profile_sample.dem_msl_m,
+                profile_sample.dsm_msl_m,
+                radius,
+                clearance,
+                los,
+                endpoint,
+            )
+        )
+    return tuple(expected)
+
+
+def _validate_emitted_radial_requirements(
+    route: RealTerrainRouteMinimumAltitudeResult,
+    output: RealTerrainRouteAltitudeSample,
+    prepared: RealTerrainMinimumAltitudePreparedSampleSnapshot,
+    authority: RealTerrainMinimumAltitudeAuthoritySnapshot,
+    config: RealTerrainMinimumAltitudeConfig,
+) -> None:
+    if prepared.radial_profile is None:
+        if output.radial_requirement_samples or output.limiting_radial_requirement is not None:
+            raise RealTerrainMinimumAltitudeError("coincident output has unexpected radial requirements.")
+        return
+    expected = _expected_snapshot_requirements(prepared, authority, config)
+    actual = output.radial_requirement_samples
+    if len(actual) != len(expected):
+        raise RealTerrainMinimumAltitudeError("emitted radial requirement count does not match snapshot.")
+    names = (
+        "radial_requirement_id",
+        "route_sample_id",
+        "radial_sample_index",
+        "distance_from_launch_m",
+        "distance_to_endpoint_m",
+        "path_ratio",
+        "dem_msl_m",
+        "dsm_msl_m",
+        "fresnel_radius_m",
+        "required_clearance_m",
+        "required_los_msl_m",
+        "required_endpoint_msl_m",
+    )
+    for actual_item, expected_item in zip(actual, expected):
+        for name in names:
+            actual_value = getattr(actual_item, name)
+            expected_value = getattr(expected_item, name)
+            if isinstance(expected_value, float):
+                if not _near(actual_value, expected_value, config.distance_tolerance_m):
+                    raise RealTerrainMinimumAltitudeError("emitted radial requirement does not match snapshot calculation.")
+            elif actual_value != expected_value:
+                raise RealTerrainMinimumAltitudeError("emitted radial requirement identity does not match snapshot.")
+    expected_limiter = _select_radial_limiter(expected, config.distance_tolerance_m)
+    if output.limiting_radial_requirement != expected_limiter:
+        raise RealTerrainMinimumAltitudeError("emitted radial limiter does not match snapshot calculation.")
+    if not _near(output.required_endpoint_msl_m, expected_limiter.required_endpoint_msl_m, config.distance_tolerance_m):
+        raise RealTerrainMinimumAltitudeError("emitted endpoint requirement does not match snapshot calculation.")
 
 
 def _validate_prepared_authority(
@@ -385,7 +706,7 @@ def _validate_prepared_authority(
         raise RealTerrainMinimumAltitudeError("prepared route count does not match source routes.")
     sample_ids: set[str] = set()
     for expected_order, (route, source) in enumerate(zip(prepared_routes, route_result.route_candidates)):
-        if not isinstance(route, PreparedRealTerrainRoute):
+        if type(route) is not PreparedRealTerrainRoute:
             raise RealTerrainMinimumAltitudeError("prepared route must use PreparedRealTerrainRoute.")
         route.__post_init__()
         if route.source_order != expected_order or route.source_order != expected_order:
@@ -492,7 +813,7 @@ def _validate_terrain_profile(
     source_profile_spacing_m: float,
 ) -> None:
     tolerance = config.distance_tolerance_m
-    if not isinstance(profile, TerrainProfile) or not isinstance(profile.start, LocalPoint) or not isinstance(profile.end, LocalPoint):
+    if type(profile) is not TerrainProfile or type(profile.start) is not LocalPoint or type(profile.end) is not LocalPoint:
         raise RealTerrainMinimumAltitudeError("prepared radial profile type is invalid.")
     _validate_local_point(profile.start, "prepared radial profile start")
     _validate_local_point(profile.end, "prepared radial profile end")
@@ -508,6 +829,17 @@ def _validate_terrain_profile(
         raise RealTerrainMinimumAltitudeError("prepared radial profile total does not match radial distance.")
     if not isinstance(profile.samples, tuple) or not profile.samples:
         raise RealTerrainMinimumAltitudeError("prepared radial profile samples must be a non-empty tuple.")
+    previous_from = -1.0
+    previous_to = float("inf")
+    for sample in profile.samples:
+        if type(sample) is not TerrainProfileSample:
+            raise RealTerrainMinimumAltitudeError("prepared radial profile sample type is invalid.")
+        if (
+            sample.distance_from_start_m <= previous_from
+            or sample.distance_to_end_m >= previous_to
+        ):
+            raise RealTerrainMinimumAltitudeError("prepared radial profile sample order is invalid.")
+        previous_from, previous_to = sample.distance_from_start_m, sample.distance_to_end_m
     if tuple(sample.sample_index for sample in profile.samples) != tuple(range(len(profile.samples))):
         raise RealTerrainMinimumAltitudeError("prepared radial profile sample indexes are not contiguous.")
     first = profile.samples[0]
@@ -518,7 +850,7 @@ def _validate_terrain_profile(
         raise RealTerrainMinimumAltitudeError("prepared radial profile route endpoint parity failed.")
     has_eligible = False
     for sample in profile.samples:
-        if not isinstance(sample, TerrainProfileSample) or not isinstance(sample.point, LocalPoint):
+        if type(sample) is not TerrainProfileSample or type(sample.point) is not LocalPoint:
             raise RealTerrainMinimumAltitudeError("prepared radial profile sample type is invalid.")
         _validate_local_point(sample.point, "prepared radial profile sample")
         _validate_finite_values("prepared radial profile sample", sample.distance_from_start_m, sample.distance_to_end_m, sample.dem_msl, sample.dsm_msl, sample.surface_delta_m)
@@ -715,7 +1047,7 @@ def _validate_finite_values(name: str, *values: object) -> None:
 
 
 def _validate_local_point(point: LocalPoint, name: str) -> None:
-    if not isinstance(point, LocalPoint):
+    if type(point) is not LocalPoint:
         raise RealTerrainMinimumAltitudeError(f"{name} point must be LocalPoint.")
     _validate_finite_values(f"{name} point", point.x_m, point.y_m, point.z_m)
 

@@ -43,12 +43,14 @@ metadata internals.
 
 ## Actual Result
 
-The local amendment passed focused source/selection/prepared-evidence/output contract
-tests (`70 passed`), relevant Task 035EF/035G plus legacy regression tests (`58
-passed`), and the full suite (`983 passed, 1 skipped`). It retains private exact
-source and prepared-profile authority for recursive validation, rejects collection
-substitution and non-finite geometry, and keeps that authority out of public output.
-The amendment remains local-only pending final local commit and review.
+The second local amendment passed focused source/selection/prepared-evidence/output
+contract tests (`96 passed`), relevant Task 035EF/035G plus legacy regression tests
+(`58 passed`), and the full suite (`1009 passed, 1 skipped`). It retains compact,
+independent sealed snapshots of source mission values, selection, route identity, and
+prepared profile cells. Recursive validation replays radial requirement records from
+that snapshot, rejects collection substitution/non-finite geometry/profile ordering
+errors, and keeps private evidence out of public output. The amendment remains
+local-only pending final local commit and review.
 
 ## Metrics
 
@@ -59,8 +61,8 @@ The amendment remains local-only pending final local commit and review.
 
 ## Local / CI Evidence
 
-Fresh local verification recorded `70` focused tests, `58` related regression tests,
-and `983 passed, 1 skipped` for the full suite. Exact final-head GitHub Actions
+Fresh local verification recorded `96` focused tests, `58` related regression tests,
+and `1009 passed, 1 skipped` for the full suite. Exact final-head GitHub Actions
 evidence remains pending under the non-recursive policy: it belongs in the Draft PR
 completion comment after the local final head is published, and does not justify a
 CI-only follow-up commit.
