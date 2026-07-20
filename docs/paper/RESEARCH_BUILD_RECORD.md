@@ -7,7 +7,7 @@
 | Project | UAV RF Terrain Planner |
 | Research purpose | Offline research, education, and simulation support for DSM-based terrain/RF shielding proxy analysis, launch-area visualization, route analysis, and waypoint reporting. |
 | Created | 2026-07-16 |
-| Last updated | 2026-07-20 |
+| Last updated | 2026-07-21 |
 | Authoritative branch | `main` for merged evidence; `agent/task-036b-real-terrain-minimum-altitude-core` for current Task 036B evidence. |
 | Ledger content basis | `f3a075834092b3f782139333a7b58a443c0548ea` (PR #109 merge commit; final head `4107547`, CI #899 / run 29710579465 success). |
 | Record responsibility | GPT Master owns paper interpretation; Local Execution Agents record only verified build, test, PR, CI, and limitation evidence. |
@@ -71,7 +71,7 @@ rather than inferred.
 | BUILD-20260716-008 | 2026-07-16 | 035EF | Complete selected-launch route recommendation and handoff contract. | Issue #104; PR #105. | Final `4308aba`; merge `7c49c8f`; merged 2026-07-16. | Synthetic in-memory adapter. | graph 7 + pathfinding 4 + analysis 5 + outputs 12 = 28; 892 full. | Local checks passed; CI #881 / 29469082285 success. | Merged; Issue #104 closed/completed. | EXP-055; DEC-007; Task 035EF handoff. | No GIS route/browser/field validation. |
 | BUILD-20260716-009 | 2026-07-16 | 035G | Real-terrain route waypoint reporting over complete handoffs. | Issue #106; PR #107. | Final `36935ac`; merge `7b39a21`; merged 2026-07-19. | Synthetic immutable route contracts. | Initial focused 7/full 899; review-amendment focused 22/full 914. | Exact final-head CI #890 / 29473229092 success. | Merged; Issue #106 closed/completed. | EXP-056; DEC-008; Task 035G handoff. | No terrain reanalysis, GIS report, browser/UI, or field validation. |
 | BUILD-20260716-010 | 2026-07-20 | 036A | Define real-terrain minimum-altitude analysis boundary. | Issue #108; PR #109. | Final `4107547`; merge `f3a0758`; merged 2026-07-20. | Documentation and existing synthetic contracts only. | Focused 19; full 913 passed, 1 skipped. | CI #899 / 29710579465 success. | Merged; Issue #108 closed/completed. | EXP-057; approved DEC-009; Task 036A handoff. | No runtime, GIS, field, browser/UI, or operational output. |
-| BUILD-20260720-011 | 2026-07-20 | 036B | Implement immutable prepared-evidence contracts and a pure minimum-altitude proxy engine. | Issue #110; Draft PR pending. | Base `f3a0758`; current task in progress. | Synthetic prepared profiles only. | Pending Task 036B focused and full verification. | Final-head CI will be recorded in the Draft PR completion comment. | In progress. | EXP-058; DEC-009; Task 036B handoff. | No terrain session, GIS sampling, route selection, UI, device, or field claim. |
+| BUILD-20260720-011 | 2026-07-20 | 036B | Implement immutable prepared-evidence contracts and a pure minimum-altitude proxy engine. | Issue #110; Draft PR #111. | Base `f3a0758`; local amendment head pending final freeze. | Synthetic prepared profiles only. | Focused authority/geometry/tie/output/guard coverage and full verification are being refreshed locally. | Final-head CI will be recorded in the Draft PR completion comment. | Local amendment in progress. | EXP-058; DEC-009; Task 036B handoff. | No terrain session, GIS sampling, route selection, UI, device, or field claim. |
 
 ## Experiment Evidence Ledger
 

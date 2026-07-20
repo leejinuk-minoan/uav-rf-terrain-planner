@@ -18,7 +18,11 @@ call `sample_point` or `extract_profile`, or load GIS data.
 ## Current Status
 
 - PR #109 merged at `f3a0758`; Issue #108 closed; DEC-009 approved by GPT Master.
-- Task 036B is in progress under Issue #110.
+- Task 036B amendment work is local-only under Issue #110 and Draft PR #111.
+- The pure core validates exact route/selection authority, prepared 2D and radial
+  profile parity, bounded resource inputs, tolerance-aware limiters, and recursive
+  immutable MGRS-facing result contracts. Final local verification and Codex Master
+  review remain required before a single final push.
 - The target output remains an offline DSM/LOS/Fresnel clearance proxy, not terrain
   clearance certification, flight-safety approval, communication-success evidence, or
   regulatory authorization.
