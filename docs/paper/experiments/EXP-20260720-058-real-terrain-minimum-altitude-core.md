@@ -46,9 +46,9 @@ band and are reported with that provenance policy.
 
 ## Actual Result
 
-The fifth local amendment passed focused source/selection/prepared-evidence/output
-contract tests (`128 passed`), relevant Task 035EF/035G plus legacy regression tests
-(`58 passed`), and the full suite (`1041 passed, 1 skipped`). It retains one compact
+The current local amendment passed focused source/selection/prepared-evidence/output
+contract tests (`140 passed`), relevant Task 035EF/035G plus legacy regression tests
+(`58 passed`), and the full suite (`1053 passed, 1 skipped`). It retains one compact
 canonical authority snapshot plus an independent canonical emitted-output fingerprint.
 The seals cover retained calculation authority and every emitted nested output field;
 recursive validation checks them before tolerance-aware mathematical replay. It also
@@ -69,8 +69,8 @@ verification for this document content is complete.
 
 ## Local / CI Evidence
 
-Fresh local verification recorded `128` focused tests, `58` related regression tests,
-and `1041 passed, 1 skipped` for the full suite. Exact final-head GitHub Actions
+Fresh local verification recorded `140` focused tests, `58` related regression tests,
+and `1053 passed, 1 skipped` for the full suite. Exact final-head GitHub Actions
 evidence remains pending under the non-recursive policy: it belongs in the external
 completion report after the local final head is published, and does not justify a
 CI-only follow-up commit.
@@ -86,7 +86,11 @@ reconnaissance success, approval, authorization, or field performance.
 Task 036B deliberately excludes `TerrainDataAdapter` session orchestration,
 `sample_point`, `extract_profile`, raster loading, real GIS smoke validation, UI,
 route selection, device control, and autopilot behavior. Those boundaries remain for
-reviewed future work.
+reviewed future work. Because `distance_tolerance_m` is only finite/nonnegative in
+this pure-core contract, a large configured value weakens coincidence classification,
+distance/profile/DEM parity, DSM occupancy, AGL normalization, formula replay,
+fixed-AGL meets-proxy status, and canonical limiter identity. This does not establish
+any terrain, GIS, flight, communication, or field tolerance.
 
 ## Paper Figure / Table Candidate
 

@@ -339,6 +339,7 @@ def _validate_exact_terrain_metadata(metadata: object, context: str) -> TerrainD
         raise RealTerrainMinimumAltitudeError(f"{context} terrain metadata type is invalid.")
     if type(metadata.dem) is not TerrainRasterMetadata or type(metadata.dsm) is not TerrainRasterMetadata:
         raise RealTerrainMinimumAltitudeError(f"{context} terrain metadata raster type is invalid.")
+    _preflight_terrain_metadata_fields(metadata, context)
     try:
         metadata.dem.__post_init__()
         metadata.dsm.__post_init__()
@@ -347,6 +348,65 @@ def _validate_exact_terrain_metadata(metadata: object, context: str) -> TerrainD
     except TerrainDataError as exc:
         raise RealTerrainMinimumAltitudeError(f"{context} terrain metadata is invalid.") from exc
     return metadata
+
+
+def _preflight_terrain_metadata_fields(metadata: TerrainDatasetMetadata, context: str) -> None:
+    """Reject malformed metadata primitives before reviewed validators dereference them."""
+
+    if any(
+        type(value) is not str
+        for value in (
+            metadata.dataset_name,
+            metadata.processing_date,
+            metadata.processing_tool,
+            metadata.alignment_status,
+            metadata.notes,
+        )
+    ):
+        raise RealTerrainMinimumAltitudeError(f"{context} terrain metadata text is invalid.")
+    for raster in (metadata.dem, metadata.dsm):
+        if any(
+            type(value) is not str
+            for value in (
+                raster.name,
+                raster.raster_type,
+                raster.source_dataset_name,
+                raster.source_provider,
+                raster.license_or_terms,
+                raster.crs,
+                raster.vertical_datum,
+                raster.processing_summary,
+            )
+        ):
+            raise RealTerrainMinimumAltitudeError(f"{context} terrain raster text is invalid.")
+        if (
+            isinstance(raster.resolution_m, bool)
+            or not isinstance(raster.resolution_m, (int, float))
+            or not isfinite(raster.resolution_m)
+            or isinstance(raster.width, bool)
+            or not isinstance(raster.width, int)
+            or isinstance(raster.height, bool)
+            or not isinstance(raster.height, int)
+            or type(raster.bounds) is not tuple
+            or len(raster.bounds) != 4
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not isfinite(value)
+                for value in raster.bounds
+            )
+            or (
+                raster.nodata_value is not None
+                and (
+                    isinstance(raster.nodata_value, bool)
+                    or not isinstance(raster.nodata_value, (int, float))
+                    or not isfinite(raster.nodata_value)
+                )
+            )
+            or type(raster.is_synthetic) is not bool
+            or type(raster.is_redistributable_processed_data) is not bool
+        ):
+            raise RealTerrainMinimumAltitudeError(f"{context} terrain raster fields are invalid.")
 
 
 def _preflight_source_collections(route_result: RealTerrainRouteResult) -> None:
@@ -364,6 +424,8 @@ def _preflight_source_collections(route_result: RealTerrainRouteResult) -> None:
     ):
         if type(getattr(route_result, name)) is not tuple:
             raise RealTerrainMinimumAltitudeError(f"source {name} must be an exact tuple.")
+    if any(type(warning) is not str for warning in route_result.warnings):
+        raise RealTerrainMinimumAltitudeError("source warnings must be text.")
     if len(route_result.route_candidates) > len(RouteMode):
         raise RealTerrainMinimumAltitudeError("source route candidate count violates fixed route-mode guard.")
     if len(route_result.graph_nodes) > route_result.config.max_graph_nodes:
@@ -417,17 +479,36 @@ def _preflight_source_nested_types(route_result: RealTerrainRouteResult) -> None
             raise RealTerrainMinimumAltitudeError("source route path point type is invalid.")
         if any(type(point) is not LocalPoint for point in candidate.ordered_projected_points):
             raise RealTerrainMinimumAltitudeError("source route projected point type is invalid.")
+        if (
+            type(candidate.route_id) is not str
+            or type(candidate.reason) is not str
+            or any(type(warning) is not str for warning in candidate.warnings)
+            or any(type(node_id) is not str for node_id in candidate.ordered_node_ids)
+        ):
+            raise RealTerrainMinimumAltitudeError("source route candidate text is invalid.")
+        for path_point in candidate.path:
+            if type(path_point.mgrs) is not str:
+                raise RealTerrainMinimumAltitudeError("source route path point text is invalid.")
     for node in route_result.graph_nodes:
         if type(node) is not RealTerrainRouteNode:
             raise RealTerrainMinimumAltitudeError("source graph node type is invalid.")
         if type(node.state) is not RouteNodeState or type(node.projected_point) is not LocalPoint:
             raise RealTerrainMinimumAltitudeError("source graph node state or point type is invalid.")
+        if type(node.reason) is not str or type(node.source_zone_reason) is not str:
+            raise RealTerrainMinimumAltitudeError("source graph node text is invalid.")
     for edge in route_result.graph_edges:
         if type(edge) is not RealTerrainRouteEdge:
             raise RealTerrainMinimumAltitudeError("source graph edge type is invalid.")
     for handoff in route_result.waypoint_handoffs:
         if type(handoff) is not tuple or any(type(item) is not WaypointHandoffPoint for item in handoff):
             raise RealTerrainMinimumAltitudeError("source waypoint handoff type is invalid.")
+        for item in handoff:
+            if (
+                type(item.point_id) is not str
+                or type(item.point_mgrs) is not str
+                or type(item.source_zone_reason) is not str
+            ):
+                raise RealTerrainMinimumAltitudeError("source waypoint handoff text is invalid.")
 
 
 def _validate_source_authority(
@@ -499,6 +580,8 @@ def validate_complete_real_terrain_minimum_altitude_result(
         raise RealTerrainMinimumAltitudeError("result must be RealTerrainMinimumAltitudeResult.")
     try:
         authority = result._authority
+        if type(authority) is not RealTerrainMinimumAltitudeAuthoritySnapshot:
+            raise RealTerrainMinimumAltitudeError("authority snapshot type is invalid.")
         _validate_exact_terrain_metadata(authority.terrain_metadata, "snapshot")
         if _authority_fingerprint(authority) != result._authority_fingerprint:
             raise RealTerrainMinimumAltitudeError("authority snapshot does not match canonical fingerprint.")

@@ -21,6 +21,7 @@ from uav_rf_terrain.real_terrain_minimum_altitude import (
 from uav_rf_terrain.real_terrain_minimum_altitude_outputs import (
     RealTerrainMinimumAltitudeConfig,
     RealTerrainMinimumAltitudeOutputError,
+    validate_real_terrain_minimum_altitude_result,
 )
 from uav_rf_terrain.real_terrain_route_outputs import (
     RealTerrainRouteCandidate,
@@ -985,6 +986,27 @@ def test_source_route_local_collection_guards_run_before_fresnel(
         _compute(route_result)
 
 
+def test_equal_length_source_route_local_collections_cannot_exceed_graph_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import uav_rf_terrain.real_terrain_minimum_altitude as altitude
+
+    route_result = _route_result()
+    candidate = route_result.route_candidates[0]
+    handoff = route_result.waypoint_handoffs[0]
+    object.__setattr__(candidate, "path", candidate.path + (candidate.path[-1],))
+    object.__setattr__(candidate, "ordered_node_ids", candidate.ordered_node_ids + ("node-extra",))
+    object.__setattr__(candidate, "ordered_projected_points", candidate.ordered_projected_points + (TARGET_POINT,))
+    object.__setattr__(route_result, "waypoint_handoffs", (handoff + (handoff[-1],),))
+    monkeypatch.setattr(
+        altitude,
+        "wavelength_m",
+        lambda _: (_ for _ in ()).throw(AssertionError("Fresnel work must not run")),
+    )
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="route-local length violates graph guard"):
+        _compute(route_result)
+
+
 def test_public_output_includes_limiter_semantics_and_distance_tolerance() -> None:
     result = _compute(config=RealTerrainMinimumAltitudeConfig(distance_tolerance_m=0.25))
     public = result.to_public_dict()
@@ -1034,3 +1056,74 @@ def test_route_result_uses_exact_minimum_for_status_and_canonical_representative
     assert route.warnings == (
         "route-shielding_minimum: current fixed-AGL route is below the configured clearance proxy at one or more route samples.",
     )
+
+
+@pytest.mark.parametrize("mutation", ("authority", "config", "route_sample", "radial"))
+def test_complete_and_output_validators_preflight_exact_nested_types(
+    mutation: str,
+) -> None:
+    result = _compute()
+    if mutation == "authority":
+        object.__setattr__(result, "_authority", object())
+        with pytest.raises(RealTerrainMinimumAltitudeError):
+            validate_complete_real_terrain_minimum_altitude_result(result)
+        return
+    if mutation == "config":
+        object.__setattr__(result._authority, "config", object())
+    elif mutation == "route_sample":
+        route = result.route_results[0]
+        object.__setattr__(route, "route_samples", (object(),))
+    else:
+        sample = result.route_results[0].route_samples[-1]
+        object.__setattr__(sample, "radial_requirement_samples", (object(),))
+    with pytest.raises(RealTerrainMinimumAltitudeOutputError):
+        validate_real_terrain_minimum_altitude_result(result)
+
+
+@pytest.mark.parametrize("mutation", ("metadata_name", "metadata_bounds", "warnings", "handoff_reason"))
+def test_source_and_metadata_malformed_nested_values_map_to_engine_error(mutation: str) -> None:
+    route_result = _route_result()
+    if mutation == "metadata_name":
+        object.__setattr__(route_result.terrain_metadata.dem, "name", object())
+    elif mutation == "metadata_bounds":
+        object.__setattr__(route_result.terrain_metadata.dem, "bounds", object())
+    elif mutation == "warnings":
+        object.__setattr__(route_result, "warnings", ([],))
+    else:
+        object.__setattr__(route_result.waypoint_handoffs[0][0], "source_zone_reason", object())
+    with pytest.raises(RealTerrainMinimumAltitudeError):
+        _compute(route_result)
+
+
+@pytest.mark.parametrize("field", ("name", "bounds"))
+def test_complete_and_output_validators_normalize_mutated_metadata_primitives(field: str) -> None:
+    result = _compute()
+    object.__setattr__(
+        result._authority.terrain_metadata.dem,
+        field,
+        object(),
+    )
+    with pytest.raises(RealTerrainMinimumAltitudeOutputError):
+        validate_real_terrain_minimum_altitude_result(result)
+    with pytest.raises(RealTerrainMinimumAltitudeError):
+        validate_complete_real_terrain_minimum_altitude_result(result)
+
+
+def test_complete_and_output_validation_accept_exact_extreme_with_distinct_canonical_limiter() -> None:
+    route_result = _route_result()
+    profile = _profile(endpoint_dsm_msl=120.5)
+    prepared = _prepared_route(route_result, target_profile=profile)
+    target = replace(prepared.samples[-1], local_dsm_msl_m=120.5)
+    result = _compute(
+        route_result,
+        (replace(prepared, samples=(prepared.samples[0], target)),),
+        RealTerrainMinimumAltitudeConfig(
+            expected_frequency_hz=300_000_000.0,
+            distance_tolerance_m=1.0,
+        ),
+    )
+    route = result.route_results[0]
+    assert route.minimum_required_constant_route_msl_m == 120.5
+    assert route.constant_msl_limiting_sample_id == route.route_samples[0].route_sample_id
+    validate_real_terrain_minimum_altitude_result(result)
+    validate_complete_real_terrain_minimum_altitude_result(result)

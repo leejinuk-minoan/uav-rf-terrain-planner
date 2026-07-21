@@ -266,7 +266,11 @@ geometry parity and canonical representative selection. It is intentionally boun
 only by finiteness/nonnegativity in this pure core, so a broad configured tolerance can
 make a canonical limiter substantially different from the exact emitted extreme. This
 is a synthetic pure-core limitation, not a terrain-session, GIS, or field-validation
-claim.
+claim. In particular, a large value weakens projected-2D coincidence classification,
+stored distance/profile/DEM parity, DSM occupancy comparison, near-zero AGL
+normalization, formula replay comparisons, fixed-AGL meets-proxy status, and canonical
+limiter identity. It must therefore be treated as a reviewed numerical assumption, not
+as evidence of terrain or flight tolerance.
 
 `RealTerrainRouteAltitudeSample` retains route ID/mode, route-sample MGRS and index,
 `cumulative_route_distance_2d_m`, local DEM/DSM, current route flight MSL,

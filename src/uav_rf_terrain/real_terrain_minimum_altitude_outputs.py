@@ -63,6 +63,7 @@ def _validate_exact_terrain_metadata(metadata: object) -> TerrainDatasetMetadata
         raise RealTerrainMinimumAltitudeOutputError("private terrain metadata authority is invalid.")
     if type(metadata.dem) is not TerrainRasterMetadata or type(metadata.dsm) is not TerrainRasterMetadata:
         raise RealTerrainMinimumAltitudeOutputError("private terrain raster metadata authority is invalid.")
+    _preflight_terrain_metadata_fields(metadata)
     try:
         metadata.dem.__post_init__()
         metadata.dsm.__post_init__()
@@ -71,6 +72,65 @@ def _validate_exact_terrain_metadata(metadata: object) -> TerrainDatasetMetadata
     except TerrainDataError as exc:
         raise RealTerrainMinimumAltitudeOutputError("private terrain metadata authority is invalid.") from exc
     return metadata
+
+
+def _preflight_terrain_metadata_fields(metadata: TerrainDatasetMetadata) -> None:
+    """Reject malformed metadata primitives before reviewed validators dereference them."""
+
+    if any(
+        type(value) is not str
+        for value in (
+            metadata.dataset_name,
+            metadata.processing_date,
+            metadata.processing_tool,
+            metadata.alignment_status,
+            metadata.notes,
+        )
+    ):
+        raise RealTerrainMinimumAltitudeOutputError("private terrain metadata authority is invalid.")
+    for raster in (metadata.dem, metadata.dsm):
+        if any(
+            type(value) is not str
+            for value in (
+                raster.name,
+                raster.raster_type,
+                raster.source_dataset_name,
+                raster.source_provider,
+                raster.license_or_terms,
+                raster.crs,
+                raster.vertical_datum,
+                raster.processing_summary,
+            )
+        ):
+            raise RealTerrainMinimumAltitudeOutputError("private terrain raster metadata authority is invalid.")
+        if (
+            isinstance(raster.resolution_m, bool)
+            or not isinstance(raster.resolution_m, (int, float))
+            or not isfinite(raster.resolution_m)
+            or isinstance(raster.width, bool)
+            or not isinstance(raster.width, int)
+            or isinstance(raster.height, bool)
+            or not isinstance(raster.height, int)
+            or type(raster.bounds) is not tuple
+            or len(raster.bounds) != 4
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not isfinite(value)
+                for value in raster.bounds
+            )
+            or (
+                raster.nodata_value is not None
+                and (
+                    isinstance(raster.nodata_value, bool)
+                    or not isinstance(raster.nodata_value, (int, float))
+                    or not isfinite(raster.nodata_value)
+                )
+            )
+            or type(raster.is_synthetic) is not bool
+            or type(raster.is_redistributable_processed_data) is not bool
+        ):
+            raise RealTerrainMinimumAltitudeOutputError("private terrain raster metadata authority is invalid.")
 
 
 @dataclass(frozen=True)
@@ -391,11 +451,9 @@ def validate_real_terrain_minimum_altitude_result(result: RealTerrainMinimumAlti
         raise RealTerrainMinimumAltitudeOutputError("result collections must be tuples.")
     if type(result.summary) is not RealTerrainMinimumAltitudeSummary or not result.route_results:
         raise RealTerrainMinimumAltitudeOutputError("route results and summary are required.")
-    try:
-        result._authority.config.__post_init__()
-        _validate_exact_terrain_metadata(result._authority.terrain_metadata)
-    except TerrainDataError as exc:
-        raise RealTerrainMinimumAltitudeOutputError("terrain metadata authority is invalid.") from exc
+    _preflight_output_nested_types(result)
+    result._authority.config.__post_init__()
+    _validate_exact_terrain_metadata(result._authority.terrain_metadata)
     if (
         type(result._authority.source_routes) is not tuple
         or type(result._authority.prepared_routes) is not tuple
@@ -428,6 +486,41 @@ def validate_real_terrain_minimum_altitude_result(result: RealTerrainMinimumAlti
     result.summary.__post_init__()
     if result.summary.route_count != len(result.route_results) or result.summary.route_sample_count != len(all_samples) or result.summary.radial_requirement_count != len(all_radial):
         raise RealTerrainMinimumAltitudeOutputError("summary count parity failed.")
+
+
+def _preflight_output_nested_types(result: RealTerrainMinimumAltitudeResult) -> None:
+    """Check exact replay inputs before dataclass validators or selector callbacks."""
+
+    authority = result._authority
+    if type(authority.config) is not RealTerrainMinimumAltitudeConfig:
+        raise RealTerrainMinimumAltitudeOutputError("private authority config is invalid.")
+    if type(authority.source_routes) is not tuple or type(authority.prepared_routes) is not tuple:
+        raise RealTerrainMinimumAltitudeOutputError("private authority collections are invalid.")
+    if any(type(warning) is not str for warning in result.warnings):
+        raise RealTerrainMinimumAltitudeOutputError("result warnings must be text.")
+    if type(result.summary.warnings) is not tuple or any(
+        type(warning) is not str for warning in result.summary.warnings
+    ):
+        raise RealTerrainMinimumAltitudeOutputError("summary warnings must be text.")
+    if any(type(source) is not RealTerrainMinimumAltitudeSourceRoute for source in authority.source_routes):
+        raise RealTerrainMinimumAltitudeOutputError("source route snapshot type is invalid.")
+    for route in result.route_results:
+        if type(route) is not RealTerrainRouteMinimumAltitudeResult:
+            raise RealTerrainMinimumAltitudeOutputError("output route type is invalid.")
+        if type(route.route_samples) is not tuple or type(route.warnings) is not tuple:
+            raise RealTerrainMinimumAltitudeOutputError("output route collections are invalid.")
+        if any(type(warning) is not str for warning in route.warnings):
+            raise RealTerrainMinimumAltitudeOutputError("output route warnings must be text.")
+        for sample in route.route_samples:
+            if type(sample) is not RealTerrainRouteAltitudeSample:
+                raise RealTerrainMinimumAltitudeOutputError("output route sample type is invalid.")
+            if type(sample.radial_requirement_samples) is not tuple:
+                raise RealTerrainMinimumAltitudeOutputError("output radial collection is invalid.")
+            if any(
+                type(requirement) is not RealTerrainRadialRequirementSample
+                for requirement in sample.radial_requirement_samples
+            ):
+                raise RealTerrainMinimumAltitudeOutputError("output radial requirement type is invalid.")
 
 
 def _validate_route_result(route: RealTerrainRouteMinimumAltitudeResult, config: RealTerrainMinimumAltitudeConfig) -> None:
