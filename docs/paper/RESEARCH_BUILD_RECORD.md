@@ -7,9 +7,9 @@
 | Project | UAV RF Terrain Planner |
 | Research purpose | Offline research, education, and simulation support for DSM-based terrain/RF shielding proxy analysis, launch-area visualization, route analysis, and waypoint reporting. |
 | Created | 2026-07-16 |
-| Last updated | 2026-07-16 |
-| Authoritative branch | `main` for merged evidence; `agent/task-036a-real-terrain-minimum-altitude-contract` for current Draft contract evidence. |
-| Ledger content basis | `7b39a2191c94ce1fe6140ab069aa6c2bfe3e3dc6` (PR #107 merge commit; Task 035G final head `36935ac`, CI #890 / run 29473229092 success). |
+| Last updated | 2026-07-21 |
+| Authoritative branch | `main` for merged evidence; `agent/task-036b-real-terrain-minimum-altitude-core` for current Task 036B evidence. |
+| Ledger content basis | `f3a075834092b3f782139333a7b58a443c0548ea` (PR #109 merge commit; final head `4107547`, CI #899 / run 29710579465 success). |
 | Record responsibility | GPT Master owns paper interpretation; Local Execution Agents record only verified build, test, PR, CI, and limitation evidence. |
 | Research limit | Results are terrain/surface-obstacle proxies, not actual RF, flight-feasibility, reconnaissance-success, or approval evidence. |
 
@@ -34,7 +34,7 @@ infinite commit-to-CI update cycle.
 | Input | MGRS user-facing coordinates; internally projected EPSG:5179 points; synthetic or local prepared DEM/DSM through adapters. |
 | Processing | DSM profile, LOS/Fresnel proxy, heuristic score/color, selected launch area, deterministic route graph/Dijkstra, handoff-based waypoint reporting, and a documented future route-level altitude-proxy boundary. |
 | Output | Color launch-area records, MGRS-facing selected site, route candidates, and approximately 500 m MGRS waypoint reports. |
-| Implemented scope | Task 035G merged through PR #107 adds reporting only over Task 035EF complete route handoffs. Task 036A is a contract/audit record only and adds no altitude runtime. |
+| Implemented scope | Task 035G adds reporting over Task 035EF complete route handoffs. Task 036A is merged approved contract evidence; Task 036B is in progress for pure prepared-evidence contracts and calculation only. |
 | Explicit non-claims | No autopilot, route execution, field RF validation, real flight validation, obstacle absence proof, or airspace approval. |
 
 ## Core Formula and Policy Ledger
@@ -51,7 +51,7 @@ infinite commit-to-CI update cycle.
 | Route modes | Shielding minimum 0.90/0.10, balanced 0.70/0.30, detour stability 0.85/0.15 with reviewed risk multiplier. | `real_terrain_route_outputs.py`; EXP-055; DEC-007 |
 | Dijkstra/diversity | Deterministic ordering, bounded expansion, duplicate rejection, and directed-edge overlap retry. | `route_pathfinding.py`; EXP-055; DEC-007 |
 | Waypoint sampling | Cumulative route 3D handoff distance, exact-node reuse, linear elevation interpolation, conservative color/min-score interpolation. | `real_terrain_waypoint_reporting.py`; EXP-056; DEC-008 |
-| Future route altitude | Proposed complete route authority plus authoritative actual selected launch, exact-parity terrain session, and dedicated bounded radial DSM/DEM profiles; one constant-MSL result plus independent fixed-AGL margin assessment per source route. | Task 036A architecture; EXP-057; DEC-009 |
+| Route altitude | Approved complete route authority plus authoritative actual selected launch, exact-parity terrain session, and dedicated bounded radial DSM/DEM profiles; one constant-MSL result plus independent fixed-AGL margin assessment per source route. | Task 036A architecture; EXP-057; approved DEC-009 |
 
 ## Build Chronology
 
@@ -70,7 +70,8 @@ rather than inferred.
 | BUILD-20260714-007 | 2026-07-14 | 034B-034D, 035A-035D | Diagnostic delivery, real-terrain contract, candidate analysis, map, and selection. | PR #103. | Final `8fb29c7`; merge `1933ce2`; merged 2026-07-16. | Synthetic adapters and renderer fakes. | 33 focused; 864 full. | Local checks passed; CI #874 / 29460010316 success. | Merged. | EXP-048..054; DEC-004..006; Task 035D handoff. | No real GIS/browser/field validation. |
 | BUILD-20260716-008 | 2026-07-16 | 035EF | Complete selected-launch route recommendation and handoff contract. | Issue #104; PR #105. | Final `4308aba`; merge `7c49c8f`; merged 2026-07-16. | Synthetic in-memory adapter. | graph 7 + pathfinding 4 + analysis 5 + outputs 12 = 28; 892 full. | Local checks passed; CI #881 / 29469082285 success. | Merged; Issue #104 closed/completed. | EXP-055; DEC-007; Task 035EF handoff. | No GIS route/browser/field validation. |
 | BUILD-20260716-009 | 2026-07-16 | 035G | Real-terrain route waypoint reporting over complete handoffs. | Issue #106; PR #107. | Final `36935ac`; merge `7b39a21`; merged 2026-07-19. | Synthetic immutable route contracts. | Initial focused 7/full 899; review-amendment focused 22/full 914. | Exact final-head CI #890 / 29473229092 success. | Merged; Issue #106 closed/completed. | EXP-056; DEC-008; Task 035G handoff. | No terrain reanalysis, GIS report, browser/UI, or field validation. |
-| BUILD-20260716-010 | 2026-07-20 | 036A | Propose real-terrain minimum-altitude analysis boundary. | Issue #108; Draft PR #109. | Base main `7b39a21`; ledger content basis before draft-evidence commit `fa5cdb4`; GPT Master amendment in progress. | Documentation and existing synthetic contracts only. | Initial focused 19; full 913 passed, 1 skipped; compileall/Ruff/mypy/diff passed. | Exact amendment final-head CI will be recorded in the Draft PR completion/review comment. | Draft pending hosted CI and GPT Master review. | EXP-057; proposed DEC-009; Task 036A handoff. | No runtime, GIS, field, browser/UI, or operational output. |
+| BUILD-20260716-010 | 2026-07-20 | 036A | Define real-terrain minimum-altitude analysis boundary. | Issue #108; PR #109. | Final `4107547`; merge `f3a0758`; merged 2026-07-20. | Documentation and existing synthetic contracts only. | Focused 19; full 913 passed, 1 skipped. | CI #899 / 29710579465 success. | Merged; Issue #108 closed/completed. | EXP-057; approved DEC-009; Task 036A handoff. | No runtime, GIS, field, browser/UI, or operational output. |
+| BUILD-20260720-011 | 2026-07-20 | 036B | Implement immutable prepared-evidence contracts and a pure minimum-altitude proxy engine. | Issue #110; Draft PR #111. | Base `f3a0758`; local final amendment verified. | Synthetic prepared profiles only. | Focused 149; related Task 035EF/035G plus legacy 58; full 1062 passed, 1 skipped. | Fresh local verification complete; exact final-head CI remains pending for the external completion report. | Local verification complete; publish/review pending. | EXP-058; DEC-009; Task 036B handoff. | Exact global proxy extremes plus canonical tolerance representatives; no terrain session, GIS sampling, route selection, UI, device, or field claim. |
 
 ## Experiment Evidence Ledger
 

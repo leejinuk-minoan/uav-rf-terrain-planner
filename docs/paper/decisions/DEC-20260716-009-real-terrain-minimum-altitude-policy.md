@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed contract - pending GPT Master approval.
+Approved by GPT Master.
 
 ## Date
 
@@ -10,7 +10,7 @@ Proposed contract - pending GPT Master approval.
 
 ## Related Task / Issue / PR
 
-Task 036A, Issue #108, Draft PR #109.
+Task 036A, Issue #108, merged PR #109.
 
 ## Decision Owner
 

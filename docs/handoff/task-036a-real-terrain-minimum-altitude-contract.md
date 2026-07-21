@@ -2,12 +2,12 @@
 
 ## Current Task
 
-Task 036A is a proposed contract and audit for future real-terrain minimum-required
+Task 036A is an approved contract and audit for future real-terrain minimum-required
 MSL and AGL proxy analysis. It creates no runtime implementation.
 
 ## Current Branch / Draft PR
 
-`agent/task-036a-real-terrain-minimum-altitude-contract`; Draft PR #109.
+merged PR #109; merge commit `f3a0758`.
 
 ## Proposed Contract
 
@@ -47,8 +47,8 @@ fatal before profile extraction and returns no partial result.
 
 ## Decision Governance
 
-DEC-009 is `Proposed contract - pending GPT Master approval.` It is not changed to
-approved until exact-head CI succeeds and GPT Master completes review.
+DEC-009 is `Approved by GPT Master` after exact-head CI #899 succeeded and review
+threads were resolved.
 
 ## Legacy Compatibility
 
@@ -69,7 +69,7 @@ regulatory approval, airspace authorization, or autopilot output.
 
 ## Next Implementation Task
 
-Implement a separate runtime module only after GPT Master approval. Required coverage
+Implement the separate runtime module. Required coverage
 includes selected-launch authority, exact terrain metadata parity, 2D/3D distances,
 profile provenance and guards, MSL inversion, all-sample baseline margins, nonnegative
 AGL, warning order, MGRS output, and public-coordinate omission.
