@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from itertools import permutations
 from math import inf, nextafter, sqrt
 
 import pytest
@@ -311,12 +312,11 @@ def test_tolerance_aware_radial_tie_prefers_lower_radial_index() -> None:
 
 
 def test_nonzero_evidence_requires_profile() -> None:
+    route_result = _route_result()
+    prepared = _prepared_route(route_result)
+    target = replace(prepared.samples[-1], radial_profile=None)
     with pytest.raises(RealTerrainMinimumAltitudeError):
-        PreparedRealTerrainRouteSample(
-            "route-shielding_minimum-sample-000", "route-shielding_minimum",
-            RouteMode.SHIELDING_MINIMUM, 0, TARGET_MGRS, TARGET_POINT, 0.0,
-            120.0, 120.0, True, 10.0, None,
-        )
+        _compute(route_result, (replace(prepared, samples=(prepared.samples[0], target)),))
 
 
 def test_engine_rejects_default_profile_spacing_mismatch() -> None:
@@ -906,3 +906,131 @@ def test_source_collection_guard_precedes_deep_source_traversal(
     )
     with pytest.raises(RealTerrainMinimumAltitudeError, match="source graph node count"):
         _compute(route_result)
+
+
+@pytest.mark.parametrize("ordered_indices", tuple(permutations((0, 1, 2))))
+def test_each_limiter_separates_exact_extreme_from_canonical_representative(
+    ordered_indices: tuple[int, int, int],
+) -> None:
+    import uav_rf_terrain.real_terrain_minimum_altitude as altitude
+
+    tolerance = 1.0
+    values = (0.0, 0.75, 1.5)
+    radial_base = _compute().route_results[0].route_samples[-1].radial_requirement_samples[0]
+    radial_items = tuple(
+        replace(radial_base, radial_sample_index=index, required_endpoint_msl_m=values[index])
+        for index in ordered_indices
+    )
+    radial_extreme, radial_limiter = altitude._select_radial_extreme(radial_items, tolerance)
+    assert radial_extreme == 1.5
+    assert radial_limiter.radial_sample_index == 1
+
+    sample_base = _compute().route_results[0].route_samples[-1]
+    route_items = tuple(
+        replace(
+            sample_base,
+            route_sample_index=index,
+            cumulative_route_distance_2d_m=float(index),
+            required_endpoint_msl_m=values[index],
+            current_clearance_margin_m=-values[index],
+        )
+        for index in ordered_indices
+    )
+    constant_extreme, constant_limiter = altitude._select_constant_msl_extreme(route_items, tolerance)
+    margin_extreme, margin_limiter = altitude._select_current_margin_extreme(route_items, tolerance)
+    assert constant_extreme == 1.5
+    assert constant_limiter.route_sample_index == 1
+    assert margin_extreme == -1.5
+    assert margin_limiter.route_sample_index == 1
+
+
+def test_subtolerance_xy_coincidence_ignores_z_and_requires_no_profile() -> None:
+    route_result = _route_result()
+    prepared = _prepared_route(route_result)
+    first = replace(
+        prepared.samples[0],
+        projected_point=LocalPoint(0.0005, 0.0, 999.0),
+        radial_distance_2d_m=0.0005,
+        radial_profile=None,
+    )
+    result = _compute(
+        route_result,
+        (replace(prepared, samples=(first, prepared.samples[-1])),),
+        RealTerrainMinimumAltitudeConfig(
+            expected_frequency_hz=300_000_000.0,
+            distance_tolerance_m=0.001,
+        ),
+    )
+    assert result.route_results[0].route_samples[0].sample_semantics == "coincident_launch_occupancy"
+
+
+@pytest.mark.parametrize("field", ("path", "ordered_node_ids", "ordered_projected_points", "handoff"))
+def test_source_route_local_collection_guards_run_before_fresnel(
+    monkeypatch: pytest.MonkeyPatch, field: str
+) -> None:
+    import uav_rf_terrain.real_terrain_minimum_altitude as altitude
+
+    route_result = _route_result()
+    candidate = route_result.route_candidates[0]
+    if field == "handoff":
+        object.__setattr__(route_result, "waypoint_handoffs", (route_result.waypoint_handoffs[0][:-1],))
+    else:
+        object.__setattr__(candidate, field, getattr(candidate, field)[:-1])
+    monkeypatch.setattr(
+        altitude,
+        "wavelength_m",
+        lambda _: (_ for _ in ()).throw(AssertionError("Fresnel work must not run")),
+    )
+    with pytest.raises(RealTerrainMinimumAltitudeError, match="route-local collection lengths"):
+        _compute(route_result)
+
+
+def test_public_output_includes_limiter_semantics_and_distance_tolerance() -> None:
+    result = _compute(config=RealTerrainMinimumAltitudeConfig(distance_tolerance_m=0.25))
+    public = result.to_public_dict()
+    assert public["distance_tolerance_m"] == 0.25
+    assert public["limiter_semantics"] == "canonical_extreme_tolerance_representative"
+
+
+def test_route_result_uses_exact_minimum_for_status_and_canonical_representative(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import uav_rf_terrain.real_terrain_minimum_altitude as altitude
+
+    prepared = _prepared_route(_route_result())
+    first, target = _compute().route_results[0].route_samples
+    synthetic_samples = iter(
+        (
+            replace(
+                first,
+                required_endpoint_msl_m=140.75,
+                current_route_flight_msl_m=140.0,
+                current_clearance_margin_m=-0.75,
+            ),
+            replace(
+                target,
+                required_endpoint_msl_m=141.5,
+                current_route_flight_msl_m=140.0,
+                current_clearance_margin_m=-1.5,
+            ),
+        )
+    )
+    monkeypatch.setattr(altitude, "_compute_sample", lambda *_: next(synthetic_samples))
+    route = altitude._compute_route(
+        prepared,
+        launch_point=LAUNCH_POINT,
+        launch_ground=100.0,
+        launch_antenna=120.0,
+        allowed_agl=20.0,
+        frequency=300_000_000.0,
+        profile_spacing_m=10.0,
+        config=RealTerrainMinimumAltitudeConfig(distance_tolerance_m=1.0),
+    )
+    assert route.minimum_required_constant_route_msl_m == 141.5
+    assert route.constant_msl_limiting_sample_id == first.route_sample_id
+    assert route.minimum_current_clearance_margin_m == -1.5
+    assert route.current_agl_deficit_limiting_sample_id == first.route_sample_id
+    assert not route.current_fixed_agl_meets_proxy
+    assert route.warnings == (
+        "route-shielding_minimum: current fixed-AGL route is below the configured clearance proxy at one or more route samples.",
+    )

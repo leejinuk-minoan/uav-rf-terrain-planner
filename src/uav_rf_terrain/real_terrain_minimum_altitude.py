@@ -11,6 +11,10 @@ from dataclasses import dataclass
 from hashlib import sha256
 from math import isfinite
 
+from ._minimum_altitude_selection import (
+    MinimumAltitudeSelectionError,
+    select_tolerance_representative,
+)
 from .coordinates import LocalPoint, distance_2d_m
 from .fresnel import FresnelAnalysisError, first_fresnel_radius_m, wavelength_m
 from .launch_site_selection import LaunchSiteSelectionError, SelectedLaunchSiteRecord
@@ -96,8 +100,6 @@ class PreparedRealTerrainRouteSample:
             raise RealTerrainMinimumAltitudeError("target endpoint flag must be bool.")
         if self.radial_profile is not None and not isinstance(self.radial_profile, TerrainProfile):
             raise RealTerrainMinimumAltitudeError("prepared radial profile must be TerrainProfile or None.")
-        if self.radial_distance_2d_m > 0.0 and self.radial_profile is None:
-            raise RealTerrainMinimumAltitudeError("nonzero radial distance requires a radial profile.")
 
 
 @dataclass(frozen=True)
@@ -326,9 +328,7 @@ _KNOWN_CONTRACT_ERRORS = (
     FresnelAnalysisError,
     RealTerrainMinimumAltitudeOutputError,
     TerrainDataError,
-    AttributeError,
-    KeyError,
-    TypeError,
+    MinimumAltitudeSelectionError,
 )
 
 
@@ -344,7 +344,7 @@ def _validate_exact_terrain_metadata(metadata: object, context: str) -> TerrainD
         metadata.dsm.__post_init__()
         metadata.__post_init__()
         validate_terrain_dataset_metadata(metadata)
-    except (TerrainDataError, AttributeError, TypeError) as exc:
+    except TerrainDataError as exc:
         raise RealTerrainMinimumAltitudeError(f"{context} terrain metadata is invalid.") from exc
     return metadata
 
@@ -372,13 +372,42 @@ def _preflight_source_collections(route_result: RealTerrainRouteResult) -> None:
         raise RealTerrainMinimumAltitudeError("source graph edge count violates resource guard.")
     if len(route_result.waypoint_handoffs) > len(RouteMode):
         raise RealTerrainMinimumAltitudeError("source waypoint handoff count violates fixed route-mode guard.")
+    if type(route_result.summary) is not RealTerrainRouteSummary:
+        raise RealTerrainMinimumAltitudeError("source route summary type is invalid.")
+    if (
+        route_result.summary.graph_node_count != len(route_result.graph_nodes)
+        or route_result.summary.graph_edge_count != len(route_result.graph_edges)
+        or route_result.summary.route_count != len(route_result.route_candidates)
+    ):
+        raise RealTerrainMinimumAltitudeError("source graph summary count parity is invalid.")
+    if len(route_result.waypoint_handoffs) != len(route_result.route_candidates):
+        raise RealTerrainMinimumAltitudeError("source waypoint handoff count does not match routes.")
+    for candidate, handoff in zip(route_result.route_candidates, route_result.waypoint_handoffs):
+        if type(candidate) is not RealTerrainRouteCandidate or type(handoff) is not tuple:
+            raise RealTerrainMinimumAltitudeError("source route-local collection type is invalid.")
+        if (
+            type(candidate.path) is not tuple
+            or type(candidate.ordered_node_ids) is not tuple
+            or type(candidate.ordered_projected_points) is not tuple
+        ):
+            raise RealTerrainMinimumAltitudeError("source route-local collections must be exact tuples.")
+        route_local_length = len(candidate.path)
+        if (
+            route_local_length != len(candidate.ordered_node_ids)
+            or route_local_length != len(candidate.ordered_projected_points)
+            or route_local_length != len(handoff)
+        ):
+            raise RealTerrainMinimumAltitudeError("source route-local collection lengths are inconsistent.")
+        if (
+            route_local_length > len(route_result.graph_nodes)
+            or route_local_length > route_result.config.max_graph_nodes
+        ):
+            raise RealTerrainMinimumAltitudeError("source route-local length violates graph guard.")
 
 
 def _preflight_source_nested_types(route_result: RealTerrainRouteResult) -> None:
     """Check exact nested records before source ``__post_init__`` dereferences them."""
 
-    if type(route_result.summary) is not RealTerrainRouteSummary:
-        raise RealTerrainMinimumAltitudeError("source route summary type is invalid.")
     for candidate in route_result.route_candidates:
         if type(candidate) is not RealTerrainRouteCandidate or type(candidate.mode) is not RouteMode:
             raise RealTerrainMinimumAltitudeError("source route candidate type or mode is invalid.")
@@ -582,10 +611,14 @@ def _validate_snapshot_profile(
 ) -> None:
     tolerance = config.distance_tolerance_m
     launch_antenna = authority.launch_ground_msl_m + authority.allowed_flight_agl_m
-    if item.radial_distance_2d_m <= tolerance:
+    recomputed_radial_distance = distance_2d_m(
+        authority.selected_projected_point, item.projected_point
+    )
+    if not _near(item.radial_distance_2d_m, recomputed_radial_distance, tolerance):
+        raise RealTerrainMinimumAltitudeError("snapshot radial geometry is invalid.")
+    if recomputed_radial_distance <= tolerance:
         if (
-            not _points_within_tolerance(item.projected_point, authority.selected_projected_point, tolerance)
-            or item.radial_profile is not None
+            item.radial_profile is not None
             or not _near(item.local_dem_msl_m, authority.launch_ground_msl_m, tolerance)
             or item.local_dsm_msl_m > launch_antenna + tolerance
         ):
@@ -789,10 +822,12 @@ def _validate_emitted_radial_requirements(
                     raise RealTerrainMinimumAltitudeError("emitted radial requirement does not match snapshot calculation.")
             elif actual_value != expected_value:
                 raise RealTerrainMinimumAltitudeError("emitted radial requirement identity does not match snapshot.")
-    expected_limiter = _select_radial_limiter(expected, config.distance_tolerance_m)
+    expected_required, expected_limiter = _select_radial_extreme(
+        expected, config.distance_tolerance_m
+    )
     if output.limiting_radial_requirement != expected_limiter:
         raise RealTerrainMinimumAltitudeError("emitted radial limiter does not match snapshot calculation.")
-    if not _near(output.required_endpoint_msl_m, expected_limiter.required_endpoint_msl_m, config.distance_tolerance_m):
+    if output.required_endpoint_msl_m != expected_required:
         raise RealTerrainMinimumAltitudeError("emitted endpoint requirement does not match snapshot calculation.")
 
 
@@ -885,9 +920,12 @@ def _validate_sample_profile(
     tolerance = config.distance_tolerance_m
     launch_ground = route_result.launch_ground_msl_m
     launch_antenna = launch_ground + route_result.config.allowed_flight_agl_m
-    if item.radial_distance_2d_m <= tolerance:
-        if item.projected_point != selected_launch_site.projected_point:
-            raise RealTerrainMinimumAltitudeError("coincident prepared sample point does not match selected launch.")
+    recomputed_radial_distance = distance_2d_m(
+        selected_launch_site.projected_point, item.projected_point
+    )
+    if not _near(item.radial_distance_2d_m, recomputed_radial_distance, tolerance):
+        raise RealTerrainMinimumAltitudeError("prepared radial distance does not match selected launch geometry.")
+    if recomputed_radial_distance <= tolerance:
         if item.radial_profile is not None:
             raise RealTerrainMinimumAltitudeError("coincident prepared sample must not contain a radial profile.")
         if not _near(item.local_dem_msl_m, launch_ground, tolerance):
@@ -1021,15 +1059,16 @@ def _compute_route(
         _compute_sample(item, launch_point, launch_ground, launch_antenna, allowed_agl, frequency, config)
         for item in route.samples
     )
-    max_sample = _select_constant_msl_limiter(samples, config.distance_tolerance_m)
-    deficit_sample = _select_current_margin_limiter(samples, config.distance_tolerance_m)
-    msl = max_sample.required_endpoint_msl_m
+    msl, max_sample = _select_constant_msl_extreme(samples, config.distance_tolerance_m)
+    minimum_margin, deficit_sample = _select_current_margin_extreme(
+        samples, config.distance_tolerance_m
+    )
     highest_dem = max(item.local_dem_msl_m for item in samples)
     target = samples[-1].local_dem_msl_m
     agl_high = _nonnegative(msl - highest_dem, config.distance_tolerance_m)
     agl_target = _nonnegative(msl - target, config.distance_tolerance_m)
     warnings: list[str] = []
-    if deficit_sample.current_clearance_margin_m < -config.distance_tolerance_m:
+    if minimum_margin < -config.distance_tolerance_m:
         warnings.append(f"{route.route_id}: current fixed-AGL route is below the configured clearance proxy at one or more route samples.")
     if max_sample.is_snapped_target_endpoint:
         warnings.append(f"{route.route_id}: constant-MSL limiting sample is the snapped target endpoint.")
@@ -1040,8 +1079,8 @@ def _compute_route(
         route.route_polyline_total_distance_2d_m, frequency,
         config.required_fresnel_clearance_ratio, profile_spacing_m, launch_ground,
         launch_antenna, allowed_agl, msl, highest_dem, target, agl_high, agl_target,
-        max_sample.route_sample_id, deficit_sample.current_clearance_margin_m,
-        deficit_sample.current_clearance_margin_m >= -config.distance_tolerance_m,
+        max_sample.route_sample_id, minimum_margin,
+        minimum_margin >= -config.distance_tolerance_m,
         deficit_sample.route_sample_id, samples, tuple(warnings),
     )
 
@@ -1055,8 +1094,15 @@ def _compute_sample(
     frequency: float,
     config: RealTerrainMinimumAltitudeConfig,
 ) -> RealTerrainRouteAltitudeSample:
-    if item.radial_distance_2d_m <= config.distance_tolerance_m:
-        if item.projected_point != launch_point or item.radial_profile is not None or abs(item.local_dem_msl_m - launch_ground) > config.distance_tolerance_m or item.local_dsm_msl_m > launch_antenna + config.distance_tolerance_m:
+    recomputed_radial_distance = distance_2d_m(launch_point, item.projected_point)
+    if not _near(
+        item.radial_distance_2d_m,
+        recomputed_radial_distance,
+        config.distance_tolerance_m,
+    ):
+        raise RealTerrainMinimumAltitudeError("prepared radial distance does not match launch geometry.")
+    if recomputed_radial_distance <= config.distance_tolerance_m:
+        if item.radial_profile is not None or abs(item.local_dem_msl_m - launch_ground) > config.distance_tolerance_m or item.local_dsm_msl_m > launch_antenna + config.distance_tolerance_m:
             raise RealTerrainMinimumAltitudeError("coincident launch evidence is invalid.")
         required = launch_antenna
         requirements: tuple[RealTerrainRadialRequirementSample, ...] = ()
@@ -1068,8 +1114,7 @@ def _compute_sample(
         requirements = _requirements(item, launch_antenna, frequency, config)
         if not requirements:
             raise RealTerrainMinimumAltitudeError("radial profile has no eligible path ratio sample.")
-        limiting = _select_radial_limiter(requirements, config.distance_tolerance_m)
-        required = limiting.required_endpoint_msl_m
+        required, limiting = _select_radial_extreme(requirements, config.distance_tolerance_m)
         semantics = "radial_profile_proxy"
     current = item.local_dem_msl_m + allowed_agl
     return RealTerrainRouteAltitudeSample(
@@ -1118,38 +1163,68 @@ def _requirements(
 def _select_radial_limiter(
     requirements: tuple[RealTerrainRadialRequirementSample, ...], tolerance: float
 ) -> RealTerrainRadialRequirementSample:
-    best = requirements[0]
-    for candidate in requirements[1:]:
-        difference = candidate.required_endpoint_msl_m - best.required_endpoint_msl_m
-        if difference > tolerance or (abs(difference) <= tolerance and candidate.radial_sample_index < best.radial_sample_index):
-            best = candidate
-    return best
+    return _select_radial_extreme(requirements, tolerance)[1]
+
+
+def _select_radial_extreme(
+    requirements: tuple[RealTerrainRadialRequirementSample, ...], tolerance: float
+) -> tuple[float, RealTerrainRadialRequirementSample]:
+    try:
+        return select_tolerance_representative(
+            requirements,
+            value=lambda item: item.required_endpoint_msl_m,
+            tie_key=lambda item: item.radial_sample_index,
+            tolerance=tolerance,
+            maximize=True,
+        )
+    except MinimumAltitudeSelectionError as exc:
+        raise RealTerrainMinimumAltitudeError("radial limiter selection is invalid.") from exc
 
 
 def _select_constant_msl_limiter(
     samples: tuple[RealTerrainRouteAltitudeSample, ...], tolerance: float
 ) -> RealTerrainRouteAltitudeSample:
-    best = samples[0]
-    for candidate in samples[1:]:
-        difference = candidate.required_endpoint_msl_m - best.required_endpoint_msl_m
-        candidate_key = (candidate.cumulative_route_distance_2d_m, candidate.route_sample_index, _radial_index(candidate))
-        best_key = (best.cumulative_route_distance_2d_m, best.route_sample_index, _radial_index(best))
-        if difference > tolerance or (abs(difference) <= tolerance and candidate_key < best_key):
-            best = candidate
-    return best
+    return _select_constant_msl_extreme(samples, tolerance)[1]
+
+
+def _select_constant_msl_extreme(
+    samples: tuple[RealTerrainRouteAltitudeSample, ...], tolerance: float
+) -> tuple[float, RealTerrainRouteAltitudeSample]:
+    try:
+        return select_tolerance_representative(
+            samples,
+            value=lambda item: item.required_endpoint_msl_m,
+            tie_key=lambda item: (
+                item.cumulative_route_distance_2d_m,
+                item.route_sample_index,
+                _radial_index(item),
+            ),
+            tolerance=tolerance,
+            maximize=True,
+        )
+    except MinimumAltitudeSelectionError as exc:
+        raise RealTerrainMinimumAltitudeError("constant-MSL limiter selection is invalid.") from exc
 
 
 def _select_current_margin_limiter(
     samples: tuple[RealTerrainRouteAltitudeSample, ...], tolerance: float
 ) -> RealTerrainRouteAltitudeSample:
-    best = samples[0]
-    for candidate in samples[1:]:
-        difference = candidate.current_clearance_margin_m - best.current_clearance_margin_m
-        candidate_key = (candidate.cumulative_route_distance_2d_m, candidate.route_sample_index)
-        best_key = (best.cumulative_route_distance_2d_m, best.route_sample_index)
-        if difference < -tolerance or (abs(difference) <= tolerance and candidate_key < best_key):
-            best = candidate
-    return best
+    return _select_current_margin_extreme(samples, tolerance)[1]
+
+
+def _select_current_margin_extreme(
+    samples: tuple[RealTerrainRouteAltitudeSample, ...], tolerance: float
+) -> tuple[float, RealTerrainRouteAltitudeSample]:
+    try:
+        return select_tolerance_representative(
+            samples,
+            value=lambda item: item.current_clearance_margin_m,
+            tie_key=lambda item: (item.cumulative_route_distance_2d_m, item.route_sample_index),
+            tolerance=tolerance,
+            maximize=False,
+        )
+    except MinimumAltitudeSelectionError as exc:
+        raise RealTerrainMinimumAltitudeError("current-margin limiter selection is invalid.") from exc
 
 
 def _radial_index(sample: RealTerrainRouteAltitudeSample) -> int:

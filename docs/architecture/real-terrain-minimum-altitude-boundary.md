@@ -151,9 +151,11 @@ actual-to-snapped connector rather than silently skipping it.
 
 The resolved spacing is `config.profile_spacing_m` when provided; otherwise it is
 `route_result.config.profile_spacing_m`. An explicit spacing must be positive and no
-larger than the source route profile spacing. For a coincident actual and snapped
-origin, the implementation validates endpoint occupancy without creating an invalid
-zero-length inversion profile.
+larger than the source route profile spacing. Coincidence is recomputed from projected
+2D distance only (not `z_m` or LocalPoint equality): a stored radial distance must
+match that recomputation within `distance_tolerance_m`. For a coincident actual and
+snapped origin, the implementation validates endpoint occupancy without creating an
+invalid zero-length inversion profile.
 
 For route sample `j`, let `A` be launch antenna MSL. For each eligible radial profile
 sample `i` with path ratio `t_i > epsilon`, DSM MSL `D_i`, first Fresnel radius `r_i`,
@@ -175,10 +177,15 @@ actual launch endpoint has `t = 0` and is excluded from inversion; its DSM must 
 or below `launch_antenna_msl_m`. Every route sample is a radial endpoint and is
 eligible. A snapped target endpoint may therefore be a constant-MSL limiting sample.
 
-The constant-MSL limiting sample is the `argmax(required_endpoint_msl_j)`. Values
-within `1e-9` m are tied, then choose lower `cumulative_route_distance_2d_m`, lower
-route-sample index, lower radial-profile sample index, and lower source route order.
-This selection is independent of the current fixed-AGL deficit-limiting sample.
+`minimum_required_constant_route_msl_m` is the exact finite numeric maximum of all
+computed route-sample requirements. The separately reported constant-MSL limiting
+sample is a canonical representative: form the absolute
+`distance_tolerance_m` band around that exact maximum, then choose lower
+`cumulative_route_distance_2d_m`, lower route-sample index, and lower radial-profile
+sample index (`-1` for coincident occupancy). Its numeric requirement can therefore
+differ from the exact maximum within the configured tolerance. `source_order` orders
+source routes only; it is never an intra-route selector. This selection is independent
+of the current fixed-AGL deficit-limiting sample.
 
 ## Fresnel Policy
 
@@ -207,11 +214,13 @@ minimum_current_clearance_margin_m = min(current_clearance_margin_m_j)
 current_fixed_agl_meets_proxy = minimum_current_clearance_margin_m >= -tolerance
 ```
 
-The current-AGL deficit-limiting sample is the `argmin(current_clearance_margin_m_j)`.
-Ties use lower `cumulative_route_distance_2d_m`, lower route-sample index, and lower
-source route order; the associated radial-profile provenance remains available for
-diagnostics. It is distinct from the constant-MSL limiting sample and can identify a
-different point.
+`minimum_current_clearance_margin_m` is the exact finite numeric minimum over all
+route samples, and it alone controls `current_fixed_agl_meets_proxy`. The current-AGL
+deficit-limiting sample is a canonical representative from the absolute
+`distance_tolerance_m` band around that minimum, using lower
+`cumulative_route_distance_2d_m` then lower route-sample index. It is distinct from
+the constant-MSL limiting sample and can identify a different point; associated radial
+profile provenance remains available for diagnostics.
 
 ## Nonnegative AGL Conversions
 
@@ -245,10 +254,19 @@ expected_frequency_hz: float | None
 required_fresnel_clearance_ratio: float = 0.6
 profile_spacing_m: float | None
 epsilon_m: float = 1e-9
+distance_tolerance_m: float = 1e-9
+max_routes: int = 3
 max_route_samples: int = 10_000
 max_profile_samples_per_link: int = 10_000
 max_total_profile_samples: int = 50_000
 ```
+
+`distance_tolerance_m` is a finite nonnegative absolute comparison band used for
+geometry parity and canonical representative selection. It is intentionally bounded
+only by finiteness/nonnegativity in this pure core, so a broad configured tolerance can
+make a canonical limiter substantially different from the exact emitted extreme. This
+is a synthetic pure-core limitation, not a terrain-session, GIS, or field-validation
+claim.
 
 `RealTerrainRouteAltitudeSample` retains route ID/mode, route-sample MGRS and index,
 `cumulative_route_distance_2d_m`, local DEM/DSM, current route flight MSL,

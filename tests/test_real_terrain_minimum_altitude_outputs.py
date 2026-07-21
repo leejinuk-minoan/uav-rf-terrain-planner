@@ -5,6 +5,7 @@ import pytest
 from uav_rf_terrain.real_terrain_minimum_altitude_outputs import (
     RealTerrainMinimumAltitudeConfig,
     RealTerrainMinimumAltitudeOutputError,
+    validate_real_terrain_minimum_altitude_result,
 )
 
 
@@ -46,3 +47,8 @@ def test_config_rejects_every_invalid_numeric_or_guard_field(field: str, value: 
 @pytest.mark.parametrize("ratio", (0.0, 0.6, 1.0))
 def test_config_accepts_reviewed_clearance_ratio_boundaries(ratio: float) -> None:
     assert RealTerrainMinimumAltitudeConfig(required_fresnel_clearance_ratio=ratio).required_fresnel_clearance_ratio == ratio
+
+
+def test_standalone_output_validator_normalizes_wrong_top_level_type() -> None:
+    with pytest.raises(RealTerrainMinimumAltitudeOutputError):
+        validate_real_terrain_minimum_altitude_result(object())  # type: ignore[arg-type]

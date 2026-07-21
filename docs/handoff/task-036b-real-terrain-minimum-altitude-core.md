@@ -20,16 +20,19 @@ call `sample_point` or `extract_profile`, or load GIS data.
 - PR #109 merged at `f3a0758`; Issue #108 closed; DEC-009 approved by GPT Master.
 - Task 036B amendment work is local-only under Issue #110 and Draft PR #111.
 - The pure core validates exact route/selection authority, prepared 2D and radial
-  profile parity, bounded resource inputs, tolerance-aware limiters, and recursive
-  immutable MGRS-facing result contracts. The local amendment additionally retains
+  profile parity, bounded resource inputs, exact numeric extremes plus tolerance-aware
+  canonical limiters, and recursive immutable MGRS-facing result contracts. The local
+  amendment additionally retains
   private exact source/prepared authority, rejects direct/coordinated mutation and
   list substitution, and validates finite LocalPoint/profile interpolation parity.
-- Fresh local evidence: minimum-altitude focused `106 passed`; related Task 035EF/035G
-  and legacy regression `58 passed`; full suite `1019 passed, 1 skipped`. The final
+- Fresh local evidence: minimum-altitude focused `128 passed`; related Task 035EF/035G
+  and legacy regression `58 passed`; full suite `1041 passed, 1 skipped`. The final
   local amendment uses one canonical compact authority snapshot plus a separate exact
-  emitted-output fingerprint, followed by tolerance-aware radial replay. Local
-  verification is complete; exact final-head CI remains pending until the permitted
-  one-time publish step.
+  emitted-output fingerprint, followed by exact-extreme and canonical-limiter replay.
+  `source_order` remains route ordering only, while `distance_tolerance_m` controls the
+  absolute representative band and coincident projected-2D check. Local verification
+  is complete; exact final-head CI remains pending until the permitted one-time publish
+  step.
 - The target output remains an offline DSM/LOS/Fresnel clearance proxy, not terrain
   clearance certification, flight-safety approval, communication-success evidence, or
   regulatory authorization.
