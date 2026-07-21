@@ -25,8 +25,8 @@ call `sample_point` or `extract_profile`, or load GIS data.
   amendment additionally retains
   private exact source/prepared authority, rejects direct/coordinated mutation and
   list substitution, and validates finite LocalPoint/profile interpolation parity.
-- Fresh local evidence: minimum-altitude focused `140 passed`; related Task 035EF/035G
-  and legacy regression `58 passed`; full suite `1053 passed, 1 skipped`. The current
+- Fresh local evidence: minimum-altitude focused `149 passed`; related Task 035EF/035G
+  and legacy regression `58 passed`; full suite `1062 passed, 1 skipped`. The current
   local amendment uses one canonical compact authority snapshot plus a separate exact
   emitted-output fingerprint, followed by exact-extreme and canonical-limiter replay.
   `source_order` remains route ordering only, while `distance_tolerance_m` controls the

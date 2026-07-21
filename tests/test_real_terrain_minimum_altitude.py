@@ -1095,6 +1095,45 @@ def test_source_and_metadata_malformed_nested_values_map_to_engine_error(mutatio
         _compute(route_result)
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "node_mgrs",
+        "node_id",
+        "edge_from_node_id",
+        "edge_to_node_id",
+        "shared_edge_ratio",
+        "path_sequence_index",
+        "path_mgrs",
+        "path_flight_msl",
+        "handoff_projected_point",
+    ),
+)
+def test_source_nested_graph_primitives_map_to_engine_error(mutation: str) -> None:
+    route_result = _route_result()
+    candidate = route_result.route_candidates[0]
+    if mutation == "node_mgrs":
+        object.__setattr__(route_result.graph_nodes[0], "node_mgrs", object())
+    elif mutation == "node_id":
+        object.__setattr__(route_result.graph_nodes[0], "node_id", [])
+    elif mutation == "edge_from_node_id":
+        object.__setattr__(route_result.graph_edges[0], "from_node_id", [])
+    elif mutation == "edge_to_node_id":
+        object.__setattr__(route_result.graph_edges[0], "to_node_id", object())
+    elif mutation == "shared_edge_ratio":
+        object.__setattr__(candidate, "shared_edge_ratios", (object(),))
+    elif mutation == "path_sequence_index":
+        object.__setattr__(candidate.path[0], "sequence_index", object())
+    elif mutation == "path_mgrs":
+        object.__setattr__(candidate.path[0], "mgrs", object())
+    elif mutation == "path_flight_msl":
+        object.__setattr__(candidate.path[0], "flight_msl_m", object())
+    else:
+        object.__setattr__(route_result.waypoint_handoffs[0][0], "projected_point", object())
+    with pytest.raises(RealTerrainMinimumAltitudeError):
+        _compute(route_result)
+
+
 @pytest.mark.parametrize("field", ("name", "bounds"))
 def test_complete_and_output_validators_normalize_mutated_metadata_primitives(field: str) -> None:
     result = _compute()

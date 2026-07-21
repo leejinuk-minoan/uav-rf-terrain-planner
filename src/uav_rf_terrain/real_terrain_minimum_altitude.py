@@ -473,7 +473,16 @@ def _preflight_source_nested_types(route_result: RealTerrainRouteResult) -> None
     for candidate in route_result.route_candidates:
         if type(candidate) is not RealTerrainRouteCandidate or type(candidate.mode) is not RouteMode:
             raise RealTerrainMinimumAltitudeError("source route candidate type or mode is invalid.")
-        if type(candidate.path) is not tuple or type(candidate.ordered_projected_points) is not tuple:
+        if any(
+            type(collection) is not tuple
+            for collection in (
+                candidate.path,
+                candidate.warnings,
+                candidate.ordered_node_ids,
+                candidate.ordered_projected_points,
+                candidate.shared_edge_ratios,
+            )
+        ):
             raise RealTerrainMinimumAltitudeError("source route candidate collections must be exact tuples.")
         if any(type(path_point) is not RealTerrainRoutePathPoint for path_point in candidate.path):
             raise RealTerrainMinimumAltitudeError("source route path point type is invalid.")
@@ -484,27 +493,48 @@ def _preflight_source_nested_types(route_result: RealTerrainRouteResult) -> None
             or type(candidate.reason) is not str
             or any(type(warning) is not str for warning in candidate.warnings)
             or any(type(node_id) is not str for node_id in candidate.ordered_node_ids)
+            or any(
+                isinstance(ratio, bool)
+                or not isinstance(ratio, (int, float))
+                or not isfinite(ratio)
+                for ratio in candidate.shared_edge_ratios
+            )
         ):
             raise RealTerrainMinimumAltitudeError("source route candidate text is invalid.")
         for path_point in candidate.path:
-            if type(path_point.mgrs) is not str:
-                raise RealTerrainMinimumAltitudeError("source route path point text is invalid.")
+            if (
+                isinstance(path_point.sequence_index, bool)
+                or type(path_point.sequence_index) is not int
+                or type(path_point.mgrs) is not str
+                or isinstance(path_point.flight_msl_m, bool)
+                or not isinstance(path_point.flight_msl_m, (int, float))
+                or not isfinite(path_point.flight_msl_m)
+            ):
+                raise RealTerrainMinimumAltitudeError("source route path point fields are invalid.")
     for node in route_result.graph_nodes:
         if type(node) is not RealTerrainRouteNode:
             raise RealTerrainMinimumAltitudeError("source graph node type is invalid.")
         if type(node.state) is not RouteNodeState or type(node.projected_point) is not LocalPoint:
             raise RealTerrainMinimumAltitudeError("source graph node state or point type is invalid.")
-        if type(node.reason) is not str or type(node.source_zone_reason) is not str:
+        if (
+            type(node.node_id) is not str
+            or (node.node_mgrs is not None and type(node.node_mgrs) is not str)
+            or type(node.reason) is not str
+            or type(node.source_zone_reason) is not str
+        ):
             raise RealTerrainMinimumAltitudeError("source graph node text is invalid.")
     for edge in route_result.graph_edges:
         if type(edge) is not RealTerrainRouteEdge:
             raise RealTerrainMinimumAltitudeError("source graph edge type is invalid.")
+        if type(edge.from_node_id) is not str or type(edge.to_node_id) is not str:
+            raise RealTerrainMinimumAltitudeError("source graph edge node IDs are invalid.")
     for handoff in route_result.waypoint_handoffs:
         if type(handoff) is not tuple or any(type(item) is not WaypointHandoffPoint for item in handoff):
             raise RealTerrainMinimumAltitudeError("source waypoint handoff type is invalid.")
         for item in handoff:
             if (
                 type(item.point_id) is not str
+                or type(item.projected_point) is not LocalPoint
                 or type(item.point_mgrs) is not str
                 or type(item.source_zone_reason) is not str
             ):
